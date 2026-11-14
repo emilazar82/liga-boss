@@ -495,6 +495,22 @@ td.tn{white-space:nowrap}td.tn .rk{display:inline-block;width:24px;text-align:ri
 .pkgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.pkc{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 4px 8px;background:#0b3a36;border:2px solid #1f6b60;color:#f4efe1;font:600 11px/1.2 inherit;font-family:inherit;cursor:pointer;min-height:92px}.pkc span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-align:center}.pkc.on{border-color:#ffd84d;background:#11524b;box-shadow:0 0 0 2px #ffd84d inset}
 .pksel{display:flex;gap:12px;align-items:center;padding:12px;background:#062f2c;border:2px solid #ffd84d}.pksw{display:inline-block;width:18px;height:18px;border:2px solid #f4efe1}
 .heropic{display:block;width:100%;height:auto;image-rendering:pixelated;border:3px solid #052826;box-shadow:0 4px 0 rgba(0,0,0,.35);margin:0 0 10px}
+.smap{margin-bottom:10px}
+.bgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:10px}
+.bgrid button{display:flex;flex-direction:column;gap:2px;align-items:flex-start;padding:7px 6px 6px;background:#062f2c;border:2px solid #1f6b60;color:#f4efe1;font-family:inherit;text-align:left;cursor:pointer;min-width:0}
+.bgrid button.on{border-color:#ffd84d;background:#11524b}
+.bgrid b{font-size:11px;color:#9fe0d6}.bgrid b i{font-style:normal;color:#ffd84d}
+.bgrid span{font-family:var(--px);font-size:11px;color:#6df09a}.bgrid small{font-size:10px;color:#7fb8ae}
+.bgrid em{display:block;width:100%;height:4px;background:#0b2a2d;margin-top:2px}.bgrid em u{display:block;height:4px;background:#ffd84d;text-decoration:none}
+.tsplit{display:grid;grid-template-columns:122px minmax(0,1fr);gap:6px;align-items:start}
+.tsplit .col{display:flex;flex-direction:column;gap:3px;min-width:0}
+.tsplit .hd{font-family:var(--px);font-size:9px;color:#ffd84d;background:#062f2c;border:2px solid;border-color:#052826 #2a8078 #2a8078 #052826;min-height:34px;display:flex;align-items:center;padding:0 6px}
+.own{display:grid;grid-template-columns:6px minmax(0,1fr) 22px;gap:5px;align-items:center;min-height:30px;padding-right:6px;background:#0a3b37;font-size:12.5px}
+.own i.pos{display:block;align-self:stretch;width:6px;padding:0;border-radius:0}.own span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.own b{text-align:right}
+.ownf{font-size:11px;color:#9fe0d6;padding:4px 6px;background:#062f2c}
+.trh.mk{display:grid;grid-template-columns:28px minmax(0,1fr) 30px 32px 44px;gap:3px;align-items:center;padding:0 5px;font-size:10px}.trh.mk .thb{font-size:10px;padding:0;text-align:left;min-width:0}.trh.mk .thb:last-child{text-align:right}
+.mkr{display:grid;grid-template-columns:28px minmax(0,1fr) 22px 24px 50px;gap:3px;align-items:center;min-height:30px;padding:0 5px;background:var(--panel);border:0;border-left:3px solid transparent;color:inherit;font:inherit;font-size:12.5px;text-align:left;width:100%;cursor:pointer}
+.mkr .pos{width:26px;font-size:10px;padding:2px 0}.mkr .nm{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.mkr .w{text-align:right;font-size:11.5px}.mkr.up{border-left-color:#6df09a}.mkr.up b{color:#6df09a}
 </style>
 </head>
 <body>
@@ -1031,12 +1047,29 @@ function takeOver(state, tid) {
   news(state, u.n + ' stellt ' + (state.coach ? state.coach + ' als neuen Trainer' : 'einen neuen Trainer') + ' vor.');
   return u.n;
 }
-function startBuild(state, k) {
-  var b = BUILDS[k], st = state.stad;
+var BMAX = [8000, 12000, 8000, 10000, 8000, 12000, 8000, 10000], BSUM = 76000;
+function blocks(state) {
+  var st = state.stad, B = st.blocks, sum = 0, i;
+  if (st.cap > BSUM) st.cap = BSUM;
+  if (B && B.length === 8) { for (i = 0; i < 8; i++) sum += B[i]; if (sum === st.cap) return B; }
+  B = []; sum = 0;
+  for (i = 0; i < 8; i++) { B[i] = Math.min(BMAX[i], Math.floor(st.cap * BMAX[i] / BSUM / 100) * 100); sum += B[i]; }
+  var rest = st.cap - sum, ord = [1, 5, 3, 7, 0, 2, 4, 6], g = 0;
+  while (rest > 0 && g++ < 64) { for (i = 0; i < 8 && rest > 0; i++) { var bi = ord[i], d = Math.min(rest, BMAX[bi] - B[bi], g > 8 ? rest : 100); if (d > 0) { B[bi] += d; rest -= d; } } }
+  st.blocks = B; return B;
+}
+function buildPlan(state, k, blk) {
+  var b = BUILDS[k], B = blocks(state), room = BMAX[blk] - B[blk], add = Math.min(b.add, room);
+  return { add: add, cost: add >= b.add ? b.cost : Math.round(b.cost * add / b.add / 10000) * 10000, weeks: add >= b.add ? b.weeks : Math.max(4, Math.round(b.weeks * (0.4 + 0.6 * add / b.add))) };
+}
+function startBuild(state, k, blk) {
+  var st = state.stad, B = blocks(state);
+  if (blk === undefined || blk < 0 || blk > 7) { blk = 0; for (var i = 0; i < 8; i++) if (BMAX[i] - B[i] > BMAX[blk] - B[blk]) blk = i; }
+  var pl = buildPlan(state, k, blk);
   if (st.build) return 'Es wird bereits gebaut.';
-  if (st.cap + b.add > 60000) return 'Größer als 60.000 Plätze geht nicht.';
-  if (state.cash < b.cost) return 'Dafür reicht die Kasse nicht.';
-  state.cash -= b.cost; state.led.stad += b.cost; st.build = { add: b.add, weeks: b.weeks };
+  if (pl.add <= 0) return 'Dieser Block ist voll ausgebaut.';
+  if (state.cash < pl.cost) return 'Dafür reicht die Kasse nicht.';
+  state.cash -= pl.cost; state.led.stad += pl.cost; st.build = { add: pl.add, weeks: pl.weeks, b: blk, w0: pl.weeks };
   return '';
 }
 function handgeld(p) { return Math.max(2000, Math.round(value(p) * 0.08 / 1000) * 1000); }
@@ -2141,7 +2174,7 @@ function roundFinish(state, L, h, a) {
   var upkeep = upkeepOf(state);
   var interest = Math.round(state.loan * 0.0025) + (state.cash < 0 ? Math.round(-state.cash * 0.005) : 0);
   var built = 0;
-  if (st.build && --st.build.weeks <= 0) { built = st.build.add; st.cap += built; st.build = null; }
+  if (st.build && --st.build.weeks <= 0) { built = st.build.add; var Bq = blocks(state), bq = st.build.b; if (bq === undefined || Bq[bq] + built > BMAX[bq]) { bq = 0; for (var qi = 0; qi < 8; qi++) if (BMAX[qi] - Bq[qi] > BMAX[bq] - Bq[bq]) bq = qi; } built = Math.min(built, BMAX[bq] - Bq[bq]); Bq[bq] += built; st.cap += built; st.build = null; }
   var FN = state.fin, pts = won ? 3 : m.hg === m.ag ? 1 : 0, ppC = Math.round(PPR[FN.pp] * sal * pts / 10) * 10, injW = 0;
   u.pl.forEach(function (p) { if (p.inj > 0) injW += salary(p); });
   var insC = FN.ins ? Math.round(sal * 0.04) : 0, insP = FN.ins ? Math.round(injW * 0.6) : 0, invC = state.inv ? Math.round((inc + spon + adInc) * state.inv.cut) : 0, depA = 0, depI = 0, nowW = absWeek(state) + 1;
@@ -2284,7 +2317,7 @@ function topScorers(state, lg, n) {
   all.sort(function (a, b) { return b.g - a.g; });
   return all.slice(0, n);
 }
-return { exportData: exportData, parseData: parseData, applyData: applyData, newGameCustom: newGameCustom, winText: winText, startFriendly: startFriendly, cupGoalR: cupGoalR, friendly: friendly, friendInfo: friendInfo, car: car, liveTalk: liveTalk, talkInfo: talkInfo, talkAnswer: talkAnswer, liveTact: liveTact, liveTactInfo: liveTactInfo, tableX: tableX, teamInfo: teamInfo, leagueStats: leagueStats, totoAuto: totoAuto, totoMult: totoMult, hallSquad: hallSquad, boardAmb: boardAmb, boardAsk: boardAsk, boardTalk: boardTalk, GRANT: GRANT, youthTrial: youthTrial, youthLoan: youthLoan, youthDrop: youthDrop, youthProj: youthProj, sponProj: sponProj, sponReneg: sponReneg, extOffer: extOffer, raise: raise, release: release, releaseCost: releaseCost, EXT: EXT, VIPB: VIPB, setOps: setOps, capEff: capEff, attExpect: attExpect, LGF: LGF, SECC: SECC, PITC: PITC, PPR: PPR, PPN: PPN, DEPO: DEPO, INVAMT: INVAMT, absWeek: absWeek, wageSum: wageSum, setPP: setPP, setGoalBonus: setGoalBonus, setIns: setIns, deposit: deposit, breakDep: breakDep, depSum: depSum, investor: investor, winOpen: winOpen, scoutCap: scoutCap, scoutFee: scoutFee, scoutAsk: scoutAsk, scoutTips: scoutTips, posCount: posCount, planInfo: planInfo, setPreset: setPreset, STAFFN: STAFFN, staffLv: staffLv, staffWage: staffWage, staffCost: staffCost, setStaff: setStaff, indMax: indMax, tactInfo: tactInfo, euTie: euTie, startEu: startEu, EUNAME: EUNAME, EUPRIZE: EUPRIZE, jobInfo: jobInfo, adSlots: adSlots, adSign: adSign, MN: MN, MUP: MUP, MCOST: MCOST, merchExpect: merchExpect, merchUpgrade: merchUpgrade, DKD: DKD, dkPreview: dkPreview, dkSell: dkSell, extraCost: extraCost, stadExtra: stadExtra, upkeepOf: upkeepOf, goalText: goalText, takeOver: takeOver, SESS: SESS, planFit: planFit, setPlan: setPlan, setInd: setInd, CAMP: CAMP, campCost: campCost, campGo: campGo, ATN: ATN, ATW: ATW, YCOST: YCOST, YUP: YUP, YMAX: YMAX, youthUpgrade: youthUpgrade, promote: promote, POS: POS, FORMATIONS: FORMATIONS, LEAGUES: LEAGUES, ROUNDS: ROUNDS, newGame: newGame, userTeam: userTeam, team: team, table: table, place: place, nextMatch: nextMatch, playRound: playRound, finishSeason: finishSeason, bestEleven: bestEleven, lineupValid: lineupValid, counts: counts, need: need, eff: eff, findP: findP, dateOf: dateOf, seasonLabel: seasonLabel, topScorers: topScorers, ensure: ensure, value: value, salary: salary, buy: buy, sell: sell, sellPrice: sellPrice, MAXSQUAD: MAXSQUAD, signSponsor: signSponsor, loanMax: loanMax, loanStep: loanStep, borrow: borrow, repay: repay, setPrice: setPrice, startBuild: startBuild, BUILDS: BUILDS, handgeld: handgeld, extend: extend, PRICE: PRICE, cupTie: cupTie, cupPlay: cupPlay, startRound: startRound, startCup: startCup, baseWage: baseWage, demand: demand, offer: offer, loanFee: loanFee, canLoanIn: canLoanIn, loanIn: loanIn, loanOut: loanOut, toggleList: toggleList, acceptOffer: acceptOffer, rejectOffer: rejectOffer, haggle: haggle, findTarget: findTarget, liveNext: liveNext, liveSub: liveSub, liveBench: liveBench, finishLive: finishLive, liveAuto: liveAuto, avail: avail, CUPNAME: CUPNAME, CUPPRIZE: CUPPRIZE, hallPlay: hallPlay, totoMatches: totoMatches, totoTip: totoTip, totoComplete: totoComplete, TOTOSTAKE: TOTOSTAKE, TOTOWIN: TOTOWIN };
+return { exportData: exportData, parseData: parseData, applyData: applyData, newGameCustom: newGameCustom, winText: winText, startFriendly: startFriendly, cupGoalR: cupGoalR, friendly: friendly, friendInfo: friendInfo, car: car, liveTalk: liveTalk, talkInfo: talkInfo, talkAnswer: talkAnswer, liveTact: liveTact, liveTactInfo: liveTactInfo, tableX: tableX, teamInfo: teamInfo, leagueStats: leagueStats, totoAuto: totoAuto, totoMult: totoMult, hallSquad: hallSquad, boardAmb: boardAmb, boardAsk: boardAsk, boardTalk: boardTalk, GRANT: GRANT, youthTrial: youthTrial, youthLoan: youthLoan, youthDrop: youthDrop, youthProj: youthProj, sponProj: sponProj, sponReneg: sponReneg, extOffer: extOffer, raise: raise, release: release, releaseCost: releaseCost, EXT: EXT, VIPB: VIPB, setOps: setOps, capEff: capEff, attExpect: attExpect, LGF: LGF, SECC: SECC, PITC: PITC, PPR: PPR, PPN: PPN, DEPO: DEPO, INVAMT: INVAMT, absWeek: absWeek, wageSum: wageSum, setPP: setPP, setGoalBonus: setGoalBonus, setIns: setIns, deposit: deposit, breakDep: breakDep, depSum: depSum, investor: investor, winOpen: winOpen, scoutCap: scoutCap, scoutFee: scoutFee, scoutAsk: scoutAsk, scoutTips: scoutTips, posCount: posCount, planInfo: planInfo, setPreset: setPreset, STAFFN: STAFFN, staffLv: staffLv, staffWage: staffWage, staffCost: staffCost, setStaff: setStaff, indMax: indMax, tactInfo: tactInfo, euTie: euTie, startEu: startEu, EUNAME: EUNAME, EUPRIZE: EUPRIZE, jobInfo: jobInfo, adSlots: adSlots, adSign: adSign, MN: MN, MUP: MUP, MCOST: MCOST, merchExpect: merchExpect, merchUpgrade: merchUpgrade, DKD: DKD, dkPreview: dkPreview, dkSell: dkSell, extraCost: extraCost, stadExtra: stadExtra, upkeepOf: upkeepOf, goalText: goalText, takeOver: takeOver, SESS: SESS, planFit: planFit, setPlan: setPlan, setInd: setInd, CAMP: CAMP, campCost: campCost, campGo: campGo, ATN: ATN, ATW: ATW, YCOST: YCOST, YUP: YUP, YMAX: YMAX, youthUpgrade: youthUpgrade, promote: promote, POS: POS, FORMATIONS: FORMATIONS, LEAGUES: LEAGUES, ROUNDS: ROUNDS, newGame: newGame, userTeam: userTeam, team: team, table: table, place: place, nextMatch: nextMatch, playRound: playRound, finishSeason: finishSeason, bestEleven: bestEleven, lineupValid: lineupValid, counts: counts, need: need, eff: eff, findP: findP, dateOf: dateOf, seasonLabel: seasonLabel, topScorers: topScorers, ensure: ensure, value: value, salary: salary, buy: buy, sell: sell, sellPrice: sellPrice, MAXSQUAD: MAXSQUAD, signSponsor: signSponsor, loanMax: loanMax, loanStep: loanStep, borrow: borrow, repay: repay, setPrice: setPrice, startBuild: startBuild, blocks: blocks, buildPlan: buildPlan, BMAX: BMAX, BUILDS: BUILDS, handgeld: handgeld, extend: extend, PRICE: PRICE, cupTie: cupTie, cupPlay: cupPlay, startRound: startRound, startCup: startCup, baseWage: baseWage, demand: demand, offer: offer, loanFee: loanFee, canLoanIn: canLoanIn, loanIn: loanIn, loanOut: loanOut, toggleList: toggleList, acceptOffer: acceptOffer, rejectOffer: rejectOffer, haggle: haggle, findTarget: findTarget, liveNext: liveNext, liveSub: liveSub, liveBench: liveBench, finishLive: finishLive, liveAuto: liveAuto, avail: avail, CUPNAME: CUPNAME, CUPPRIZE: CUPPRIZE, hallPlay: hallPlay, totoMatches: totoMatches, totoTip: totoTip, totoComplete: totoComplete, TOTOSTAKE: TOTOSTAKE, TOTOWIN: TOTOWIN };
 })();
 </script>
 
@@ -2863,9 +2896,15 @@ function vTransfers() {
     h += chips('tt', [['markt', 'Vereinslos'], ['clubs', 'Vereine'], ['scout', 'Scout-Tipps']], tt);
     if (!open && tt !== 'markt') h += '<p class="tnote bad" style="margin:0">Transferfenster geschlossen: Nur vereinslose Spieler sind zu haben. Nächstes Fenster: ' + (state.round < 17 ? 'Winter, 18. bis 20. Spieltag.' : 'Sommer.') + '</p>';
     if (tt === 'markt') {
-      h += posBar + head + '<div class="list">';
-      state.market.filter(flt).sort(srt).forEach(function (p) { h += row(p); });
-      h += '</div>';
+      var mine = u.pl.filter(flt).sort(function (a, b) { return a.p - b.p || b.s - a.s; }), mk = state.market.filter(flt).sort(srt), avgM = 0; mine.forEach(function (p) { avgM += p.s; }); avgM = mine.length ? Math.round(avgM / mine.length) : 0;
+      h += posBar + '<div class="tsplit"><div class="col"><div class="hd">MEIN KADER</div>';
+      mine.forEach(function (p) { h += '<div class="own"><i class="pos p' + p.p + '"></i><span>' + esc(sName(p.n)) + '</span><b>' + p.s + '</b></div>'; });
+      if (!mine.length) h += '<div class="own"><i></i><span>–</span><b></b></div>';
+      h += '<div class="ownf">' + mine.length + ' Spieler' + (avgM ? ' · Ø ' + avgM : '') + '</div></div><div class="col"><div class="trh mk">' + hb('p', 'Pos') + '<span>Markt</span>' + hb('a', 'Alt') + hb('s', 'Stä') + hb('v', 'Wert') + '</div>';
+      var avP = [0, 0, 0, 0], cnP = [0, 0, 0, 0]; u.pl.forEach(function (q) { avP[q.p] += q.s; cnP[q.p]++; });
+      mk.forEach(function (p) { h += '<button class="mkr' + (cnP[p.p] && p.s > avP[p.p] / cnP[p.p] ? ' up' : '') + '" data-a="sel" data-id="' + p.i + '"><span class="pos p' + p.p + '">' + FM.POS[p.p] + '</span><span class="nm">' + esc(p.n) + '</span><span>' + p.a + '</span><b>' + p.s + '</b><span class="w">' + num(FM.value(p) / 1000) + ' T</span></button>'; });
+      if (!mk.length) h += '<p class="hint" style="margin:6px">Kein Spieler auf dem Markt.</p>';
+      h += '</div></div>' + inf('Links steht dein eigener Kader, rechts der Markt. Mit den Knöpfen oben siehst du beide Seiten für eine Position. Grün markierte Spieler sind stärker als dein Schnitt auf dieser Position.');
     } else if (tt === 'clubs') {
       if (ui.tclub == null || ui.tclub < 0) {
         h += chips('tlg', FM.LEAGUES.slice(0, 3).map(function (n, i) { return [i, n]; }), ui.tlg) + '<div class="list">';
@@ -3006,6 +3045,28 @@ function vSponsors() {
   }
   return h;
 }
+function stadMap(st, fill, sel) {
+  var B = FM.blocks(state), MX = FM.BMAX, NM = 'ABCDEFGH';
+  var I = [[116, 62], [244, 62], [270, 88], [270, 162], [244, 188], [116, 188], [90, 162], [90, 88]], O = [[84, 8], [276, 8], [346, 78], [346, 172], [276, 242], [84, 242], [14, 172], [14, 78]];
+  var E = [[7, 0], [0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7]];
+  function lp(a, b, t) { return [Math.round((a[0] + (b[0] - a[0]) * t) * 10) / 10, Math.round((a[1] + (b[1] - a[1]) * t) * 10) / 10]; }
+  function pts(a) { return a.map(function (q) { return q[0] + ',' + q[1]; }).join(' '); }
+  var s = '<svg class="tpitch smap" style="background:#0b2a2d" viewBox="0 0 360 250" role="img" aria-label="Stadion von oben mit acht Blöcken und ' + num(st.cap) + ' Plätzen">';
+  s += '<defs><pattern id="smC" width="6" height="6" patternUnits="userSpaceOnUse"><rect width="6" height="6" fill="#55606b"/><rect x="0" y="0" width="2" height="2" fill="#ffd84d"/><rect x="3" y="1" width="2" height="2" fill="#f4efe1"/><rect x="1" y="3" width="2" height="2" fill="#e0402f"/><rect x="4" y="4" width="2" height="2" fill="#4f8fe0"/></pattern><pattern id="smE" width="6" height="6" patternUnits="userSpaceOnUse"><rect width="6" height="6" fill="#55606b"/><rect x="0" y="2" width="6" height="1" fill="#454f59"/><rect x="0" y="5" width="6" height="1" fill="#454f59"/></pattern><pattern id="smB" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="8" height="8" fill="#ffd84d"/><rect width="4" height="8" fill="#20262c"/></pattern></defs>';
+  s += '<rect x="96" y="68" width="168" height="114" fill="#1f7a3a"/>';
+  for (var k = 0; k < 6; k++) s += '<rect x="' + (104 + k * 25.3) + '" y="76" width="12.7" height="98" fill="#2b9147" opacity=".55"/>';
+  s += '<g fill="none" stroke="#f4efe1" stroke-width="1.5"><rect x="104" y="76" width="152" height="98"/><line x1="180" y1="76" x2="180" y2="174"/><circle cx="180" cy="125" r="13"/><rect x="104" y="101" width="20" height="48"/><rect x="236" y="101" width="20" height="48"/></g>';
+  E.forEach(function (e, i) {
+    var a = I[e[0]], b = I[e[1]], oa = O[e[0]], ob = O[e[1]], t = B[i] / MX[i], on = i === sel, bd = st.build && st.build.b === i;
+    var mid = lp(lp(a, b, 0.5), lp(oa, ob, 0.5), 0.56);
+    s += '<g data-a="sblk" data-val="' + i + '" style="cursor:pointer"><polygon points="' + pts([a, b, ob, oa]) + '" fill="#12383a" stroke="#2a8078" stroke-width="1" stroke-dasharray="3 3"/>';
+    if (t > 0) { var c1 = lp(b, ob, t), c0 = lp(a, oa, t); s += '<polygon points="' + pts([a, b, c1, c0]) + '" fill="url(#smE)"/><polygon points="' + pts([a, b, c1, c0]) + '" fill="url(#smC)" opacity="' + Math.max(0.12, Math.min(1, fill)).toFixed(2) + '"/>'; }
+    if (bd) { var t2 = Math.min(1, (B[i] + st.build.add) / MX[i]); s += '<polygon points="' + pts([lp(a, oa, t), lp(b, ob, t), lp(b, ob, t2), lp(a, oa, t2)]) + '" fill="url(#smB)" opacity=".85"/>'; }
+    s += '<polygon points="' + pts([a, b, ob, oa]) + '" fill="none" stroke="' + (on ? '#ffd84d' : '#052826') + '" stroke-width="' + (on ? 3 : 1.5) + '"/>';
+    s += '<circle cx="' + mid[0] + '" cy="' + mid[1] + '" r="10" fill="' + (on ? '#ffd84d' : '#062f2c') + '" stroke="' + (on ? '#7a4b00' : '#9fe0d6') + '" stroke-width="1.5"/><text x="' + mid[0] + '" y="' + (mid[1] + 4) + '" text-anchor="middle" font-size="11" font-weight="700" font-family="monospace" fill="' + (on ? '#062f2c' : '#f4efe1') + '">' + NM[i] + '</text></g>';
+  });
+  return s + '</svg>';
+}
 function stadPic(st, fill) {
   var W = 340, H = 220, t = 14 + Math.min(46, Math.sqrt(st.cap / 60000) * 46), px = 64, py = 52, pw = W - 2 * px, ph = H - 2 * py, seats = +st.seats || 0, roof = +st.roof || 0;
   var s = '<svg class="tpitch" style="background:#0b2a2d" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Stadion von oben mit ' + num(st.cap) + ' Plätzen">';
@@ -3034,7 +3095,7 @@ function stadPic(st, fill) {
 var EXN = { seats: ['Sitzplätze', 'Jede Stufe hebt die Einnahme pro Tageskarte um 8 %.'], roof: ['Überdachung', 'Jede Stufe bringt 4 % mehr Zuschauer und lässt die Fanbasis etwas schneller wachsen.'], light: ['Flutlicht', '5 % mehr Zuschauer und zwei zusätzliche Werbebanden.'], board: ['Anzeigetafel', '2 % mehr Zuschauer und eine zusätzliche Werbebande.'], heat: ['Rasenheizung', 'Ohne sie kommen im Winter (15. bis 22. Spieltag) 15 % weniger Zuschauer.'], vip: ['VIP-Logen', 'Jede Stufe bringt feste Einnahmen pro Heimspiel, mehr bei gutem Tabellenplatz. Kostet je Stufe 200 normale Plätze.'], cat: ['Imbiss und Getränke', 'Bringt 0,80 DM pro Zuschauer, auf Stufe 2 das Doppelte.'], park: ['Parkplätze und Bus', 'Jede Stufe bringt 5 % mehr Zuschauer.'] };
 function vStadium() {
   var st = state.stad, u = FM.userTeam(state), h = sub('Stadion'), f = ui.match && ui.match.res ? ui.match.res.fin : null, tab = ui.stt, E = FM.attExpect(state), ce = FM.capEff(state);
-  h += stadPic(st, f && f.att ? f.att / ce : E ? E.att / ce : 0.4);
+  h += stadMap(st, f && f.att ? f.att / ce : E ? E.att / ce : 0.4, tab === 'bau' ? (ui.sblk == null ? 1 : ui.sblk) : -1);
   var fb = st.fans || 1, fillE = f && f.att ? f.att / ce : E ? E.att / ce : 0;
   h += '<div class="panel"><div class="rings">' + ring(fillE, fillE >= 0.98 ? '#6df09a' : '#ffd84d', tk(ce), 'Plätze · Auslastung') + ring(fb / 1.6, fb < 0.9 ? '#ff9a8f' : fb < 1.1 ? '#ffd84d' : '#6df09a', Math.round(fb * 100) + '%', 'Fanbasis') + ring(1, state.cash < 0 ? '#ff9a8f' : '#6df09a', tk(state.cash), 'Kasse') + '</div></div>';
   h += tabBar('stt', [['kasse', 'Spieltag'], ['bau', 'Ausbau'], ['ops', 'Betrieb']], tab);
@@ -3050,10 +3111,16 @@ function vStadium() {
       h += '<button class="big warn sm" style="margin-top:8px" data-a="dk" data-val="-1">Keine Dauerkarten</button></div>';
     } else h += '<div class="panel"><p class="lbl">DAUERKARTEN</p>' + kv('Verkauft für diese Saison', D.n ? num(D.n) : 'keine') + (D.cash ? kv('Einnahme', money(D.cash)) : '') + '</div>';
   } else if (tab === 'bau') {
-    if (st.build) h += '<div class="panel">' + acard('e_build', 'Ausbau läuft', '+' + num(st.build.add) + ' Plätze') + meter('Baufortschritt', 1 - st.build.weeks / 16, '#ffd84d', 'noch ' + st.build.weeks + ' Wo.') + '</div>';
+    var BK = FM.blocks(state), MXB = FM.BMAX, sb = ui.sblk == null ? 1 : ui.sblk, NMB = 'ABCDEFGH';
+    h += '<div class="bgrid">';
+    for (var bi = 0; bi < 8; bi++) h += '<button class="' + (bi === sb ? 'on' : '') + '" data-a="sblk" data-val="' + bi + '"><b>Block ' + NMB[bi] + (st.build && st.build.b === bi ? ' <i>Bau</i>' : '') + '</b><span>' + num(BK[bi]) + '</span><small>max. ' + num(MXB[bi]) + '</small><em><u style="width:' + Math.round(BK[bi] / MXB[bi] * 100) + '%"></u></em></button>';
+    h += '</div>';
+    if (st.build) h += '<div class="panel">' + acard('e_build', 'Ausbau läuft' + (st.build.b !== undefined ? ' · Block ' + NMB[st.build.b] : ''), '+' + num(st.build.add) + ' Plätze') + meter('Baufortschritt', 1 - st.build.weeks / (st.build.w0 || 16), '#ffd84d', 'noch ' + st.build.weeks + ' Wo.') + '</div>';
+    else if (BK[sb] >= MXB[sb]) h += '<div class="panel"><p class="lbl">BLOCK ' + NMB[sb] + '</p><p class="hint" style="margin:0">Dieser Block ist mit ' + num(MXB[sb]) + ' Plätzen voll ausgebaut. Wähle einen anderen Block.</p></div>';
     else {
-      h += '<div class="panel"><p class="lbl">MEHR PLÄTZE</p>';
-      h += tiles('build', FM.BUILDS.map(function (b, k) { return [k, '+' + num(b.add), 'e_build', sm(b.weeks + ' Wochen Bauzeit') + sm(tk(b.cost), state.cash < b.cost ? 1 : 0), state.cash < b.cost]; }), -9, 'pk3');
+      h += '<div class="panel"><p class="lbl">BLOCK ' + NMB[sb] + ' AUSBAUEN</p>';
+      var seen = {}, opts = []; FM.BUILDS.forEach(function (b, k) { var pl = FM.buildPlan(state, k, sb); if (pl.add > 0 && !seen[pl.add]) { seen[pl.add] = 1; opts.push([k, '+' + num(pl.add), 'e_build', sm(pl.weeks + ' Wochen Bauzeit') + sm(tk(pl.cost), state.cash < pl.cost ? 1 : 0), state.cash < pl.cost]); } });
+      h += tiles('build', opts, -9, opts.length === 3 ? 'pk3' : 'pk2') + inf('Das Stadion hat acht Blöcke: vier Ecken mit je 8.000, zwei Längsseiten mit je 12.000 und zwei Kurven mit je 10.000 Plätzen, zusammen höchstens 76.000. Es kann immer nur an einem Block gebaut werden.');
       h += '</div>';
     }
     var EXS = { vip: 'feste Einnahmen je Heimspiel', cat: '+0,80 DM je Zuschauer und Stufe', seats: '+8 % je Tageskarte', roof: '+4 % Zuschauer', light: '+5 % Zuschauer · +2 Banden', board: '+2 % Zuschauer · +1 Bande', heat: 'volle Ränge im Winter', park: '+5 % Zuschauer' }, allInf = '';
@@ -4339,6 +4406,7 @@ app.addEventListener('click', function (ev) {
   var a = b.getAttribute('data-a'), u = state ? FM.userTeam(state) : null;
   SND.unlock();
   if (a === 'go') return go(b.getAttribute('data-v'));
+  if (a === 'sblk') { ui.sblk = +b.getAttribute('data-val'); if (ui.stt !== 'bau') ui.stt = 'bau'; return render(); }
   if (a === 'continue') { SND.jingle(); return enter(saved.state); }
   if (a === 'asknew') { var i0 = document.getElementById('club'); if (i0) ui.name = i0.value; ui.confirm = true; return render(); }
   if (a === 'new') {
@@ -4398,7 +4466,7 @@ app.addEventListener('click', function (ev) {
   if (a === 'cflt') { ui.cflt = b.getAttribute('data-val'); ui.sel = -1; return render(); }
   if (a === 'raise' || a === 'release') { var ecr = a === 'raise' ? FM.raise(state, +b.getAttribute('data-id')) : FM.release(state, +b.getAttribute('data-id')); if (ecr) return toast(ecr); if (a === 'release') ui.sel = -1; persist(); var ycr = window.scrollY; render(); window.scrollTo(0, ycr); return toast(a === 'raise' ? 'Gehalt erhöht. Er ist deutlich zufriedener.' : 'Vertrag aufgelöst.'); }
   if (a === 'sign' || a === 'borrow' || a === 'repay' || a === 'build' || a === 'extend') {
-    var val = +b.getAttribute('data-val'), e2 = a === 'sign' ? FM.signSponsor(state, val, ui.spy) : a === 'borrow' ? FM.borrow(state) : a === 'repay' ? FM.repay(state) : a === 'build' ? FM.startBuild(state, val) : FM.extend(state, +b.getAttribute('data-id'), ui.cxy);
+    var val = +b.getAttribute('data-val'), e2 = a === 'sign' ? FM.signSponsor(state, val, ui.spy) : a === 'borrow' ? FM.borrow(state) : a === 'repay' ? FM.repay(state) : a === 'build' ? FM.startBuild(state, val, ui.sblk == null ? 1 : ui.sblk) : FM.extend(state, +b.getAttribute('data-id'), ui.cxy);
     if (e2) return toast(e2);
     persist(); var y2 = window.scrollY; render(); window.scrollTo(0, y2);
     return toast(a === 'sign' ? 'Sponsorvertrag unterschrieben.' : a === 'borrow' ? 'Kredit aufgenommen.' : a === 'repay' ? 'Kredit getilgt.' : a === 'build' ? 'Der Ausbau beginnt.' : 'Vertrag verlängert.');

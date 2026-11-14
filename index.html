@@ -3894,7 +3894,7 @@ function startChance(S, e, apply) {
   var mid = nearest(mids, S.bx, S.by) || nearest(mates(S, T, 1), S.bx, S.by), sts = mates(S, T, 3), fwd = sts[Math.floor(Math.random() * sts.length)] || mid;
   var keeper = S.pl.filter(function (p) { return p.T === D && p.l === 0; })[0] || nearest(mates(S, D, 1), W(0.95), 0.5);
   var kind = e.g ? 0 : 1 + Math.floor(Math.random() * 3), ry = 0.34 + Math.random() * 0.32;
-  var rs = Math.random(), pq = e.g ? 0.1 : 0.012, sp = rs < pq ? 'pen' : rs < pq + 0.16 ? 'corner' : rs < pq + 0.3 ? 'fk' : '';
+  var rs = Math.random(), pq = e.g ? 0.08 : 0.005, sp = rs < pq ? 'pen' : rs < pq + 0.16 ? 'corner' : rs < pq + 0.3 ? 'fk' : '';
   if (sp === 'pen' && kind === 3) kind = 2;
   e.sp = sp;
   function toCam(force) {

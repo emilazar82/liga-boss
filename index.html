@@ -4528,7 +4528,7 @@ app.addEventListener('change', function (ev) {
     }
   }
 });
-document.addEventListener('pointerdown', function () { if ({ start: 1, custom: 1, opening: 1 }[ui.view]) SND.music(true); });
+['pointerup', 'touchend', 'click', 'keydown'].forEach(function (evn) { document.addEventListener(evn, function () { if ({ start: 1, custom: 1, opening: 1 }[ui.view]) SND.music(true); }, true); });
 loadLocal();
 if (saved) ui.name = FM.userTeam(saved.state).n;
 render();

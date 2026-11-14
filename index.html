@@ -803,32 +803,36 @@ function euTab(c) {
 function euGroups(state) { var c = state.eu; return c && c.g && c.g.length ? euTab(c) : []; }
 function withEu(state, fn) { var c = state.cup; state.cup = state.eu; try { return fn(); } finally { state.eu = state.cup; state.cup = c; } }
 function tStr(t) { var a = t.pl.map(function (p) { return p.s; }).sort(function (x, y) { return y - x; }).slice(0, 14), x = 0; a.forEach(function (v) { x += v; }); return x / a.length; }
+function fgnInv(c, L, l) {
+  var used = {}; L.forEach(function (o) { used[o.n] = 1; });
+  var T = ctyTowns(c), ord = shuffle(T.map(function (x, i) { return i; }).slice(1)).filter(function (i) { return !used[ctyClub(c, i)]; }).slice(0, CTY[c].size[l] || 18);
+  ord.forEach(function (i) { var st = l ? rnd(58, 69) : rnd(70, 82), o = { n: ctyClub(c, i), st: st, s0: st }; if (l) o.l = l; L.push(o); });
+}
 function fgnInit(state, ext) {
-  var me = state.cty || 'de'; state.fgn = {}; state.fg0 = state.season;
+  var me = state.cty || 'de'; state.fgn = {}; state.fgl = {}; state.fg0 = state.season; state.fg2 = 1;
   Object.keys(CTY).forEach(function (c) {
     if (c === me) return;
     var D = ext && ext[c], L = [];
     if (D && D.lg && D.lg[0] && D.lg[0].length >= 4) {
-      D.lg[0].forEach(function (x) {
+      [0, 1].forEach(function (l) { (D.lg[l] || []).forEach(function (x) {
         var ps = (x.pl || []).filter(function (p) { return p.s; }), top = ps.map(function (p) { return p.s; }).sort(function (a, b) { return b - a; }).slice(0, 14), av = 0; top.forEach(function (v) { av += v; });
-        var o = { n: x.n, st: top.length >= 11 ? Math.round(av / top.length) : (x.st || rnd(70, 82)) }; if (x.c1) { o.c1 = x.c1; o.c2 = x.c2 || '#f4efe1'; } if (x.k1) { o.k1 = x.k1; o.k2 = x.k2 || ''; o.k3 = x.k3 || ''; }
+        var o = { n: x.n, st: top.length >= 11 ? Math.round(av / top.length) : (x.st || (l ? rnd(58, 69) : rnd(70, 82))) }; if (l) o.l = l; if (x.c1) { o.c1 = x.c1; o.c2 = x.c2 || '#f4efe1'; } if (x.k1) { o.k1 = x.k1; o.k2 = x.k2 || ''; o.k3 = x.k3 || ''; }
         if (ps.length >= 11) o.ps = ps.map(function (p) { return [p.p, p.n, p.a || 26, p.s, p.nat || ''].join('|'); });
-        L.push(o);
-      });
-    } else {
-      var T = ctyTowns(c), ord = shuffle(T.map(function (x, i) { return i; }).slice(1)).slice(0, CTY[c].size[0]);
-      ord.forEach(function (i) { L.push({ n: ctyClub(c, i), st: rnd(70, 82) }); });
-    }
-    L.forEach(function (o) { o.s0 = o.st; });
+        o.s0 = o.st; L.push(o);
+      }); });
+      if (!L.some(function (o) { return o.l === 1; })) fgnInv(c, L, 1);
+      if (D.lgn) state.fgl[c] = D.lgn.slice(0, 2);
+    } else { fgnInv(c, L, 0); fgnInv(c, L, 1); }
     state.fgn[c] = L;
   });
 }
+function fgnLgs(state, c) { return [0, 1].map(function (l) { return (state.fgl && state.fgl[c] && state.fgl[c][l]) || CTY[c].lgs[l]; }); }
 function fgnTop(state, noise) {
   var q = {};
   Object.keys(state.fgn).forEach(function (c) {
     var L = state.fgn[c], n = c === 'de' ? 4 : 3;
     if (noise) L.forEach(function (o) { o.st = clamp(o.st + rnd(-1, 1), (o.s0 || o.st) - 5, (o.s0 || o.st) + 5); });
-    q[c] = L.map(function (o, i) { return { i: i, v: o.st + (noise ? (rnd(-5, 5) + rnd(-5, 5)) / 2 : 0) }; }).sort(function (a, b) { return b.v - a.v; }).slice(0, n).map(function (x) { return x.i; });
+    q[c] = L.map(function (o, i) { return { i: i, l: o.l || 0, v: o.st + (noise ? (rnd(-5, 5) + rnd(-5, 5)) / 2 : 0) }; }).filter(function (x) { return !x.l; }).sort(function (a, b) { return b.v - a.v; }).slice(0, n).map(function (x) { return x.i; });
   });
   return q;
 }
@@ -844,12 +848,13 @@ function fgnTeam(state, id, c, o) {
   }
   if (o.c1) { t.c1 = o.c1; t.c2 = o.c2; } if (o.k1) { t.k1 = o.k1; t.k2 = o.k2; t.k3 = o.k3; }
   if (!state.nid) state.nid = 100000; t.pl.forEach(function (p) { p.i = state.nid++; });
-  t.cty = c; t.fo = pick(Object.keys(FORMATIONS)); t.co = mkCoach(); t.co.w = rnd(0, 60); aiTactics(t); t.lu = bestEleven(t);
+  t.cty = c; t.fl = o.l || 0; t.fo = pick(Object.keys(FORMATIONS)); t.co = mkCoach(); t.co.w = rnd(0, 60); aiTactics(t); t.lu = bestEleven(t);
   useCty(state);
   return t;
 }
 function euInit(state) {
   if (!state.fgn) fgnInit(state, null);
+  fgnFix(state);
   var me = state.cty || 'de', nD = me === 'de' ? 4 : 3, q = (state.euq || []).filter(function (id) { return state.teams[id] && state.teams[id].lg === 0; }).slice(0, nD);
   if (q.length < nD) leagueTeams(state, 0).sort(function (a, b) { return tStr(b) - tStr(a); }).forEach(function (t) { if (q.length < nD && q.indexOf(t.id) < 0) q.push(t.id); });
   state.euq = q;
@@ -863,15 +868,19 @@ function euInit(state) {
   state.eu = { eu: true, v: 2, r: 0, g: G, fx: fx, ties: fx[0], byes: [], hist: [], due: false, out: q.indexOf(state.uid) < 0, won: false, nm: EUNAME, pz: EUPRIZE, last: 8 };
 }
 function fxFind(state, id) { var F = (state && state.fx) || []; for (var k = 0; k < F.length; k++) if (F[k].id === id) return F[k]; return undefined; }
-function fgnClubs(state, c) {
+function fgnFix(state) { if (state.fgn && !state.fg2) { state.fg2 = 1; Object.keys(state.fgn).forEach(function (c) { if (!state.fgn[c].some(function (o) { return o.l === 1; })) fgnInv(c, state.fgn[c], 1); }); } }
+function fgnClubs(state, c, l) {
+  fgnFix(state);
   var L = (state.fgn && state.fgn[c]) || [], ci = Object.keys(CTY).indexOf(c), inEu = {}; ((state.eu && state.eu.g) || []).forEach(function (g) { g.forEach(function (id) { inEu[id] = 1; }); });
-  return L.map(function (o, ix) { var id = 5000 + ci * 100 + ix, cl = false; state.teams.forEach(function (t) { if (t.lg === 9 && t.cty === c && t.n === o.n && inEu[t.id]) { id = t.id; cl = true; } }); return { id: id, n: o.n, st: Math.round(o.st), cl: cl, c1: o.c1, c2: o.c2 }; }).sort(function (a, b) { return b.st - a.st; });
+  return L.map(function (o, ix) { var id = 5000 + ci * 100 + ix, cl = false; state.teams.forEach(function (t) { if (t.lg === 9 && t.cty === c && t.n === o.n && inEu[t.id]) { id = t.id; cl = true; } }); return { id: id, n: o.n, st: Math.round(o.st), cl: cl, c1: o.c1, c2: o.c2, l: o.l || 0 }; }).filter(function (x) { return l === undefined || x.l === l; }).sort(function (a, b) { return b.st - a.st; });
 }
 function fgnOpen(state, id) {
   if (id < 5000 || fxFind(state, id)) return;
   var ci = Math.floor((id - 5000) / 100), c = Object.keys(CTY)[ci], o = state.fgn && state.fgn[c] && state.fgn[c][(id - 5000) % 100]; if (!o) return;
   var t = fgnTeam(state, id, c, o); t.fx = 1; state.fx = state.fx || []; state.fx.push(t);
 }
+function fgnBought(state, club, p) { var L = (state.fgn && state.fgn[club.cty]) || [], yrs = state.season - (state.fg0 || state.season); L.forEach(function (o) { if (o.n === club.n && o.ps) o.ps.push([p.p, p.n, p.a - yrs, p.s, p.nat || ''].join('|')); }); }
+function fgnId(state, c, ix) { var o = state.fgn[c][ix], id = 5000 + Object.keys(CTY).indexOf(c) * 100 + ix; state.teams.forEach(function (t) { if (t.lg === 9 && t.cty === c && t.n === o.n && state.eu && state.eu.g && state.eu.g.some(function (g) { return g.indexOf(t.id) >= 0; })) id = t.id; }); return id; }
 function fgnSold(state, club, name) { var L = (state.fgn && state.fgn[club.cty]) || []; L.forEach(function (o) { if (o.n === club.n && o.ps) o.ps = o.ps.filter(function (x) { return x.split('|')[1] !== name; }); }); }
 function tCty(state, id) { var t = team(state, id); return t ? (t.lg === 9 ? t.cty || '' : state.cty || 'de') : ''; }
 function euTie(state) { return state.eu ? withEu(state, function () { return cupTie(state); }) : null; }
@@ -1265,6 +1274,7 @@ function ensure(state) {
   if (!state.cup) cupInit(state);
   if (state.eu && !state.eu.v) { if (!state.eu.r && !state.eu.hist.length) state.eu = null; else state.eu = { eu: true, v: 2, r: 9, g: [], fx: [], ties: [], byes: [], hist: [], due: false, out: true, won: false, nm: EUNAME, pz: EUPRIZE, last: 8, off: true }; }
   if (!state.eu) euInit(state);
+  fgnFix(state);
   if (state.hall === undefined) state.hall = null;
   if (!state.offers) state.offers = [];
   if (!state.neg) state.neg = {};
@@ -1330,7 +1340,7 @@ function demand(state, id) {
   var avg = 0; u.pl.forEach(function (x) { avg += x.s; }); avg /= u.pl.length;
   if (!T.club) { d.fee = r1000(value(p) * (0.85 + 0.25 * h01(id, se))); d.wage = Math.round(baseWage(p) * (0.9 + 0.3 * h01(id, se + 7)) / 10) * 10; }
   else {
-    var diff = u.lg - (T.club.lg >= 8 ? 0 : T.club.lg), key = bestEleven(T.club).indexOf(id) >= 0;
+    var diff = u.lg - (T.club.lg >= 8 ? T.club.fl || 0 : T.club.lg), key = bestEleven(T.club).indexOf(id) >= 0;
     d.fee = r1000(value(p) * (1.1 + 0.4 * h01(id, se) + (key ? 0.25 : 0)));
     d.wage = Math.round(baseWage(p) * (0.95 + 0.3 * h01(id, se + 7)) * (diff > 0 ? 1 + 0.25 * diff : 1 + 0.08 * diff) / 10) * 10;
     if (diff >= 2) d.no = 'Er will nicht zwei Klassen tiefer spielen.';
@@ -1391,7 +1401,7 @@ function offer(state, id, fee, wage, years, opt) {
     state.cash -= now + bon; state.led.trOut += now; state.led.hand += bon;
     if (opt.rt && fee > now) state.debts.push({ amt: fee - now, n: from });
     var cid = T.club ? T.club.id : -1;
-    if (T.club) { var rp = makePlayer(state.nid++, T.p.p, lgBase(T.club.lg) - 5, rnd(17, 20)); T.club.pl.push(rp); }
+    if (T.club) { var rp = makePlayer(state.nid++, T.p.p, lgBase(T.club.lg >= 8 ? T.club.fl || 0 : T.club.lg) - 5, rnd(17, 20)); T.club.pl.push(rp); }
     if (T.club && T.club.cty) fgnSold(state, T.club, T.p.n);
     moveToUser(state, T, years, wage); delete state.neg[id];
     if (opt.sg) T.p.sg = 1; else delete T.p.sg;
@@ -1450,7 +1460,7 @@ function toggleList(state, id, lvl) { var p = findP(state.teams[state.uid], id);
 function weeklyOffers(state) {
   var u = state.teams[state.uid], r = state.round, made = 0;
   if (!winOpen(state)) { state.offers = []; return 0; }
-  state.offers = state.offers.filter(function (o) { return o.exp > r + 1 && findP(u, o.i); });
+  state.offers = state.offers.filter(function (o) { return o.exp > r + 1 && findP(u, o.i) && team(state, o.c); });
   if (state.offers.length >= 3) return 0;
   var cand = u.pl.filter(function (p) { return p.loan === undefined && !(p.inj > 3) && !state.offers.some(function (o) { return o.i === p.i; }); });
   cand.forEach(function (p) {
@@ -1458,8 +1468,11 @@ function weeklyOffers(state) {
     var TL = [[0, 0, 0], [0.65, 0.55, 0.25], [0.4, 0.8, 0.25], [0.15, 1.05, 0.25]][p.tl || 0], pr = p.tl ? TL[0] : 0.012 * (p.a <= 25 ? 1.6 : 1) * (p.s >= 60 ? 1.4 : 1) * (p.mo < 3 ? 3 : 1);
     if (Math.random() >= pr) return;
     var clubs = state.teams.filter(function (t) { if (t.id === u.id) return false; var a = 0; t.pl.forEach(function (x) { a += x.s; }); a /= t.pl.length; return p.s >= a - 7 && p.s <= a + 14; });
-    if (!clubs.length) return;
-    var c = pick(clubs), fee = r1000(value(p) * (p.tl ? TL[1] + TL[2] * Math.random() : 0.95 + 0.5 * Math.random()) * (c.lg < u.lg ? 1.12 : 1));
+    var fc = []; if (state.fgn) Object.keys(state.fgn).forEach(function (cy) { state.fgn[cy].forEach(function (o, ix) { if (p.s >= o.st - 10 && p.s <= o.st + 11) fc.push([cy, ix]); }); });
+    var c = null; if (fc.length && (!clubs.length || Math.random() < 0.35)) { var fq = pick(fc), fid = fgnId(state, fq[0], fq[1]); fgnOpen(state, fid); c = team(state, fid); }
+    if (!c && !clubs.length) return;
+    if (!c) c = pick(clubs);
+    var fee = r1000(value(p) * (p.tl ? TL[1] + TL[2] * Math.random() : 0.95 + 0.5 * Math.random()) * (c.cty ? 1.1 : c.lg < u.lg ? 1.12 : 1));
     state.offers.push({ i: p.i, c: c.id, fee: fee, exp: r + 4 }); made++;
   });
   return made;
@@ -1474,7 +1487,9 @@ function acceptOffer(state, k) {
   var u = state.teams[state.uid], o = state.offers[k]; if (!o) return 'Das Angebot gibt es nicht mehr.';
   var p = findP(u, o.i); if (!p) return 'Der Spieler ist nicht mehr im Kader.';
   if (posCount(u, p.p) <= MINPOS[p.p]) return 'Mindestens ' + MINPOS[p.p] + ' ' + POS[p.p] + '-Spieler müssen im Kader bleiben.';
-  var c = state.teams[o.c], cut = p.rs !== undefined && state.teams[p.rs] ? Math.round(o.fee * 0.2) : 0;
+  var c = team(state, o.c), cut = p.rs !== undefined && state.teams[p.rs] ? Math.round(o.fee * 0.2) : 0;
+  if (!c) { state.offers.splice(k, 1); return 'Das Angebot gibt es nicht mehr.'; }
+  if (c.cty) fgnBought(state, c, p);
   if (cut) news(state, state.teams[p.rs].n + ' erhält ' + Math.round(cut / 1000) + ' T Weiterverkaufsbeteiligung für ' + p.n + '.');
   state.cash += o.fee - cut; state.led.trIn += o.fee - cut; toClub(state, p, c);
   state.offers = state.offers.filter(function (x) { return x.i !== o.i; });
@@ -1485,7 +1500,7 @@ function rejectOffer(state, k) { state.offers.splice(k, 1); }
 function haggle(state, k) {
   var o = state.offers[k]; if (!o || o.h) return 'Hier lässt sich nichts mehr herausholen.';
   if (Math.random() < 0.5) { o.fee = r1000(o.fee * 1.15); o.h = 1; return 'ok'; }
-  var n = state.teams[o.c].n; state.offers.splice(k, 1); return n + ' zieht das Angebot zurück.';
+  var n = (team(state, o.c) || { n: 'Der Verein' }).n; state.offers.splice(k, 1); return n + ' zieht das Angebot zurück.';
 }
 function aiDeals(state) {
   var u = state.teams[state.uid], n = winOpen(state) ? pois(2.2) : 0;
@@ -2495,7 +2510,7 @@ function topScorers(state, lg, n) {
   all.sort(function (a, b) { return b.g - a.g; });
   return all.slice(0, n);
 }
-return { fgnClubs: fgnClubs, fgnOpen: fgnOpen, cupDate: cupDate, euName: euName, euGroups: euGroups, tCty: tCty, EUDRAW: EUDRAW, exportData: exportData, parseData: parseData, applyData: applyData, newGameCustom: newGameCustom, winText: winText, startFriendly: startFriendly, cupGoalR: cupGoalR, friendly: friendly, friendInfo: friendInfo, car: car, liveTalk: liveTalk, talkInfo: talkInfo, talkAnswer: talkAnswer, liveTact: liveTact, liveTactInfo: liveTactInfo, tableX: tableX, teamInfo: teamInfo, leagueStats: leagueStats, totoAuto: totoAuto, totoMult: totoMult, hallSquad: hallSquad, boardAmb: boardAmb, boardAsk: boardAsk, boardTalk: boardTalk, GRANT: GRANT, youthTrial: youthTrial, youthLoan: youthLoan, youthDrop: youthDrop, youthProj: youthProj, sponProj: sponProj, sponReneg: sponReneg, extOffer: extOffer, raise: raise, release: release, releaseCost: releaseCost, EXT: EXT, VIPB: VIPB, setOps: setOps, capEff: capEff, attExpect: attExpect, LGF: LGF, SECC: SECC, PITC: PITC, PPR: PPR, PPN: PPN, DEPO: DEPO, INVAMT: INVAMT, absWeek: absWeek, wageSum: wageSum, setPP: setPP, setGoalBonus: setGoalBonus, setIns: setIns, deposit: deposit, breakDep: breakDep, depSum: depSum, investor: investor, winOpen: winOpen, scoutCap: scoutCap, scoutFee: scoutFee, scoutAsk: scoutAsk, scoutTips: scoutTips, posCount: posCount, planInfo: planInfo, setPreset: setPreset, STAFFN: STAFFN, staffLv: staffLv, staffWage: staffWage, staffCost: staffCost, setStaff: setStaff, indMax: indMax, tactInfo: tactInfo, euTie: euTie, startEu: startEu, EUNAME: EUNAME, EUPRIZE: EUPRIZE, jobInfo: jobInfo, adSlots: adSlots, adSign: adSign, MN: MN, MUP: MUP, MCOST: MCOST, merchExpect: merchExpect, merchUpgrade: merchUpgrade, DKD: DKD, dkPreview: dkPreview, dkSell: dkSell, extraCost: extraCost, stadExtra: stadExtra, upkeepOf: upkeepOf, goalText: goalText, takeOver: takeOver, SESS: SESS, planFit: planFit, setPlan: setPlan, setInd: setInd, CAMP: CAMP, campCost: campCost, campGo: campGo, ATN: ATN, ATW: ATW, YCOST: YCOST, YUP: YUP, YMAX: YMAX, youthUpgrade: youthUpgrade, promote: promote, POS: POS, FORMATIONS: FORMATIONS, LEAGUES: LEAGUES, ROUNDS: ROUNDS, CTY: CTY, cfg: cfg, NL: NL, NT: NT, RN: RN, HN: HN, lgName: lgName, newGame: newGame, userTeam: userTeam, team: team, table: table, place: place, nextMatch: nextMatch, playRound: playRound, finishSeason: finishSeason, bestEleven: bestEleven, lineupValid: lineupValid, counts: counts, need: need, eff: eff, findP: findP, dateOf: dateOf, seasonLabel: seasonLabel, topScorers: topScorers, ensure: ensure, value: value, salary: salary, buy: buy, sell: sell, sellPrice: sellPrice, MAXSQUAD: MAXSQUAD, signSponsor: signSponsor, loanMax: loanMax, loanStep: loanStep, borrow: borrow, repay: repay, setPrice: setPrice, calEvents: calEvents, startBuild: startBuild, blocks: blocks, buildPlan: buildPlan, BMAX: BMAX, BUILDS: BUILDS, handgeld: handgeld, extend: extend, PRICE: PRICE, cupTie: cupTie, cupPlay: cupPlay, startRound: startRound, startCup: startCup, baseWage: baseWage, demand: demand, offer: offer, loanFee: loanFee, canLoanIn: canLoanIn, loanIn: loanIn, loanOut: loanOut, toggleList: toggleList, acceptOffer: acceptOffer, rejectOffer: rejectOffer, haggle: haggle, findTarget: findTarget, liveNext: liveNext, liveSub: liveSub, liveBench: liveBench, finishLive: finishLive, liveAuto: liveAuto, avail: avail, CUPNAME: CUPNAME, CUPPRIZE: CUPPRIZE, hallPlay: hallPlay, totoMatches: totoMatches, totoTip: totoTip, totoComplete: totoComplete, TOTOSTAKE: TOTOSTAKE, TOTOWIN: TOTOWIN };
+return { weeklyOffers: weeklyOffers, fgnLgs: fgnLgs, fgnClubs: fgnClubs, fgnOpen: fgnOpen, cupDate: cupDate, euName: euName, euGroups: euGroups, tCty: tCty, EUDRAW: EUDRAW, exportData: exportData, parseData: parseData, applyData: applyData, newGameCustom: newGameCustom, winText: winText, startFriendly: startFriendly, cupGoalR: cupGoalR, friendly: friendly, friendInfo: friendInfo, car: car, liveTalk: liveTalk, talkInfo: talkInfo, talkAnswer: talkAnswer, liveTact: liveTact, liveTactInfo: liveTactInfo, tableX: tableX, teamInfo: teamInfo, leagueStats: leagueStats, totoAuto: totoAuto, totoMult: totoMult, hallSquad: hallSquad, boardAmb: boardAmb, boardAsk: boardAsk, boardTalk: boardTalk, GRANT: GRANT, youthTrial: youthTrial, youthLoan: youthLoan, youthDrop: youthDrop, youthProj: youthProj, sponProj: sponProj, sponReneg: sponReneg, extOffer: extOffer, raise: raise, release: release, releaseCost: releaseCost, EXT: EXT, VIPB: VIPB, setOps: setOps, capEff: capEff, attExpect: attExpect, LGF: LGF, SECC: SECC, PITC: PITC, PPR: PPR, PPN: PPN, DEPO: DEPO, INVAMT: INVAMT, absWeek: absWeek, wageSum: wageSum, setPP: setPP, setGoalBonus: setGoalBonus, setIns: setIns, deposit: deposit, breakDep: breakDep, depSum: depSum, investor: investor, winOpen: winOpen, scoutCap: scoutCap, scoutFee: scoutFee, scoutAsk: scoutAsk, scoutTips: scoutTips, posCount: posCount, planInfo: planInfo, setPreset: setPreset, STAFFN: STAFFN, staffLv: staffLv, staffWage: staffWage, staffCost: staffCost, setStaff: setStaff, indMax: indMax, tactInfo: tactInfo, euTie: euTie, startEu: startEu, EUNAME: EUNAME, EUPRIZE: EUPRIZE, jobInfo: jobInfo, adSlots: adSlots, adSign: adSign, MN: MN, MUP: MUP, MCOST: MCOST, merchExpect: merchExpect, merchUpgrade: merchUpgrade, DKD: DKD, dkPreview: dkPreview, dkSell: dkSell, extraCost: extraCost, stadExtra: stadExtra, upkeepOf: upkeepOf, goalText: goalText, takeOver: takeOver, SESS: SESS, planFit: planFit, setPlan: setPlan, setInd: setInd, CAMP: CAMP, campCost: campCost, campGo: campGo, ATN: ATN, ATW: ATW, YCOST: YCOST, YUP: YUP, YMAX: YMAX, youthUpgrade: youthUpgrade, promote: promote, POS: POS, FORMATIONS: FORMATIONS, LEAGUES: LEAGUES, ROUNDS: ROUNDS, CTY: CTY, cfg: cfg, NL: NL, NT: NT, RN: RN, HN: HN, lgName: lgName, newGame: newGame, userTeam: userTeam, team: team, table: table, place: place, nextMatch: nextMatch, playRound: playRound, finishSeason: finishSeason, bestEleven: bestEleven, lineupValid: lineupValid, counts: counts, need: need, eff: eff, findP: findP, dateOf: dateOf, seasonLabel: seasonLabel, topScorers: topScorers, ensure: ensure, value: value, salary: salary, buy: buy, sell: sell, sellPrice: sellPrice, MAXSQUAD: MAXSQUAD, signSponsor: signSponsor, loanMax: loanMax, loanStep: loanStep, borrow: borrow, repay: repay, setPrice: setPrice, calEvents: calEvents, startBuild: startBuild, blocks: blocks, buildPlan: buildPlan, BMAX: BMAX, BUILDS: BUILDS, handgeld: handgeld, extend: extend, PRICE: PRICE, cupTie: cupTie, cupPlay: cupPlay, startRound: startRound, startCup: startCup, baseWage: baseWage, demand: demand, offer: offer, loanFee: loanFee, canLoanIn: canLoanIn, loanIn: loanIn, loanOut: loanOut, toggleList: toggleList, acceptOffer: acceptOffer, rejectOffer: rejectOffer, haggle: haggle, findTarget: findTarget, liveNext: liveNext, liveSub: liveSub, liveBench: liveBench, finishLive: finishLive, liveAuto: liveAuto, avail: avail, CUPNAME: CUPNAME, CUPPRIZE: CUPPRIZE, hallPlay: hallPlay, totoMatches: totoMatches, totoTip: totoTip, totoComplete: totoComplete, TOTOSTAKE: TOTOSTAKE, TOTOWIN: TOTOWIN };
 })();
 </script>
 
@@ -2577,7 +2592,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '15.11. 05:00';
+var BUILD = '15.11. 05:30';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -3149,7 +3164,8 @@ function vTransfers() {
         var CK = Object.keys(FM.CTY), myC = state.cty || 'de', lgCh = FM.cfg(state).lgs.map(function (n, i) { return [i, FM.lgName(state, i)]; }), fgCh = CK.filter(function (k) { return k !== myC && state.fgn && state.fgn[k]; }).map(function (k) { return [10 + CK.indexOf(k), FM.CTY[k].n]; });
         if (!(ui.tlg < FM.NL(state)) && !fgCh.some(function (x) { return x[0] === ui.tlg; })) ui.tlg = 0;
         h += chips('tlg', lgCh, ui.tlg) + (fgCh.length ? '<p class="lbl" style="margin:0">AUSLAND</p>' + chips('tlg', fgCh, ui.tlg) : '') + '<div class="list">';
-        if (ui.tlg >= 10) FM.fgnClubs(state, CK[ui.tlg - 10]).forEach(function (t, k) { h += '<button class="trr" style="grid-template-columns:30px minmax(0,1fr) 70px" data-a="tclub" data-val="' + t.id + '"><span>' + (k + 1) + '.</span><span class="nm">' + (crestImg(t.n, 20) || crestSvg(t.c1 || CRC[k % 9], t.c2 || '#f4efe1', k % 4, crestL(t.n), 20)) + esc(t.n) + (t.cl ? ' ★' : '') + '</span><span>Stärke ' + t.st + '</span></button>'; });
+        if (ui.tlg >= 10) { var fl = ui.tfl ? 1 : 0; h = h.slice(0, -18) + chips('tfl', FM.fgnLgs(state, CK[ui.tlg - 10]).map(function (n, i) { return [i, n]; }), fl) + '<div class="list">'; }
+        if (ui.tlg >= 10) FM.fgnClubs(state, CK[ui.tlg - 10], ui.tfl ? 1 : 0).forEach(function (t, k) { h += '<button class="trr" style="grid-template-columns:30px minmax(0,1fr) 70px" data-a="tclub" data-val="' + t.id + '"><span>' + (k + 1) + '.</span><span class="nm">' + (crestImg(t.n, 20) || crestSvg(t.c1 || CRC[k % 9], t.c2 || '#f4efe1', k % 4, crestL(t.n), 20)) + esc(t.n) + (t.cl ? ' ★' : '') + '</span><span>Stärke ' + t.st + '</span></button>'; });
         else FM.table(state, ui.tlg).forEach(function (t, k) { if (t.id !== u.id) h += '<button class="trr" style="grid-template-columns:30px minmax(0,1fr) 60px" data-a="tclub" data-val="' + t.id + '"><span>' + (k + 1) + '.</span><span class="nm">' + crest(t.id, 20) + esc(t.n) + '</span><span>' + t.st.pk + ' Pkt</span></button>'; });
         h += '</div>';
       } else {
@@ -3163,7 +3179,7 @@ function vTransfers() {
       else if (!tips.length) h += '<p class="hint" style="margin:0">Der Scout hat im Moment kein bezahlbares Talent für dich.</p>';
       else { var tsub = {}; tips.forEach(function (x) { tsub[x.p.i] = FM.team(state, x.c).n; }); h += posBar + splitList(tips.map(function (x) { return x.p; }).filter(flt).sort(srt), 'Tipps', tsub); }
     }
-    h += inf('Spieler antippen, um zu verhandeln. Werte in Tausend DM (T). Du hast drei Versuche pro Verhandlung. Von fremden Spielern kennst du Talent und Verletzungsanfälligkeit erst nach einem Scoutbericht. Stammspieler sind teurer; Spieler bis 24 Jahre, die nicht zur ersten Elf gehören, lassen sich auch leihen. Unter „Vereine“ findest du auch die ersten Ligen im Ausland (★ = spielt in der ' + EUN() + '); von dort gibt es nur feste Transfers, keine Leihe.', 'So geht’s');
+    h += inf('Spieler antippen, um zu verhandeln. Werte in Tausend DM (T). Du hast drei Versuche pro Verhandlung. Von fremden Spielern kennst du Talent und Verletzungsanfälligkeit erst nach einem Scoutbericht. Stammspieler sind teurer; Spieler bis 24 Jahre, die nicht zur ersten Elf gehören, lassen sich auch leihen. Unter „Vereine“ findest du auch die ersten und zweiten Ligen im Ausland (★ = spielt in der ' + EUN() + '); von dort gibt es nur feste Transfers, keine Leihe.', 'So geht’s');
   } else if (grp === 'sell') {
     h += posBar + head + '<div class="list">';
     u.pl.filter(flt).sort(srt).forEach(function (p) { h += row(p, p.loan !== undefined ? ' <span class="st yel">Leihe</span>' : p.tl ? ' <span class="st yel">Liste</span>' : ''); });
@@ -3173,9 +3189,9 @@ function vTransfers() {
   } else {
     if (!state.offers.length) h += '<p class="hint" style="margin:0">Im Moment liegt kein Angebot vor. Spieler auf der Transferliste (unter „Verkaufen“) bekommen deutlich häufiger Angebote.</p>';
     state.offers.forEach(function (o, k) {
-      var p = FM.findP(u, o.i), c = FM.team(state, o.c); if (!p) return;
+      var p = FM.findP(u, o.i), c = FM.team(state, o.c); if (!p || !c) return;
       var rel = o.fee / Math.max(1, FM.value(p));
-      h += '<div class="panel"><div class="acard"><span class="pos p' + p.p + '">' + FM.POS[p.p] + '</span><div class="grow"><p class="title" style="font-size:16px">' + esc(p.n) + ' <span style="font-weight:400;color:var(--mint)">' + p.a + ' J. · ' + p.s + '</span></p><p class="hint" style="margin:0">' + crest(c.id, 20) + esc(c.n) + ' · noch ' + (o.exp - state.round) + ' Wochen</p></div></div>' + meter('Gebot', Math.min(1, rel / 1.4), rel >= 1 ? '#6df09a' : rel >= 0.8 ? '#ffd84d' : '#ff9a8f', tk(o.fee)) + '<p class="hint" style="margin:2px 0 0;text-align:right">Marktwert ' + tk(FM.value(p)) + '</p>';
+      h += '<div class="panel"><div class="acard"><span class="pos p' + p.p + '">' + FM.POS[p.p] + '</span><div class="grow"><p class="title" style="font-size:16px">' + esc(p.n) + ' <span style="font-weight:400;color:var(--mint)">' + p.a + ' J. · ' + p.s + '</span></p><p class="hint" style="margin:0">' + crest(c.id, 20) + esc(c.n) + (c.cty ? ' (' + FM.CTY[c.cty].n + ')' : '') + ' · noch ' + (o.exp - state.round) + ' Wochen</p></div></div>' + meter('Gebot', Math.min(1, rel / 1.4), rel >= 1 ? '#6df09a' : rel >= 0.8 ? '#ffd84d' : '#ff9a8f', tk(o.fee)) + '<p class="hint" style="margin:2px 0 0;text-align:right">Marktwert ' + tk(FM.value(p)) + '</p>';
       h += '<div class="row" style="margin-top:8px"><button class="big sm" data-a="oacc" data-val="' + k + '">Annehmen</button>' + (o.h ? '' : '<button class="big sec2 sm" data-a="ohag" data-val="' + k + '">+15 % fordern</button>') + '<button class="big warn sm" data-a="orej" data-val="' + k + '">Ablehnen</button></div></div>';
     });
     if (state.news.length) { h += '<p class="lbl" style="margin:6px 0 0">MELDUNGEN</p><div class="list">'; state.news.slice(0, 12).forEach(function (n) { h += '<div class="tk">' + (n.r + 1) + '. Spieltag: ' + esc(n.t) + '</div>'; }); h += '</div>'; }
@@ -4805,7 +4821,8 @@ app.addEventListener('click', function (ev) {
   if (a === 'tri') { state.tr.i = +b.getAttribute('data-val'); ui.dirty = true; return render(); }
   if (a === 'negx') { ui.negx = !ui.negx; return; }
   if (a === 'tt') { ui.tt = b.getAttribute('data-val'); ui.sel = -1; ui.neg = null; return render(); }
-  if (a === 'tlg') { ui.tlg = +b.getAttribute('data-val'); return render(); }
+  if (a === 'tlg') { ui.tlg = +b.getAttribute('data-val'); ui.tfl = 0; return render(); }
+  if (a === 'tfl') { ui.tfl = +b.getAttribute('data-val'); return render(); }
   if (a === 'tclub') { ui.tclub = +b.getAttribute('data-val'); ui.sel = -1; ui.neg = null; if (ui.tclub >= 5000) { FM.fgnOpen(state, ui.tclub); persist(); } render(); return window.scrollTo(0, 0); }
   if (a === 'nf' || a === 'nw' || a === 'ny') {
     var N = ui.neg, T = N && FM.findTarget(state, N.id); if (!T) return;

@@ -3324,7 +3324,7 @@ function matchPanel() {
     if (fe) {
       if (brk) {
         var half = M.ptitle === 'Halbzeit';
-        fe.innerHTML = '<p class="ft">' + (half ? 'HALBZEIT' : esc(M.ptitle || 'Unterbrechung').toUpperCase()) + '</p><div class="fr"><span>' + crest(M.h, 30) + '<small>' + esc(FM.team(state, M.h).n) + '</small></span><b>' + L.hg + ':' + L.ag + '</b><span>' + crest(M.a, 30) + '<small>' + esc(FM.team(state, M.a).n) + '</small></span></div><button class="big" data-a="mresume">' + (half ? '2. Halbzeit anpfeifen' : L.need ? 'In Unterzahl weiterspielen' : 'Weiterspielen') + '</button>' + (half && !L.talk && !L.need ? '<p class="fa">Unten: Ansprache, Wechsel und Taktik</p>' : '');
+        fe.innerHTML = '<p class="ft">' + (half ? 'HALBZEIT' : esc(M.ptitle || 'Unterbrechung').toUpperCase()) + '</p><div class="fr"><span>' + crest(M.h, 30) + '<small>' + esc(FM.team(state, M.h).n) + '</small></span><b>' + L.hg + ':' + L.ag + '</b><span>' + crest(M.a, 30) + '<small>' + esc(FM.team(state, M.a).n) + '</small></span></div><button class="big" data-a="mresume">' + (half ? '2. Halbzeit anpfeifen' : L.need ? 'In Unterzahl weiterspielen' : 'Weiterspielen') + '</button>' + (half && coachN() ? '<p class="fa">Trainer ' + esc(coachN()) + ' bittet die Mannschaft in die Kabine.</p>' : '') + (half && !L.talk && !L.need ? '<p class="fa">Unten: Ansprache, Wechsel und Taktik</p>' : '');
         fe.className = 'fin brk'; fe.hidden = false;
       } else fe.hidden = true;
     }
@@ -3923,6 +3923,7 @@ function startMatch() {
   if (!fast && M.sim && !state.live.seg) { M.sim.onKick = function () { SND.whistle(1); }; simIntro(M.sim); } else SND.whistle(1);
   var S = M.sim;
   tick('Anpfiff! ' + hn + ' gegen ' + an + '.', 'info');
+  if (coachN()) tick('Trainer ' + coachN() + ' steht an der Seitenlinie und gibt letzte Anweisungen.', 'info');
   function apply(e) {
     var tn = e.h ? hn : an, tpl; M.n++;
     if (e.g) { if (e.h) M.hg++; else M.ag++; M.goals.push({ m: e.m, h: e.h, p: e.p }); tpl = T_GOAL[(e.m + M.n) % T_GOAL.length]; if (!M.mute && !e._cam) SND.goal(e.h === M.home); }
@@ -3967,7 +3968,7 @@ function startMatch() {
       var uh = M.home, gf = uh ? m.hg : m.ag, ga = uh ? m.ag : m.hg, won = m.pen ? m.w === state.uid : gf > ga, lost = m.pen ? m.w !== state.uid : gf < ga;
       var sl = function (hh) { var g = M.goals.filter(function (x) { return x.h === hh; }); return g.length ? g.map(function (x) { return '<li>' + esc(x.p) + ' <i>' + x.m + "'</i></li>"; }).join('') : '<li class="no">–</li>'; };
       var cf = ''; if (won) for (var ci = 0; ci < 26; ci++) cf += '<s style="left:' + (ci * 3.9 + (ci % 3)) + '%;background:' + ['#ffd84d', '#ff7a66', '#8fd0ff', '#6df09a', '#fff'][ci % 5] + ';animation-delay:' + ((ci * 37) % 23) / 10 + 's;animation-duration:' + (2.2 + (ci % 4) * 0.5) + 's"></s>';
-      fe.innerHTML = cf + '<p class="ft">ABPFIFF</p><div class="fr"><span>' + crest(M.h, 34) + '<small>' + esc(hn) + '</small></span><b>' + m.hg + ':' + m.ag + '</b><span>' + crest(M.a, 34) + '<small>' + esc(an) + '</small></span></div><p class="fv ' + (won ? 'w' : lost ? 'l' : 'd') + '">' + (m.pen ? (won ? 'SIEG IM ELFMETERSCHIESSEN' : 'AUS IM ELFMETERSCHIESSEN') : won ? 'SIEG' : lost ? 'NIEDERLAGE' : 'UNENTSCHIEDEN') + '</p><div class="fs"><ul>' + sl(true) + '</ul><ul>' + sl(false) + '</ul></div>' + (R.fin && R.fin.att ? '<p class="fa">' + num(R.fin.att) + ' Zuschauer</p>' : R.fr ? '<p class="fa">Testspiel' + (R.g.inc ? ' · +' + tk(R.g.inc) + ' Einnahmen' : '') + '</p>' : '');
+      fe.innerHTML = cf + '<p class="ft">ABPFIFF</p><div class="fr"><span>' + crest(M.h, 34) + '<small>' + esc(hn) + '</small></span><b>' + m.hg + ':' + m.ag + '</b><span>' + crest(M.a, 34) + '<small>' + esc(an) + '</small></span></div><p class="fv ' + (won ? 'w' : lost ? 'l' : 'd') + '">' + (m.pen ? (won ? 'SIEG IM ELFMETERSCHIESSEN' : 'AUS IM ELFMETERSCHIESSEN') : won ? 'SIEG' : lost ? 'NIEDERLAGE' : 'UNENTSCHIEDEN') + '</p>' + (coachN() ? '<p class="fa" style="margin:0 0 4px">Trainer ' + esc(coachN()) + (won ? ' reißt an der Seitenlinie die Arme hoch.' : lost ? ' verschwindet wortlos in der Kabine.' : ' hadert mit dem einen Punkt.') + '</p>' : '') + '<div class="fs"><ul>' + sl(true) + '</ul><ul>' + sl(false) + '</ul></div>' + (R.fin && R.fin.att ? '<p class="fa">' + num(R.fin.att) + ' Zuschauer</p>' : R.fr ? '<p class="fa">Testspiel' + (R.g.inc ? ' · +' + tk(R.g.inc) + ' Einnahmen' : '') + '</p>' : '');
       fe.className = 'fin' + (won ? ' won' : lost ? ' lost' : ''); fe.hidden = false;
       var sd = fe.parentNode.parentNode; if (sd) sd.className = 'stad' + (won ? ' cheer' : '');
       if (won) SND.win();
@@ -4128,7 +4129,7 @@ function hallStage(r, k) {
 function cupPaper(R, m) {
   var u = FM.userTeam(state), t = u.n, home = m.home, gf = home ? m.hg : m.ag, ga = home ? m.ag : m.hg, o = FM.team(state, home ? m.a : m.h), on = o ? o.n : 'den Gegner', NM = R.eu ? FM.EUNAME : FM.CUPNAME, idx = NM.indexOf(R.name), nx = NM[idx + 1] || '', sc = gf + ':' + ga, cupN = R.eu ? 'Europapokal' : 'Pokal';
   var hl = R.final ? (R.won ? (R.eu ? 'EUROPAPOKALSIEGER! ' : 'POKALSIEGER! ') + t + ' holt den Pott' : t + ' verliert das Endspiel') : R.won ? [t + ' zieht ins ' + nx + ' ein', cupN + ': ' + t + ' wirft ' + on + ' raus', 'Weiter! ' + t + ' steht im ' + nx][(gf + ga) % 3].replace('ins 2. Runde', 'in die 2. Runde').replace('im 2. Runde', 'in der 2. Runde') : [cupN + '-Aus für ' + t, t + ' scheitert an ' + on, 'Endstation ' + R.name + ': ' + t + ' ist raus'][(gf + ga) % 3];
-  var lead = (m.pen ? 'Nach einem ' + sc + ' fällt die Entscheidung erst im Elfmeterschießen. ' : t + ' ' + (R.won ? 'gewinnt' : 'verliert') + ' ' + sc + ' gegen ' + on + '. ') + (R.att ? num(R.att) + ' Zuschauer sahen das Spiel. ' : '') + (R.prize ? 'Die Prämie von ' + money(R.prize) + ' ist sicher.' : '');
+  var lead = (m.pen ? 'Nach einem ' + sc + ' fällt die Entscheidung erst im Elfmeterschießen. ' : t + ' ' + (R.won ? 'gewinnt' : 'verliert') + ' ' + sc + ' gegen ' + on + '. ') + (R.att ? num(R.att) + ' Zuschauer sahen das Spiel. ' : '') + (R.prize ? 'Die Prämie von ' + money(R.prize) + ' ist sicher.' : '') + (coachN() ? ' Trainer ' + coachN() + ': „' + (R.final && R.won ? 'Diesen Abend vergisst hier keiner mehr.' : R.won ? 'Im Pokal zählt nur das Weiterkommen.' : 'Der Traum ist vorbei, jetzt gilt es in der Liga.') + '“' : '');
   var it = [];
   if (R.boardCup) it.push(['Vorstand', R.boardCup]);
   if (R.final && R.won && !R.eu) it.push(['Europa ruft', 'Als Pokalsieger spielt ' + t + ' in der nächsten Saison im Europapokal.']);

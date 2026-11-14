@@ -1,0 +1,11 @@
+# Echte Daten bleiben lokal und kommen nie ins Repository
+echte-daten/
+private/
+wappen/
+*.zip
+*footylogos*
+ligaboss_*.txt
+datensatz_*.txt
+*.mp4
+.DS_Store
+Thumbs.db

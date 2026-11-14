@@ -491,6 +491,9 @@ td.tn{white-space:nowrap}td.tn .rk{display:inline-block;width:24px;text-align:ri
 .draw .dt .crest{margin:0;flex:none}
 .acard .crest,.fin .crest,.board .crest{margin:0}
 .trr .nm .crest,.fx .crest{margin:0 6px 0 0;vertical-align:-5px}
+.pklg{display:flex;gap:6px}.pklg button{flex:1;font:700 13px/1 inherit;font-family:inherit;padding:11px 4px;background:#0b3a36;color:#9fe0d6;border:2px solid #1f6b60;cursor:pointer}.pklg button.on{background:#ffd84d;color:#062f2c;border-color:#7a4b00}
+.pkgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.pkc{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 4px 8px;background:#0b3a36;border:2px solid #1f6b60;color:#f4efe1;font:600 11px/1.2 inherit;font-family:inherit;cursor:pointer;min-height:92px}.pkc span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-align:center}.pkc.on{border-color:#ffd84d;background:#11524b;box-shadow:0 0 0 2px #ffd84d inset}
+.pksel{display:flex;gap:12px;align-items:center;padding:12px;background:#062f2c;border:2px solid #ffd84d}.pksw{display:inline-block;width:18px;height:18px;border:2px solid #f4efe1}
 </style>
 </head>
 <body>
@@ -1024,7 +1027,7 @@ function takeOver(state, tid) {
   ensure(state); state.board.conf = 55;
   if (state.cup) { state.cup.won = false; state.cup.out = !cupTie(state); if (state.cup.due && !cupTie(state)) cupPlay(state); }
   if (state.eu) { state.eu.won = false; state.eu.out = !euTie(state); if (state.eu.due && !euTie(state)) euPlay(state); }
-  news(state, u.n + ' stellt einen neuen Trainer vor.');
+  news(state, u.n + ' stellt ' + (state.coach ? state.coach + ' als neuen Trainer' : 'einen neuen Trainer') + ' vor.');
   return u.n;
 }
 function startBuild(state, k) {
@@ -2173,7 +2176,7 @@ function roundFinish(state, L, h, a) {
   if (r > 16 && state.camp && state.camp.due) state.camp = null;
   if (r === 16) { state.hall = { due: true }; state.camp = { due: true }; out.hallNote = true; }
   out.round = r;
-  if (r === 16) { var okW = place(state, u.id) <= state.board.goal; state.board.conf = clamp(state.board.conf + (okW ? 5 : -5), 1, 100); out.boardNote = okW ? 'Zwischenbilanz zur Winterpause: Der Vorstand ist zufrieden, das Saisonziel ist in Reichweite.' : 'Zwischenbilanz zur Winterpause: Der Vorstand mahnt. Platz ' + place(state, u.id) + ' reicht nicht für das Saisonziel.'; }
+  if (r === 16) { var okW = place(state, u.id) <= state.board.goal; state.board.conf = clamp(state.board.conf + (okW ? 5 : -5), 1, 100); out.boardNote = okW ? 'Zwischenbilanz zur Winterpause: Der Vorstand ist ' + (state.coach ? 'mit Trainer ' + state.coach + ' ' : '') + 'zufrieden, das Saisonziel ist in Reichweite.' : 'Zwischenbilanz zur Winterpause: Der Vorstand mahnt' + (state.coach ? ' Trainer ' + state.coach : '') + '. Platz ' + place(state, u.id) + ' reicht nicht für das Saisonziel.'; }
   boardWeek(state, r, place(state, u.id), u.id === h.id ? out.match.hg : out.match.ag, u.id === h.id ? out.match.ag : out.match.hg);
   state.fh.push(state.cash); state.ph.push(place(state, u.id));
   out.conf = state.board.conf; out.sacked = !!state.sacked; if (state.sacked) { repAdd(state, -10); state.jobs = sackJobs(state); }
@@ -2362,6 +2365,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
+function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function money(n) { return (n < 0 ? '−' : '') + Math.abs(Math.round(n)).toLocaleString('de-DE') + ' DM'; }
 function num(n) { return Math.round(n).toLocaleString('de-DE'); }
@@ -2441,13 +2445,23 @@ function vStart() {
     var s = saved.state, u = FM.userTeam(s), tb = FM.table(s, u.lg), pl = 1; tb.forEach(function (t, k) { if (t.id === u.id) pl = k + 1; });
     h += '<div class="panel"><div class="acard">' + (crestImg(u.n, 46) || crestSvg(u.c1 || '#ffd84d', u.c2 || '#12356f', 1, crestL(u.n), 46)) + '<div class="grow"><p class="title">' + esc(u.n) + '</p><p class="hint" style="margin:0">' + FM.LEAGUES[u.lg] + ' · Saison ' + FM.seasonLabel(s) + '</p></div></div><div class="rings">' + ring(Math.min(1, s.round / 34), '#ffd84d', s.over ? 'Ende' : (s.round + 1) + '.', 'Spieltag') + ring((tb.length - pl + 1) / tb.length, '#6df09a', pl + '.', 'Tabellenplatz') + ring(1, s.cash < 0 ? '#ff9a8f' : '#6df09a', tk(s.cash), 'Kasse') + '</div><button class="big" style="margin-top:12px" data-a="continue">Weiterspielen</button></div>';
   } else h += '<p class="hint" style="text-align:center;margin:0">Führe deinen Verein aus der Regionalliga in die 1. Liga.</p>';
+  h += '<div class="panel"><div class="field" style="margin:0"><label for="coach">Dein Name als Trainer</label><input id="coach" maxlength="24" value="' + esc(ui.coach || '') + '" placeholder="Vor- und Nachname" autocomplete="off"></div></div>';
   var CD = custData();
   if (CD) {
-    h += '<div class="panel" style="display:flex;flex-direction:column;gap:12px">' + acard('m_sign', 'Neue Laufbahn', 'Mit deinen Daten · ' + CD.n + ' Vereine').replace('class="acard"', 'class="acard" style="margin:0"') + '<div class="field"><label for="packSel">Welchen Verein übernimmst du?</label><select id="packSel" style="width:100%;font:inherit;font-size:16px;padding:10px;background:#0b3a36;color:#f4efe1;border:2px solid #2f8f7e">';
-    CD.L.forEach(function (L, i) { if (!L.length) return; h += '<optgroup label="' + ['1. Liga', '2. Liga', 'Regionalliga'][i] + '">'; L.forEach(function (n) { h += '<option' + (n === (ui.packPick || CD.star) ? ' selected' : '') + '>' + esc(n) + '</option>'; }); h += '</optgroup>'; });
-    h += '</select></div>';
-    if (saved && ui.packAsk) h += '<p class="hint" style="margin:0">Der vorhandene Spielstand wird überschrieben.</p><button class="big warn" data-a="packnew">Ja, neu beginnen</button>';
-    else h += '<button class="big sec2" data-a="' + (saved ? 'packask' : 'packnew') + '">Neues Spiel</button>';
+    var LN = ['1. Liga', '2. Liga', 'Regionalliga'], all = [].concat.apply([], CD.C), pk = null;
+    all.forEach(function (c) { if (c.n === (ui.packPick || CD.star || (saved ? FM.userTeam(saved.state).n : ''))) pk = c; });
+    var lgSel = ui.packLg != null ? ui.packLg : (pk ? pk.lg : 0); if (!CD.C[lgSel] || !CD.C[lgSel].length) lgSel = 0;
+    h += '<div class="panel" style="display:flex;flex-direction:column;gap:12px">' + acard('m_sign', 'Neue Laufbahn', 'Wähle Liga und Verein · ' + CD.n + ' Vereine').replace('class="acard"', 'class="acard" style="margin:0"');
+    h += '<div class="pklg">'; LN.forEach(function (nm, i) { if (CD.C[i] && CD.C[i].length) h += '<button class="' + (i === lgSel ? 'on' : '') + '" data-a="pklg" data-val="' + i + '">' + nm + '</button>'; }); h += '</div>';
+    h += '<div class="pkgrid">';
+    CD.C[lgSel].forEach(function (c) { h += '<button class="pkc' + (pk && pk.n === c.n ? ' on' : '') + '" data-a="pkclub" data-val="' + esc(c.n) + '" aria-label="' + esc(c.n) + '">' + (crestImg(c.n, 44) || crestSvg(c.c1 || '#ffd84d', c.c2 || '#12356f', 1, crestL(c.n), 44)) + '<span>' + esc(c.n) + '</span></button>'; });
+    h += '</div>';
+    if (pk) {
+      var stars = pk.st ? clampN(Math.round((pk.st - [66, 56, 44][pk.lg]) / 5), 1, 5) : 0, stS = ''; for (var q = 0; q < 5; q++) stS += q < stars ? '★' : '☆';
+      h += '<div class="pksel">' + (crestImg(pk.n, 64) || crestSvg(pk.c1 || '#ffd84d', pk.c2 || '#12356f', 1, crestL(pk.n), 64)) + '<div class="grow"><p class="title" style="margin:0">' + esc(pk.n) + '</p><p class="hint" style="margin:2px 0 0">' + LN[pk.lg] + (stars ? ' · <span style="color:#ffd84d;letter-spacing:1px">' + stS + '</span>' : '') + '</p>' + (pk.k1 ? '<p class="hint" style="margin:6px 0 0;display:flex;align-items:center;gap:6px">Trikot <i class="pksw" style="background:' + pk.k1 + '"></i><i class="pksw" style="background:' + (pk.k2 || pk.k1) + '"></i></p>' : '') + '</div></div>';
+      if (saved && ui.packAsk) h += '<p class="hint" style="margin:0">Der vorhandene Spielstand wird überschrieben.</p><button class="big warn" data-a="packnew">Ja, mit ' + esc(sName(pk.n)) + ' neu beginnen</button>';
+      else h += '<button class="big" data-a="' + (saved ? 'packask' : 'packnew') + '">Mit ' + esc(pk.n) + ' starten</button>';
+    } else h += '<p class="hint" style="margin:0;text-align:center">Tippe einen Verein an.</p>';
     h += '</div>';
   }
   h += '<div class="panel" style="display:flex;flex-direction:column;gap:12px">' + acard('m_sign', CD ? 'Erfundene Vereine' : 'Neue Laufbahn', 'Start in der Regionalliga · Saison 95/96').replace('class="acard"', 'class="acard" style="margin:0"') + '<div class="field"><label for="club">Vereinsname</label><input id="club" maxlength="24" value="' + esc(CD && [].concat.apply([], CD.L).indexOf(ui.name) >= 0 ? 'FC Lechstadt 07' : ui.name) + '" autocomplete="off"></div>';
@@ -2458,10 +2472,11 @@ function vStart() {
   return h;
 }
 var CDC = { t: null, d: null };
+function clampN(v, a, b) { return Math.max(a, Math.min(b, v)); }
 function custData() {
   if (CDC.t === custTxt) return CDC.d;
   CDC.t = custTxt; CDC.d = null;
-  if (custTxt) { try { var D = FM.parseData(custTxt); if (D.clubs) { var L = D.lg.map(function (g) { return (g || []).map(function (c) { return c.n; }); }); CDC.d = { n: D.clubs, L: L, star: D.star ? D.star.n : '' }; } } catch (e) { } }
+  if (custTxt) { try { var D = FM.parseData(custTxt); if (D.clubs) { var L = D.lg.map(function (g) { return (g || []).map(function (c) { return c.n; }); }); CDC.d = { n: D.clubs, L: L, star: D.star ? D.star.n : '', C: D.lg.map(function (g, li) { return (g || []).map(function (c) { return { n: c.n, lg: li, c1: c.c1, c2: c.c2, st: c.st, k1: c.k1, k2: c.k2 }; }); }) }; } } catch (e) { } }
   return CDC.d;
 }
 var TPIC = {};
@@ -2474,7 +2489,7 @@ function tile(act, view, ic, label, tag, note) {
 }
 function vMenu() {
   var u = FM.userTeam(state), d = FM.dateOf(state), nm = FM.nextMatch(state), pl = FM.place(state, u.id);
-  var h = '<div class="hdr">' + crest(u.id, 44) + '<div class="grow"><div class="nm">' + esc(u.n) + '</div><div class="sub">' + FM.LEAGUES[u.lg] + ' · Saison ' + FM.seasonLabel(state) + '</div></div><button class="ibtn" aria-label="Optionen" data-a="go" data-v="options">' + icon('optionen', 28) + '</button></div>';
+  var h = '<div class="hdr">' + crest(u.id, 44) + '<div class="grow"><div class="nm">' + esc(u.n) + '</div><div class="sub">' + FM.LEAGUES[u.lg] + ' · Saison ' + FM.seasonLabel(state) + (coachN() ? ' · Trainer ' + esc(coachN()) : '') + '</div></div><button class="ibtn" aria-label="Optionen" data-a="go" data-v="options">' + icon('optionen', 28) + '</button></div>';
   var ct = state.cup.due ? FM.cupTie(state) : null, isEu = false;
   if (!ct && state.eu.due) { ct = FM.euTie(state); isEu = !!ct; }
   var opp = ct ? FM.team(state, ct.home ? ct.a : ct.h) : nm ? FM.team(state, nm.home ? nm.a : nm.h) : null, home = ct ? ct.home : nm ? nm.home : true;
@@ -3186,7 +3201,7 @@ function vBoard() {
 }
 function vSacked() {
   var u = FM.userTeam(state);
-  return '<div class="logo" style="font-size:16px">ENTLASSEN</div><div class="panel"><p class="title" style="margin:0 0 6px">' + esc(u.n) + ' trennt sich von dir.</p><p class="hint" style="margin:0">Der Vorstand hat das Vertrauen verloren. Deine Laufbahn geht trotzdem weiter: ' + (state.jobs.length > 1 ? 'Diese Vereine suchen einen Trainer.' : 'Ein Verein sucht einen Trainer.') + ' Du übernimmst dort Kader, Kasse und Stadion.</p></div>' + jobsHtml();
+  return '<div class="logo" style="font-size:16px">ENTLASSEN</div><div class="panel"><p class="title" style="margin:0 0 6px">' + esc(u.n) + ' trennt sich von ' + (coachN() ? esc(coachN()) : 'dir') + '.</p><p class="hint" style="margin:0">Der Vorstand hat das Vertrauen verloren. Deine Laufbahn geht trotzdem weiter: ' + (state.jobs.length > 1 ? 'Diese Vereine suchen einen Trainer.' : 'Ein Verein sucht einen Trainer.') + ' Du übernimmst dort Kader, Kasse und Stadion.</p></div>' + jobsHtml();
 }
 function vYouth() {
   var Y = state.youth, u = FM.userTeam(state), h = sub('Jugend'), fo = Y.fo || 0;
@@ -3289,6 +3304,7 @@ function vOptions() {
   h += '<div class="panel"><p class="lbl">SPIELSZENEN</p>' + tiles('pref', [[0, 'Mit Szenen', 'o_scene', sm('Spielfeld mit Figuren')], [1, 'Nur Ticker', 'o_tick', sm('spart Zeit und Akku', 0)]], prefs.fast ? 1 : 0, 'pk2') + '</div>';
   h += '<div class="panel"><p class="lbl">TEMPO BEIM ANPFIFF</p>' + tiles('prefs', [[1, 'Normal', 'o_s1'], [2.5, 'Schneller', 'o_s2']], prefs.speed > 1 ? 2.5 : 1, 'pk2') + '<p class="hint" style="margin:8px 0 0">Im Spiel kannst du jederzeit umschalten.</p></div>';
   h += '<div class="panel">' + acard('m_sign', 'Eigene Daten', 'Vereinsnamen, Kader und Wappen importieren') + '<button class="big sec2 sm" data-a="go" data-v="custom">Öffnen</button></div>';
+  h += '<div class="panel"><p class="lbl">TRAINER</p><div class="field" style="margin:0 0 8px"><label for="coach">Dein Name</label><input id="coach" maxlength="24" value="' + esc(coachN() || ui.coach || '') + '" autocomplete="off"></div><button class="big sm" data-a="coachset">Namen übernehmen</button></div>';
   h += '<div class="panel"><p class="lbl">TON</p>' + tiles('prefsnd', [[1, 'An', 'o_s1', sm('echte Stadionaufnahmen')], [0, 'Aus', 't0', sm('stumm')]], prefs.snd ? 1 : 0, 'pk2') + '<p class="hint" style="margin:8px 0 0">Der Ton läuft auch, wenn das iPhone auf lautlos steht. Stell ihn hier aus, wenn du Ruhe willst.</p></div>';
   h += '<div class="panel">' + acard('o_save', 'Spielstand', cloud.on ? 'Automatisch gespeichert · auch im Claude-Konto' : 'Automatisch gespeichert · in diesem Browser') + '<div class="row"><button class="big sec2 sm" data-a="save">Jetzt speichern</button><button class="big sec2 sm" data-a="tostart">Startbildschirm</button></div></div>';
 
@@ -4040,7 +4056,7 @@ function vCupResults() {
 function seasonLabel(y) { return y + '/' + ((y + 1) % 100 < 10 ? '0' : '') + (y + 1) % 100; }
 function vOpening() {
   var u = FM.userTeam(state), B = state.board, H = state.hist, last = H.length ? H[H.length - 1] : null, sl = seasonLabel(state.season), early = state.round <= 5;
-  var t1 = !last ? (u.lg === 0 ? (B.goal <= 3 ? 'Willkommen bei ' + u.n + '. Dieser Verein gehört nach ganz oben, und daran werden Sie gemessen.' : B.goal <= 8 ? 'Willkommen bei ' + u.n + '. Wir wollen uns in der oberen Tabellenhälfte festsetzen.' : 'Willkommen bei ' + u.n + '. Für uns zählt zuerst, die Klasse zu halten und den Verein Schritt für Schritt aufzubauen.') : 'Willkommen bei ' + u.n + '. Wir haben einen langen Weg vor uns: Schritt für Schritt nach oben, bis in die ' + FM.LEAGUES[0] + '.') : last.lg > u.lg ? 'Der Aufstieg war ein großer Tag für den Verein. Jetzt müssen wir uns eine Klasse höher behaupten.' : last.lg < u.lg ? 'Der Abstieg tut weh. Wir erwarten, dass die Mannschaft sofort eine Antwort gibt.' : B.conf >= 60 ? 'Die letzte Saison hat uns gefallen. Platz ' + last.pl + ' ist eine gute Grundlage.' : 'Platz ' + last.pl + ' in der letzten Saison war nicht das, was wir uns vorgestellt haben.';
+  var t1 = !last ? (u.lg === 0 ? (B.goal <= 3 ? 'Willkommen bei ' + u.n + (coachN() ? ', ' + coachN() : '') + '. Dieser Verein gehört nach ganz oben, und daran werden Sie gemessen.' : B.goal <= 8 ? 'Willkommen bei ' + u.n + (coachN() ? ', ' + coachN() : '') + '. Wir wollen uns in der oberen Tabellenhälfte festsetzen.' : 'Willkommen bei ' + u.n + (coachN() ? ', ' + coachN() : '') + '. Für uns zählt zuerst, die Klasse zu halten und den Verein Schritt für Schritt aufzubauen.') : 'Willkommen bei ' + u.n + (coachN() ? ', ' + coachN() : '') + '. Wir haben einen langen Weg vor uns: Schritt für Schritt nach oben, bis in die ' + FM.LEAGUES[0] + '.') : last.lg > u.lg ? (coachN() ? coachN() + ', der' : 'Der') + ' Aufstieg war ein großer Tag für den Verein. Jetzt müssen wir uns eine Klasse höher behaupten.' : last.lg < u.lg ? (coachN() ? coachN() + ', der' : 'Der') + ' Abstieg tut weh. Wir erwarten, dass die Mannschaft sofort eine Antwort gibt.' : B.conf >= 60 ? (coachN() ? coachN() + ', die' : 'Die') + ' letzte Saison hat uns gefallen. Platz ' + last.pl + ' ist eine gute Grundlage.' : 'Platz ' + last.pl + ' in der letzten Saison war nicht das, was wir uns vorgestellt haben.';
   var bonus = Math.round(FM.GRANT[u.lg] * (B.amb === 2 ? 0.3 : B.amb === 1 ? 0.05 : 0.15));
   var h = '<div class="logo" style="font-size:14px">VORSTANDSSITZUNG</div><p class="hint" style="margin:0;text-align:center">' + esc(u.n) + ' · Saison ' + sl + ' · ' + FM.LEAGUES[u.lg] + '</p>';
   h += '<div class="panel"><div class="row" style="align-items:center;gap:10px"><img class="pc" alt="" aria-hidden="true" src="' + PICS.vorstand + '" width="96" height="72" style="width:96px;height:72px;image-rendering:pixelated;border:2px solid #052826"><div class="grow"><p class="lbl" style="margin:0 0 4px">DER PRÄSIDENT</p><p class="hint" style="margin:0">spricht für den Vorstand</p></div></div><p class="bubble">„' + esc(t1) + ' Unser Ziel für diese Saison: <b>' + FM.goalText(u.lg, B.goal) + '</b>. Im Pokal erwarten wir mindestens: <b>' + FM.CUPNAME[FM.cupGoalR(state)] + '</b>.“</p>';
@@ -4073,7 +4089,7 @@ function vFame() {
   var C = FM.car(state), u = FM.userTeam(state), h = sub('Ruhmeshalle'), st = u.st;
   var W = C.w + st.s, D = C.d + st.u, L = C.l + st.n, GF = C.gf + st.tf, GA = C.ga + st.ta, N = W + D + L, TN = { m: 'Meister', p: 'Pokalsieger', e: 'Europapokalsieger', a: 'Aufstieg' };
   var big = C.ti.filter(function (t) { return t.k !== 'a'; }).length;
-  h += '<div class="panel"><div class="row" style="align-items:center;gap:10px"><img class="pc" alt="" aria-hidden="true" src="' + PICS.ruhm + '" width="96" height="72" style="width:96px;height:72px;image-rendering:pixelated;border:2px solid #052826"><div class="grow"><p class="lbl" style="margin:0 0 4px">TRAINERKARRIERE</p><p class="hint" style="margin:0">Im Amt seit ' + C.from + ' · ' + (C.se.length + 1) + '. Saison<br>Aktuell: ' + esc(u.n) + '</p></div></div>';
+  h += '<div class="panel"><div class="row" style="align-items:center;gap:10px"><img class="pc" alt="" aria-hidden="true" src="' + PICS.ruhm + '" width="96" height="72" style="width:96px;height:72px;image-rendering:pixelated;border:2px solid #052826"><div class="grow"><p class="lbl" style="margin:0 0 4px">TRAINERKARRIERE' + (coachN() ? ' · ' + esc(coachN().toUpperCase()) : '') + '</p><p class="hint" style="margin:0">Im Amt seit ' + C.from + ' · ' + (C.se.length + 1) + '. Saison<br>Aktuell: ' + esc(u.n) + '</p></div></div>';
   h += '<div class="rings" style="grid-template-columns:repeat(3,minmax(0,1fr));margin-top:10px">' + ring(Math.min(1, big / 5), '#ffd84d', big, 'Titel', 54) + ring((state.rep || 0) / 100, '#5fb7c9', state.rep || 0, 'Ruf', 54) + ring(N ? W / N : 0, '#6df09a', N ? Math.round(W / N * 100) + '%' : '–', 'Siegquote', 54) + '</div></div>';
   h += '<div class="panel"><p class="lbl">' + lic('m_cup') + 'VITRINE</p>';
   if (!C.ti.length) h += '<p class="hint" style="margin:0">Noch leer. Der erste Titel bekommt hier seinen Platz.</p>';
@@ -4219,13 +4235,13 @@ function paper(R, mine, u) {
   var hl = d >= 3 ? ['Gala! ' + t + ' fegt ' + o + ' mit ' + sc + ' vom Platz', t + ' in Torlaune: ' + sc + ' gegen ' + o, 'Kantersieg: ' + t + ' überrollt ' + o][k] : d > 0 ? [t + ' schlägt ' + o + ' ' + sc, 'Drei Punkte! ' + t + ' bezwingt ' + o, sc + ' – ' + t + ' jubelt gegen ' + o][k] : d === 0 ? ['Punkteteilung: ' + t + ' und ' + o + ' trennen sich ' + sc, sc + ' – keiner gewinnt zwischen ' + t + ' und ' + o, t + ' holt einen Punkt gegen ' + o][k] : d <= -3 ? ['Debakel für ' + t + ': ' + sc + ' gegen ' + o, t + ' geht gegen ' + o + ' unter', 'Schwarzer Tag: ' + t + ' verliert ' + sc][k] : [t + ' unterliegt ' + o + ' ' + sc, 'Knappe Pleite: ' + t + ' verliert gegen ' + o, o + ' zu stark: ' + t + ' verliert ' + sc][k];
   var mineG = G.filter(function (g) { return g.h === home; }).map(function (g) { return g.p; }), cnt = {}, top = '';
   mineG.forEach(function (n) { cnt[n] = (cnt[n] || 0) + 1; }); Object.keys(cnt).forEach(function (n) { if (!top || cnt[n] > cnt[top]) top = n; });
-  var pl = FM.place(state, u.id), lead = (top ? (cnt[top] >= 3 ? top + ' trifft dreifach. ' : cnt[top] === 2 ? 'Doppelpack von ' + top + '. ' : top + ' trifft für ' + t + '. ') : gf === 0 && d < 0 ? 'Vorne ging gar nichts. ' : '') + 'Nach dem ' + (R.round + 1) + '. Spieltag steht ' + t + ' auf Platz ' + pl + '.' + (m_att(R) ? ' ' + m_att(R) : '');
+  var pl = FM.place(state, u.id), lead = (top ? (cnt[top] >= 3 ? top + ' trifft dreifach. ' : cnt[top] === 2 ? 'Doppelpack von ' + top + '. ' : top + ' trifft für ' + t + '. ') : gf === 0 && d < 0 ? 'Vorne ging gar nichts. ' : '') + 'Nach dem ' + (R.round + 1) + '. Spieltag steht ' + t + ' auf Platz ' + pl + '.' + (m_att(R) ? ' ' + m_att(R) : '') + (coachN() ? ' Trainer ' + coachN() + ': „' + (d >= 3 ? ['So macht Fußball Spaß.', 'Heute hat alles gepasst.', 'Ein Kompliment an die Mannschaft.'] : d > 0 ? ['Die Mannschaft hat sich belohnt.', 'Ein verdienter Sieg.', 'Drei Punkte, nur das zählt.'] : d === 0 ? ['Mit dem Punkt müssen wir leben.', 'Da war mehr drin.', 'Ein gerechtes Ergebnis.'] : d <= -3 ? ['Dafür gibt es keine Ausrede.', 'Das war zu wenig, von allen.', 'Wir müssen uns bei den Fans entschuldigen.'] : ['Das müssen wir aufarbeiten.', 'Wir haben uns nicht belohnt.', 'Kopf hoch, es geht weiter.'])[k] + '“' : '');
   var items = [];
-  if (R.sacked) items.push(['Vorstand', 'Der Vorstand zieht die Reißleine und trennt sich vom Trainer.']);
+  if (R.sacked) items.push(['Vorstand', 'Der Vorstand zieht die Reißleine und trennt sich von ' + (coachN() ? 'Trainer ' + coachN() : 'seinem Trainer') + '.']);
   else if (R.boardNote) items.push(['Vorstand', R.boardNote]);
-  else if (R.conf !== undefined && R.conf < 25) items.push(['Vorstand', 'In der Führungsetage wächst die Unruhe. Der Stuhl des Trainers wackelt.']);
+  else if (R.conf !== undefined && R.conf < 25) items.push(['Vorstand', 'In der Führungsetage wächst die Unruhe. Der Stuhl ' + (coachN() ? 'von Trainer ' + coachN() : 'des Trainers') + ' wackelt.']);
   (R.broken || []).forEach(function (n) { items.push(['Kabine', n + ' ist sauer: Die versprochene Einsatzzeit blieb aus.']); });
-  if (R.talks) items.push(['Kabine', 'Nach dem Spiel bittet ein Spieler den Trainer um ein Gespräch.']);
+  if (R.talks) items.push(['Kabine', 'Nach dem Spiel bittet ein Spieler ' + (coachN() ? 'Trainer ' + coachN() : 'den Trainer') + ' um ein Gespräch.']);
   if (R.offers) { var ofn = 0; state.offers.forEach(function (of) { var op = FM.findP(u, of.i), oc = FM.team(state, of.c); if (!op || !oc || ofn >= 2) return; ofn++; items.push(['Transfermarkt', oc.n + ' bietet ' + tk(of.fee) + ' für ' + op.n + (op.wl ? ', der den Verein verlassen will' : '') + '. Annehmen oder ablehnen kannst du unter Transfers, Angebote.']); }); if (!ofn) items.push(['Transfermarkt', 'Ein anderer Verein hat ein Angebot für einen Spieler von ' + t + ' abgegeben.']); }
   if (R.scouted && R.scouted.length) items.push(['Scouting', 'Der Scoutbericht liegt vor: ' + R.scouted.join(', ') + '.']);
   if (R.cupNote) items.push(['Pokal', R.cupNote]);
@@ -4241,9 +4257,10 @@ function seasonPaper(s, u, sl) {
   var t = u.n, champ = s.lg === 0 && s.place === 1, L1 = FM.LEAGUES[0], L = FM.LEAGUES[s.lg];
   var hl = champ ? t + ' ist Meister!' : s.move === 'auf' ? 'Aufstieg! ' + t + ' feiert' : s.move === 'ab' ? 'Bitterer Abstieg für ' + t : s.board && s.board.ok ? t + ' erreicht das Saisonziel' : 'Enttäuschende Saison für ' + t;
   var lead = t + ' beendet die Saison ' + sl + ' auf Platz ' + s.place + ' der ' + L + (s.pts !== undefined ? ' mit ' + s.pts + ' Punkten' : '') + '. ' + (champ ? 'Dahinter landet ' + s.second + '.' : 'Meister der ' + L1 + ' wird ' + s.champion + (s.second ? ' vor ' + s.second : '') + '.');
+  if (coachN()) lead += champ ? ' Trainer ' + coachN() + ' führt die Mannschaft zum Titel.' : s.move === 'auf' ? ' Trainer ' + coachN() + ' gilt als Vater des Aufstiegs.' : s.move === 'ab' ? ' Trainer ' + coachN() + ' konnte den Absturz nicht verhindern.' : '';
   var it = [];
   if (s.top && s.top.length) it.push(['Torjägerkanone', s.top[0].n + ' (' + s.top[0].t + ') trifft ' + s.top[0].g + '-mal und ist bester Schütze der ' + L + '.' + (s.top[1] ? ' Dahinter: ' + s.top[1].n + ' (' + s.top[1].g + ').' : '')]);
-  if (s.board) it.push(['Vorstand', s.board.sacked ? 'Der Vorstand trennt sich nach dieser Saison vom Trainer.' : s.board.ok ? 'Das Saisonziel ist erreicht.' + (s.boardBonus ? ' Der Vorstand überweist eine Zielprämie von ' + money(s.boardBonus) + '.' : '') : 'Das Saisonziel wurde verfehlt. Die Führungsetage erwartet eine Reaktion.']);
+  if (s.board) it.push(['Vorstand', s.board.sacked ? 'Der Vorstand trennt sich nach dieser Saison von ' + (coachN() ? 'Trainer ' + coachN() : 'seinem Trainer') + '.' : s.board.ok ? (coachN() ? 'Trainer ' + coachN() + ' hat das Saisonziel erreicht.' : 'Das Saisonziel ist erreicht.') + (s.boardBonus ? ' Der Vorstand überweist eine Zielprämie von ' + money(s.boardBonus) + '.' : '') : 'Das Saisonziel wurde verfehlt. Die Führungsetage erwartet eine Reaktion.']);
   if (s.up.length) it.push(['Aufsteiger', s.up.join(', ') + '.']);
   if (s.down.length) it.push(['Absteiger', s.down.join(', ') + '.']);
   if (s.euChamp) it.push(['Europapokal', s.euChamp + ' holt den Europapokal.']);
@@ -4321,7 +4338,7 @@ app.addEventListener('click', function (ev) {
   if (a === 'asknew') { var i0 = document.getElementById('club'); if (i0) ui.name = i0.value; ui.confirm = true; return render(); }
   if (a === 'new') {
     var inp = document.getElementById('club'), nm = (inp ? inp.value : ui.name).trim().slice(0, 24) || 'FC Lechstadt 07';
-    state = FM.newGame(nm); ui.name = nm; ui.lg = 2; persist(); SND.jingle(); return go('opening');
+    state = FM.newGame(nm); state.coach = coachIn(); ui.name = nm; ui.lg = 2; persist(); SND.jingle(); return go('opening');
   }
   if (a === 'toggle') {
     var id = +b.getAttribute('data-id'), k = u.lu.indexOf(id);
@@ -4465,14 +4482,18 @@ app.addEventListener('click', function (ev) {
     if (typeof rs === 'string') return toast(rs);
     ui.match.note(rs); ui.subOut = -1; return matchPanel();
   }
-  if (a === 'packask') { var pq = document.getElementById('packSel'); ui.packPick = pq ? pq.value : ''; ui.packAsk = true; return render(); }
+  if (a === 'packask') { var pq = document.getElementById('packSel'); if (pq) ui.packPick = pq.value; ui.packAsk = true; return render(); }
+  if (a === 'pklg') { ui.packLg = +b.getAttribute('data-val'); ui.packAsk = false; return render(); }
+  if (a === 'pkclub') { ui.packPick = b.getAttribute('data-val'); ui.packLg = null; ui.packAsk = false; return render(); }
   if (a === 'packnew') {
-    var ps = document.getElementById('packSel'), pick = normName(ps ? ps.value : '');
+    var ps = document.getElementById('packSel'), CDp = custData(), pick = normName(ps ? ps.value : (ui.packPick || (CDp && CDp.star) || (saved ? FM.userTeam(saved.state).n : '')));
+    if (!pick) return;
     custTxt = custTxt.split('\n').map(function (ln) { var m = /^(\s*VEREIN)\*?(\s*:\s*)(.*)$/i.exec(ln); if (!m) return ln; return m[1] + (normName(m[3].split('|')[0]) === pick ? '*' : '') + m[2] + m[3]; }).join('\n');
     try { localStorage.setItem('ligaboss-custom', custTxt); } catch (e5) { }
     var D5 = FM.parseData(custTxt); if (!D5.clubs) { ui.packRep = custReport(D5); return render(); }
-    var g5 = FM.newGameCustom(D5, ui.name || 'FC Lechstadt 07'); state = g5.state; ui.name = FM.userTeam(state).n; ui.lg = FM.userTeam(state).lg; ui.pack = null; ui.packAsk = false; ui.packPick = ''; ui.packRep = ''; ui.custNew = false; ui.custRep = ''; persist(); return go('opening');
+    var g5 = FM.newGameCustom(D5, ui.name || 'FC Lechstadt 07'); state = g5.state; state.coach = coachIn(); ui.name = FM.userTeam(state).n; ui.lg = FM.userTeam(state).lg; ui.pack = null; ui.packAsk = false; ui.packPick = ''; ui.packRep = ''; ui.custNew = false; ui.custRep = ''; persist(); return go('opening');
   }
+  if (a === 'coachset') { state.coach = coachIn(); persist(); toast(state.coach ? 'Trainer: ' + state.coach : 'Name entfernt'); return render(); }
   if (a === 'prefmus') {
     var onM = !(prefs.snd && prefs.mus !== false); prefs.mus = onM; if (onM) prefs.snd = true;
     try { localStorage.setItem('ligaboss-prefs', JSON.stringify(prefs)); } catch (e8) { }
@@ -4510,6 +4531,9 @@ app.addEventListener('click', function (ev) {
   if (a === 'tostart') { persist(); ui.name = u.n; state = null; return go('start'); }
 });
 
+function coachIn() { var e = document.getElementById('coach'); if (e) ui.coach = e.value; var v = String(ui.coach || '').replace(/\s+/g, ' ').trim().slice(0, 24); ui.coach = v; try { localStorage.setItem('ligaboss-coach', v); } catch (e2) { } return v; }
+try { ui.coach = localStorage.getItem('ligaboss-coach') || ''; } catch (e9) { }
+app.addEventListener('input', function (ev) { if (ev.target && ev.target.id === 'coach') ui.coach = ev.target.value; });
 app.addEventListener('change', function (ev) {
   var el = ev.target, f = el && el.getAttribute ? el.getAttribute('data-f') : null, file = el && el.files ? el.files[0] : null; if (!f || !file) return;
   if (f === 'custfile') { var fr = new FileReader(); fr.onload = function () { custTxt = String(fr.result || '').slice(0, 400000); try { localStorage.setItem('ligaboss-custom', custTxt); } catch (e) { } ui.custNew = false; ui.custRep = custReport(FM.parseData(custTxt)); render(); }; fr.readAsText(file); return; }

@@ -2429,7 +2429,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '14.11. 21:55';
+var BUILD = '14.11. 22:05';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -3053,8 +3053,9 @@ function offerText(o) {
   return t;
 }
 function jersey(name) {
-  var parts = name.split(' '), l1 = parts[0], l2 = parts.slice(1).join(' ');
-  return '<svg viewBox="0 0 200 150" style="display:block;width:150px;height:auto;margin:0 auto 8px" role="img" aria-label="Trikot mit Aufdruck ' + esc(name) + '"><path d="M60 12 L20 34 L34 66 L52 56 L52 140 L148 140 L148 56 L166 66 L180 34 L140 12 Q100 34 60 12 Z" fill="#ffd84d" stroke="#0b1622" stroke-width="4" stroke-linejoin="round"/><path d="M60 12 Q100 34 140 12 L128 8 Q100 22 72 8 Z" fill="#12356f" stroke="#0b1622" stroke-width="3"/><path d="M20 34 L27 50 L46 40 L40 24 Z M180 34 L173 50 L154 40 L160 24 Z" fill="#12356f"/><rect x="56" y="68" width="88" height="' + (l2 ? 38 : 24) + '" rx="3" fill="#f4efe1" stroke="#0b1622" stroke-width="2"/><text x="100" y="' + (l2 ? 83 : 85) + '" text-anchor="middle" font-size="12" font-weight="700" fill="#12356f">' + esc(l1.slice(0, 12)) + '</text>' + (l2 ? '<text x="100" y="99" text-anchor="middle" font-size="12" font-weight="700" fill="#b3241a">' + esc(l2.slice(0, 12)) + '</text>' : '') + '</svg>';
+  var parts = name.split(' '), l1 = parts[0], l2 = parts.slice(1).join(' '), ju = state ? FM.userTeam(state) : null, jc = (ju && (ju.k1 || ju.c1)) || '#ffd84d', jt = (ju && (ju.k2 || ju.c2)) || '#12356f';
+  if (kitDist(jc, jt) < 90) jt = kitDist(jc, '#f4efe1') > 200 ? '#f4efe1' : '#16181d';
+  return '<svg viewBox="0 0 200 150" style="display:block;width:150px;height:auto;margin:0 auto 8px" role="img" aria-label="Trikot mit Aufdruck ' + esc(name) + '"><path d="M60 12 L20 34 L34 66 L52 56 L52 140 L148 140 L148 56 L166 66 L180 34 L140 12 Q100 34 60 12 Z" fill="' + jc + '" stroke="#0b1622" stroke-width="4" stroke-linejoin="round"/><path d="M60 12 Q100 34 140 12 L128 8 Q100 22 72 8 Z" fill="' + jt + '" stroke="#0b1622" stroke-width="3"/><path d="M20 34 L27 50 L46 40 L40 24 Z M180 34 L173 50 L154 40 L160 24 Z" fill="' + jt + '" stroke="#0b1622" stroke-width="1.5"/><rect x="56" y="68" width="88" height="' + (l2 ? 38 : 24) + '" rx="3" fill="#f4efe1" stroke="#0b1622" stroke-width="2"/><text x="100" y="' + (l2 ? 83 : 85) + '" text-anchor="middle" font-size="12" font-weight="700" fill="#12356f">' + esc(l1.slice(0, 12)) + '</text>' + (l2 ? '<text x="100" y="99" text-anchor="middle" font-size="12" font-weight="700" fill="#b3241a">' + esc(l2.slice(0, 12)) + '</text>' : '') + '</svg>';
 }
 function offerPills(o) {
   var u = FM.userTeam(state), l = [[money(o.fix) + ' fest / Woche', 1]];

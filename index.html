@@ -609,7 +609,7 @@ function makePlayer(id, pos, base, age) {
 function value(p) {
   var af = p.a <= 23 ? 1.25 : p.a <= 28 ? 1 : p.a <= 31 ? 0.7 : 0.4;
   if (p.a <= 23 && p.ta) af *= 1 + 0.08 * (p.ta - 3);
-  return Math.max(5000, Math.round(20000 * Math.pow(1.16, p.s - 40) * af / 1000) * 1000);
+  return Math.max(5000, Math.round(20000 * Math.pow(1.16, p.s - 40) * af * (p.vf || 1) / 1000) * 1000);
 }
 var YCOST = [500, 1500, 3500, 7000, 12000], YUP = [100000, 250000, 500000, 900000], YMAX = 8;
 function youthPlayer(state, age) {
@@ -1853,7 +1853,7 @@ function friendFinish(state, L, h, a) {
 }
 function cupGoalR(state) { return [3, 2, 1][state.teams[state.uid].lg]; }
 function exportData(state) {
-  var o = ['// Liga-Boss Datensatz. Zeilen mit // werden ignoriert.', '// VEREIN: Name | Hauptfarbe | Zweitfarbe   (Farben sind freiwillig, VEREIN*: ist dein Verein)', '// TRIKOT: #hemd | #hose | #auswärts   (freiwillig, direkt unter der VEREIN-Zeile)', '// Spieler: POSITION Name Alter Stärke LAND   (TW, AB, MF, ST · Alter, Stärke und Land sind freiwillig · Stärke ? = vergibt das Spiel · Land als Kürzel wie GER, ENG, FRA)', ''];
+  var o = ['// Liga-Boss Datensatz. Zeilen mit // werden ignoriert.', '// VEREIN: Name | Hauptfarbe | Zweitfarbe   (Farben sind freiwillig, VEREIN*: ist dein Verein)', '// TRIKOT: #hemd | #hose | #auswärts   (freiwillig, direkt unter der VEREIN-Zeile)', '// Spieler: POSITION Name Alter Stärke LAND Marktwert   (TW, AB, MF, ST · alles nach dem Namen ist freiwillig · Stärke ? = vergibt das Spiel · Land als Kürzel wie GER, ENG, FRA · Marktwert in Euro als Richtwert für den Preis)', ''];
   if (state.cty) o.push('LAND: ' + cfg(state).n, '');
   for (var lg = 0; lg < NL(state); lg++) {
     o.push('LIGA ' + (lg + 1) + (state.lgn && state.lgn[lg] ? ': ' + state.lgn[lg] : ''));
@@ -1891,12 +1891,13 @@ function parseData(txt) {
       if (!kp[0] || kp.some(function (x) { return x && !hexRe.test(x); })) { D.err.push('Zeile ' + (ln + 1) + ': Trikot bitte als „TRIKOT: #hemd | #hose | #auswärts“ angeben.'); return; }
       cur.k1 = kp[0]; cur.k2 = kp[1] || ''; cur.k3 = kp[2] || ''; return;
     }
+    var mwM = /\s[A-Z]{3}\s+(\d{4,10})$/.exec(l), mwV = 0; if (mwM) { mwV = +mwM[1]; l = l.slice(0, l.length - mwM[1].length).trim(); }
     var natM = /\s(?:\d{1,2}|\?|-)\s+([A-Z]{3})$/.exec(l), natC = ''; if (natM) { natC = natM[1]; l = l.slice(0, l.length - 3).trim(); }
     m = /^(TW|AB|MF|ST)\s+(.+?)(?:\s+(\d{1,2}))?(?:\s+(\d{1,2}|\?|-))?$/i.exec(l);
     if (m) {
       if (!cur) { D.err.push('Zeile ' + (ln + 1) + ': Der Spieler steht vor dem ersten Verein.'); return; }
       if (cur.pl.length >= MAXSQUAD) { D.err.push('Zeile ' + (ln + 1) + ': ' + cur.n + ' hat schon ' + MAXSQUAD + ' Spieler.'); return; }
-      var pp = { p: POS.indexOf(m[1].toUpperCase()), n: m[2].trim().slice(0, 30) }; if (natC) pp.nat = natC;
+      var pp = { p: POS.indexOf(m[1].toUpperCase()), n: m[2].trim().slice(0, 30) }; if (natC) pp.nat = natC; if (mwV) pp.mw = mwV;
       if (m[3] && (m[4] === '?' || m[4] === '-')) pp.a = clamp(+m[3], 16, 40); else if (m[3] && m[4]) { pp.a = clamp(+m[3], 16, 40); pp.s = clamp(+m[4], 20, 97); } else if (m[3]) pp.s = clamp(+m[3], 20, 97);
       cur.pl.push(pp); D.players++; return;
     }
@@ -1916,7 +1917,7 @@ function applyClub(state, t, c) {
   var out = [];
   byS.forEach(function (a, pos) { a.forEach(function (x) {
     var p = pool[pos].shift(); if (!p) { p = makePlayer(state.nid++, pos, avg, x.a); if (isU) { p.c = rnd(2, 3); p.kn = 1; } }
-    p.n = x.n; if (x.nat) p.nat = x.nat; else delete p.nat; if (x.a) p.a = x.a; if (x.s && x.s !== p.s) { p.s = x.s; p.at = null; fixP(p); }
+    p.n = x.n; delete p.vf; if (x.mw) p.mw0 = x.mw; else delete p.mw0; if (x.nat) p.nat = x.nat; else delete p.nat; if (x.a) p.a = x.a; if (x.s && x.s !== p.s) { p.s = x.s; p.at = null; fixP(p); }
     out.push(p);
   }); });
   if (!full) pool.forEach(function (a) { a.forEach(function (p) { out.push(p); }); });
@@ -1942,6 +1943,8 @@ function applyData(state, D) {
     else tg = tg.filter(function (t) { return t.id !== u.id; });
     list.forEach(function (c, k) { if (tg[k]) { applyClub(state, tg[k], c); n++; } });
   }
+  var rat = []; state.teams.forEach(function (t) { t.pl.forEach(function (p) { if (p.mw0) rat.push(value(p) / p.mw0); }); });
+  if (rat.length) { rat.sort(function (a, b) { return a - b; }); var kf = rat[Math.floor(rat.length / 2)]; state.teams.forEach(function (t) { t.pl.forEach(function (p) { if (p.mw0) { p.vf = Math.round(clamp(p.mw0 * kf / value(p), 0.4, 2.5) * 100) / 100; delete p.mw0; } }); }); }
   state.market = state.market || []; ensure(state);
   return { clubs: n, note: note };
 }
@@ -2267,6 +2270,7 @@ function roundFinish(state, L, h, a) {
 }
 function playRound(state) { startRound(state); return liveAuto(state); }
 function develop(t) {
+  t.pl.forEach(function (p) { if (p.vf) { p.vf = Math.round((1 + (p.vf - 1) * 0.75) * 100) / 100; if (Math.abs(p.vf - 1) < 0.03) delete p.vf; } });
   var sum = 0; t.pl.forEach(function (p) { sum += p.s; });
   var avg = sum / t.pl.length;
   t.pl.forEach(function (p) {
@@ -2464,7 +2468,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '15.11. 00:50';
+var BUILD = '15.11. 01:10';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }

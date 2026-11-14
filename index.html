@@ -2464,7 +2464,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '15.11. 00:10';
+var BUILD = '15.11. 00:25';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -2562,7 +2562,7 @@ function vStart() {
     h += '</div>';
     if (pk) {
       var stars = pk.st ? clampN(Math.round((pk.st - [66, 56, 44][pk.lg]) / 5), 1, 5) : 0, stS = ''; for (var q = 0; q < 5; q++) stS += q < stars ? '★' : '☆';
-      h += '<div class="pksel">' + (crestImg(pk.n, 64) || crestSvg(pk.c1 || '#ffd84d', pk.c2 || '#12356f', 1, crestL(pk.n), 64)) + '<div class="grow"><p class="title" style="margin:0">' + esc(pk.n) + '</p><p class="hint" style="margin:2px 0 0">' + LN[pk.lg] + (stars ? ' · <span style="color:#ffd84d;letter-spacing:1px">' + stS + '</span>' : '') + '</p>' + (pk.k1 ? '<p class="hint" style="margin:6px 0 0;display:flex;align-items:center;gap:6px">Trikot <i class="pksw" style="background:' + pk.k1 + '"></i><i class="pksw" style="background:' + (pk.k2 || pk.k1) + '"></i></p>' : '') + '</div></div>';
+      h += '<div class="pksel">' + (crestImg(pk.n, 64) || crestSvg(pk.c1 || '#ffd84d', pk.c2 || '#12356f', 1, crestL(pk.n), 64)) + '<div class="grow"><p class="title" style="margin:0">' + esc(pk.n) + '</p><p class="hint" style="margin:2px 0 0">' + LN[pk.lg] + (stars ? ' · <span style="color:#ffd84d;letter-spacing:1px">' + stS + '</span>' : '') + '</p>' + (pk.k1 ? '<p class="hint" style="margin:6px 0 0;display:flex;align-items:center;gap:6px">Heim <i class="pksw" title="Hemd und Hose" style="background:linear-gradient(180deg,' + pk.k1 + ' 62%,' + (pk.k2 || pk.k1) + ' 62%)"></i>' + (pk.k3 ? '<span style="margin-left:8px">Auswärts</span> <i class="pksw" style="background:' + pk.k3 + '"></i>' : '') + '</p>' : '') + '</div></div>';
       if (saved && ui.packAsk) h += '<p class="hint" style="margin:0">Der vorhandene Spielstand wird überschrieben.</p><button class="big warn" data-a="packnew">Ja, mit ' + esc(sName(pk.n)) + ' neu beginnen</button>';
       else h += '<button class="big" data-a="' + (saved ? 'packask' : 'packnew') + '">Mit ' + esc(pk.n) + ' starten</button>';
     } else h += '<p class="hint" style="margin:0;text-align:center">Tippe einen Verein an.</p>';
@@ -2580,7 +2580,7 @@ function clampN(v, a, b) { return Math.max(a, Math.min(b, v)); }
 function custData() {
   if (CDC.t === custTxt) return CDC.d;
   CDC.t = custTxt; CDC.d = null;
-  if (custTxt) { try { var D = FM.parseData(custTxt); if (D.clubs) { var L = D.lg.map(function (g) { return (g || []).map(function (c) { return c.n; }); }); CDC.d = { n: D.clubs, cty: D.cty || '', lgn: D.lgn || null, L: L, star: D.star ? D.star.n : '', C: D.lg.map(function (g, li) { return (g || []).map(function (c) { return { n: c.n, lg: li, c1: c.c1, c2: c.c2, st: c.st, k1: c.k1, k2: c.k2 }; }); }) }; } } catch (e) { } }
+  if (custTxt) { try { var D = FM.parseData(custTxt); if (D.clubs) { var L = D.lg.map(function (g) { return (g || []).map(function (c) { return c.n; }); }); CDC.d = { n: D.clubs, cty: D.cty || '', lgn: D.lgn || null, L: L, star: D.star ? D.star.n : '', C: D.lg.map(function (g, li) { return (g || []).map(function (c) { return { n: c.n, lg: li, c1: c.c1, c2: c.c2, st: c.st, k1: c.k1, k2: c.k2, k3: c.k3 }; }); }) }; } } catch (e) { } }
   return CDC.d;
 }
 var TPIC = {};

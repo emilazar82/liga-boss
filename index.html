@@ -491,7 +491,7 @@ td.tn{white-space:nowrap}td.tn .rk{display:inline-block;width:24px;text-align:ri
 .draw .dt .crest{margin:0;flex:none}
 .acard .crest,.fin .crest,.board .crest{margin:0}
 .trr .nm .crest,.fx .crest{margin:0 6px 0 0;vertical-align:-5px}
-.pklg{display:flex;gap:6px}.pklg button{flex:1;font:700 13px/1 inherit;font-family:inherit;padding:11px 4px;background:#0b3a36;color:#9fe0d6;border:2px solid #1f6b60;cursor:pointer}.pklg button.on{background:#ffd84d;color:#062f2c;border-color:#7a4b00}
+.pklg{display:flex;gap:6px}.pklg.c5{gap:4px}.pklg.c5 button{min-width:0;font-size:11px;padding:10px 1px;letter-spacing:-.2px}.pklg button{flex:1;font:700 13px/1 inherit;font-family:inherit;padding:11px 4px;background:#0b3a36;color:#9fe0d6;border:2px solid #1f6b60;cursor:pointer}.pklg button.on{background:#ffd84d;color:#062f2c;border-color:#7a4b00}
 .pkgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.pkc{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 4px 8px;background:#0b3a36;border:2px solid #1f6b60;color:#f4efe1;font:600 11px/1.2 inherit;font-family:inherit;cursor:pointer;min-height:92px}.pkc span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-align:center}.pkc.on{border-color:#ffd84d;background:#11524b;box-shadow:0 0 0 2px #ffd84d inset}
 .pksel{display:flex;gap:12px;align-items:center;padding:12px;background:#062f2c;border:2px solid #ffd84d}.pksw{display:inline-block;width:18px;height:18px;border:2px solid #f4efe1}
 .heropic{display:block;width:100%;height:auto;image-rendering:pixelated;border:3px solid #052826;box-shadow:0 4px 0 rgba(0,0,0,.35);margin:0 0 10px}
@@ -2483,7 +2483,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '15.11. 02:15';
+var BUILD = '15.11. 03:00';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -2575,6 +2575,7 @@ function vStart() {
     all.forEach(function (c) { if (c.n === (ui.packPick || CD.star || (saved ? FM.userTeam(saved.state).n : ''))) pk = c; });
     var lgSel = ui.packLg != null ? ui.packLg : (pk ? pk.lg : 0); if (!CD.C[lgSel] || !CD.C[lgSel].length) lgSel = 0;
     h += '<div class="panel" style="display:flex;flex-direction:column;gap:12px">' + acard('m_sign', 'Neue Laufbahn', 'Wähle Liga und Verein · ' + FM.CTY[CD.cty || 'de'].n + ' · ' + CD.n + ' Vereine').replace('class="acard"', 'class="acard" style="margin:0"');
+    h += ctyChips();
     h += '<div class="pklg">'; LN.forEach(function (nm, i) { if (CD.C[i] && CD.C[i].length) h += '<button class="' + (i === lgSel ? 'on' : '') + '" data-a="pklg" data-val="' + i + '">' + nm + '</button>'; }); h += '</div>';
     h += '<div class="pkgrid">';
     CD.C[lgSel].forEach(function (c) { h += '<button class="pkc' + (pk && pk.n === c.n ? ' on' : '') + '" data-a="pkclub" data-val="' + esc(c.n) + '" aria-label="' + esc(c.n) + '">' + (crestImg(c.n, 44) || crestSvg(c.c1 || '#ffd84d', c.c2 || '#12356f', 1, crestL(c.n), 44)) + '<span>' + esc(c.n) + '</span></button>'; });
@@ -2587,7 +2588,7 @@ function vStart() {
     } else h += '<p class="hint" style="margin:0;text-align:center">Tippe einen Verein an.</p>';
     h += '</div>';
   }
-  h += '<div class="panel" style="display:flex;flex-direction:column;gap:12px">' + acard('m_sign', CD ? 'Erfundene Vereine' : 'Neue Laufbahn', 'Start in der ' + FM.CTY[ui.cty || 'de'].lgs.slice(-1)[0] + ' · Saison 26/27').replace('class="acard"', 'class="acard" style="margin:0"') + '<div><p class="lbl" style="margin:0 0 6px">LAND</p><div class="pklg">' + Object.keys(FM.CTY).map(function (k) { return '<button class="' + ((ui.cty || 'de') === k ? 'on' : '') + '" data-a="cty" data-val="' + k + '">' + FM.CTY[k].n + '</button>'; }).join('') + '</div><p class="hint" style="margin:6px 0 0">' + FM.CTY[ui.cty || 'de'].size.map(function (n, i) { return FM.CTY[ui.cty || 'de'].lgs[i] + ' (' + n + ')'; }).join(' · ') + '</p></div><div class="field"><label for="club">Vereinsname</label><input id="club" maxlength="24" value="' + esc((CD && [].concat.apply([], CD.L).indexOf(ui.name) >= 0) || !ui.name || Object.keys(FM.CTY).some(function (k) { return FM.CTY[k].club === ui.name; }) ? FM.CTY[ui.cty || 'de'].club : ui.name) + '" autocomplete="off"></div>';
+  h += '<div class="panel" style="display:flex;flex-direction:column;gap:12px">' + acard('m_sign', CD ? 'Erfundene Vereine' : 'Neue Laufbahn', 'Start in der ' + FM.CTY[ui.cty || 'de'].lgs.slice(-1)[0] + ' · Saison 26/27').replace('class="acard"', 'class="acard" style="margin:0"') + '<div><p class="lbl" style="margin:0 0 6px">LAND</p><div class="pklg c5">' + Object.keys(FM.CTY).map(function (k) { return '<button class="' + ((ui.cty || 'de') === k ? 'on' : '') + '" data-a="cty" data-val="' + k + '">' + FM.CTY[k].n + '</button>'; }).join('') + '</div><p class="hint" style="margin:6px 0 0">' + FM.CTY[ui.cty || 'de'].size.map(function (n, i) { return FM.CTY[ui.cty || 'de'].lgs[i] + ' (' + n + ')'; }).join(' · ') + '</p></div><div class="field"><label for="club">Vereinsname</label><input id="club" maxlength="24" value="' + esc((CD && [].concat.apply([], CD.L).indexOf(ui.name) >= 0) || !ui.name || Object.keys(FM.CTY).some(function (k) { return FM.CTY[k].club === ui.name; }) ? FM.CTY[ui.cty || 'de'].club : ui.name) + '" autocomplete="off"></div>';
   if (saved && ui.confirm) h += '<p class="hint" style="margin:0">Der vorhandene Spielstand wird überschrieben.</p><button class="big warn" data-a="new">Ja, neu beginnen</button>';
   else h += '<button class="big sec2" data-a="' + (saved ? 'asknew' : 'new') + '">Neues Spiel</button>';
   h += '</div>';
@@ -2814,7 +2815,32 @@ function crestSvg(c1, c2, pat, L, sz) {
   return '<svg class="crest" width="' + sz + '" height="' + Math.round(sz * 15 / 14) + '" viewBox="-1 -1 14 15" shape-rendering="crispEdges" aria-hidden="true"><g fill="#0b1622">' + o + '</g><g fill="' + c1 + '">' + f + '</g><g fill="' + c2 + '">' + p + '</g><rect x="0" y="0" width="12" height="1" fill="rgba(255,255,255,.35)"/><text x="6.6" y="9.1" text-anchor="middle" font-family="\'Press Start 2P\',monospace" font-size="6" fill="#0b1622">' + L + '</text><text x="6" y="8.5" text-anchor="middle" font-family="\'Press Start 2P\',monospace" font-size="6" fill="#fff">' + L + '</text></svg>';
 }
 var CRESTS = {}; try { CRESTS = JSON.parse(localStorage.getItem('ligaboss-crests') || '{}') || {}; } catch (e6) { CRESTS = {}; }
-function saveCrests() { try { localStorage.setItem('ligaboss-crests', JSON.stringify(CRESTS)); return true; } catch (e) { return false; } }
+var CDB = null, cdbT = null;
+function cdbPut(done) { if (!CDB) return; try { var tx = CDB.transaction('kv', 'readwrite'); tx.objectStore('kv').put(CRESTS, 'crests'); if (done) tx.oncomplete = done; } catch (e) { } }
+function saveCrests() {
+  if (CDB) { clearTimeout(cdbT); cdbT = setTimeout(function () { cdbT = null; cdbPut(); }, 400); return true; }
+  try { localStorage.setItem('ligaboss-crests', JSON.stringify(CRESTS)); return true; } catch (e) { return false; }
+}
+(function () {
+  try {
+    var rq = indexedDB.open('ligaboss', 1);
+    rq.onupgradeneeded = function () { rq.result.createObjectStore('kv'); };
+    rq.onsuccess = function () {
+      var db = rq.result;
+      try {
+        var g = db.transaction('kv').objectStore('kv').get('crests');
+        g.onsuccess = function () {
+          var o = g.result, had = Object.keys(CRESTS).length, k;
+          if (o && typeof o === 'object') { for (k in CRESTS) if (!o[k]) o[k] = CRESTS[k]; CRESTS = o; }
+          CDB = db;
+          if (had) cdbPut(function () { try { localStorage.removeItem('ligaboss-crests'); } catch (e) { } });
+          if (o && typeof ui !== 'undefined' && typeof render === 'function' && (ui.view === 'start' || ui.view === 'menu' || ui.view === 'custom')) render();
+        };
+      } catch (e) { }
+    };
+  } catch (e) { }
+  try { window.addEventListener('pagehide', function () { if (cdbT) { clearTimeout(cdbT); cdbT = null; cdbPut(); } }); } catch (e2) { }
+})();
 function normName(n) { var x = String(n || '').toLowerCase(); try { x = x.normalize('NFKD').replace(/[\u0300-\u036f]/g, ''); } catch (e) { } return x.replace(/ß/g, 'ss').replace(/[^a-z0-9]/g, ''); }
 var CGEN = { fc: 1, sv: 1, sc: 1, vfl: 1, vfb: 1, tsg: 1, sg: 1, tsv: 1, msv: 1, spvgg: 1, dsc: 1, fsv: 1, rb: 1, logo: 1, footylogos: 1, png: 1, jpg: 1, jpeg: 1, webp: 1, club: 1, sport: 1 };
 function crestTokens(n) { var x = String(n || '').toLowerCase(); try { x = x.normalize('NFKD').replace(/[̀-ͯ]/g, ''); } catch (e) { } return x.replace(/ß/g, 'ss').split(/[^a-z0-9]+/).filter(function (t) { return t; }); }
@@ -4374,14 +4400,20 @@ function vDraw() {
   return h + '<button class="big" data-a="drawdone">Zurück ins Büro</button>';
 }
 var custTxt = ''; try { custTxt = localStorage.getItem('ligaboss-custom') || ''; } catch (e5) { }
+var custAll = {}; try { custAll = JSON.parse(localStorage.getItem('ligaboss-customs') || '{}') || {}; } catch (e7) { custAll = {}; }
+function custKeep() { var d = custData(); if (d && custTxt) custAll[d.cty || 'de'] = custTxt; try { localStorage.setItem('ligaboss-customs', JSON.stringify(custAll)); } catch (e) { } }
+function custCtys() { return Object.keys(FM.CTY).filter(function (k) { return custAll[k]; }); }
+function ctyChips() { var d = custData(), ks = custCtys(), on = d ? (d.cty || 'de') : ''; if (ks.length < 2) return ''; return '<div class="pklg' + (ks.length > 3 ? ' c5' : '') + '">' + ks.map(function (k) { return '<button class="' + (k === on ? 'on' : '') + '" data-a="pkcty" data-val="' + k + '">' + FM.CTY[k].n + '</button>'; }).join('') + '</div>'; }
 function custRead() { var ta = document.getElementById('custTa'); if (ta) custTxt = ta.value; try { localStorage.setItem('ligaboss-custom', custTxt); } catch (e) { } return custTxt; }
 function vCustom() {
   var st = state || (saved ? saved.state : null), h = '<div class="hdr"><button class="back" data-a="go" data-v="' + (state ? 'options' : 'start') + '">‹ Zurück</button><div class="title grow">EIGENE DATEN</div></div>';
   h += '<div class="panel"><p class="lbl">KOMPLETTPAKET</p><p class="hint" style="margin:0 0 8px">Eine ZIP-Datei mit Datensatz (Textdatei) und Wappen-Bildern. Das Spiel liest beides in einem Schritt ein.</p><label class="big sm flab">Paket (ZIP) wählen<input type="file" accept=".zip,application/zip" data-f="pack" hidden></label>';
   if (ui.packRep) h += '<div class="crep" style="margin-top:8px">' + ui.packRep + '</div>';
   if (ui.pack) {
+    var CDv = custData(), LNv = FM.CTY[(CDv && CDv.cty) || 'de'].lgs.map(function (x, i) { return (CDv && CDv.lgn && CDv.lgn[i]) || x; });
+    h += '<div style="margin-top:10px">' + ctyChips() + '</div>';
     h += '<p class="hint" style="margin:10px 0 6px">Welchen Verein übernimmst du?</p><select id="packSel" style="width:100%;font:inherit;font-size:16px;padding:10px;background:#0b3a36;color:#f4efe1;border:2px solid #2f8f7e">';
-    ui.pack.forEach(function (L, i) { h += '<optgroup label="' + ['1. Liga', '2. Liga', 'Regionalliga'][i] + '">'; L.forEach(function (n) { h += '<option' + (n === ui.packPick ? ' selected' : '') + '>' + esc(n) + '</option>'; }); h += '</optgroup>'; });
+    ui.pack.forEach(function (L, i) { h += '<optgroup label="' + esc(LNv[i] || '') + '">'; L.forEach(function (n) { h += '<option' + (n === ui.packPick ? ' selected' : '') + '>' + esc(n) + '</option>'; }); h += '</optgroup>'; });
     h += '</select><div class="row" style="margin-top:8px"><button class="big sm" data-a="packnew">Neues Spiel starten</button></div>' + (saved || state ? '<p class="hint" style="margin:8px 0 0;color:#ff9a8f">Der vorhandene Spielstand wird überschrieben.</p>' : '');
   }
   h += '</div>';
@@ -4706,6 +4738,7 @@ app.addEventListener('click', function (ev) {
   }
   if (a === 'packask') { var pq = document.getElementById('packSel'); if (pq) ui.packPick = pq.value; ui.packAsk = true; return render(); }
   if (a === 'cty') { var ci = document.getElementById('club'); if (ci) ui.name = ci.value; ui.cty = b.getAttribute('data-val'); ui.confirm = false; return render(); }
+  if (a === 'pkcty') { custKeep(); var kc = b.getAttribute('data-val'); if (custAll[kc]) { custTxt = custAll[kc]; try { localStorage.setItem('ligaboss-custom', custTxt); } catch (e8) { } var dd = custData(); ui.packPick = (dd && dd.star) || ''; ui.packLg = dd && !dd.star ? 0 : null; ui.packAsk = false; if (ui.pack) ui.pack = dd ? dd.L : null; } return render(); }
   if (a === 'pklg') { ui.packLg = +b.getAttribute('data-val'); ui.packAsk = false; return render(); }
   if (a === 'pkclub') { ui.packPick = b.getAttribute('data-val'); ui.packLg = null; ui.packAsk = false; return render(); }
   if (a === 'packnew') {
@@ -4713,6 +4746,7 @@ app.addEventListener('click', function (ev) {
     if (!pick) return;
     custTxt = custTxt.split('\n').map(function (ln) { var m = /^(\s*VEREIN)\*?(\s*:\s*)(.*)$/i.exec(ln); if (!m) return ln; return m[1] + (normName(m[3].split('|')[0]) === pick ? '*' : '') + m[2] + m[3]; }).join('\n');
     try { localStorage.setItem('ligaboss-custom', custTxt); } catch (e5) { }
+    custKeep();
     var D5 = FM.parseData(custTxt); if (!D5.clubs) { ui.packRep = custReport(D5); return render(); }
     var g5 = FM.newGameCustom(D5, ui.name || 'FC Lechstadt 07'); state = g5.state; state.coach = coachIn(); ui.name = FM.userTeam(state).n; ui.lg = FM.userTeam(state).lg; ui.pack = null; ui.packAsk = false; ui.packPick = ''; ui.packRep = ''; ui.custNew = false; ui.custRep = ''; persist(); return go('opening');
   }
@@ -4764,14 +4798,20 @@ app.addEventListener('change', function (ev) {
   if (f === 'pack') {
     toast('Paket wird gelesen …');
     zipImages(file, function (list) {
-      var tx = list.filter(function (x) { return /\.txt$/i.test(x.name); })[0], imgs = list.filter(function (x) { return !/\.txt$/i.test(x.name); });
-      if (!tx) { ui.pack = null; ui.packRep = '<p class="bad">In der ZIP-Datei steckt keine Textdatei mit dem Datensatz.</p>'; return render(); }
-      tx.blob.text().then(function (t) {
-        custTxt = String(t || '').slice(0, 400000); try { localStorage.setItem('ligaboss-custom', custTxt); } catch (e) { }
-        var D = FM.parseData(custTxt); if (!D.clubs) { ui.pack = null; ui.packRep = custReport(D); return render(); }
-        var L = D.lg.map(function (g) { return (g || []).map(function (c) { return c.n; }); }), names = [].concat.apply([], L), hit = 0, miss = [], k = 0;
+      var txs = list.filter(function (x) { return /\.txt$/i.test(x.name) && !/liesmich/i.test(x.name); }), imgs = list.filter(function (x) { return !/\.txt$/i.test(x.name); });
+      if (!txs.length) { ui.pack = null; ui.packRep = '<p class="bad">In der ZIP-Datei steckt keine Textdatei mit dem Datensatz.</p>'; return render(); }
+      Promise.all(txs.map(function (x) { return x.blob.text(); })).then(function (ts) {
+        var good = [], bad = null;
+        ts.forEach(function (t) { t = String(t || '').slice(0, 400000); var Dx = FM.parseData(t); if (Dx.clubs) good.push({ t: t, D: Dx, k: Dx.cty || 'de' }); else if (!bad) bad = Dx; });
+        if (!good.length) { ui.pack = null; ui.packRep = custReport(bad); return render(); }
+        var cur = custData(), ck = cur ? (cur.cty || 'de') : 'de', act = good.filter(function (g) { return g.k === ck; })[0] || good.filter(function (g) { return g.k === 'de'; })[0] || good[0];
+        good.forEach(function (g) { custAll[g.k] = g.t; });
+        custTxt = act.t; try { localStorage.setItem('ligaboss-custom', custTxt); } catch (e) { }
+        try { localStorage.setItem('ligaboss-customs', JSON.stringify(custAll)); } catch (e2) { }
+        var D = act.D, L = D.lg.map(function (g) { return (g || []).map(function (c) { return c.n; }); }), names = [], nc = 0, np = 0, hit = 0, miss = [], k = 0;
+        good.forEach(function (g) { nc += g.D.clubs; np += g.D.players; g.D.lg.forEach(function (lg) { (lg || []).forEach(function (c) { names.push(c.n); }); }); });
         (function next() {
-          if (k >= imgs.length) { ui.pack = L; ui.packPick = D.star ? D.star.n : (state ? FM.userTeam(state).n : ''); ui.packRep = '<p class="ok">' + D.clubs + ' Vereine und ' + D.players + ' Spieler gelesen, ' + hit + ' Wappen zugeordnet.</p>' + (miss.length ? '<p class="bad">Nicht zugeordnet: ' + miss.slice(0, 8).map(esc).join(', ') + (miss.length > 8 ? ' …' : '') + '</p>' : ''); render(); toast('Paket eingelesen.'); return window.scrollTo(0, 0); }
+          if (k >= imgs.length) { ui.pack = L; ui.packLg = null; ui.packPick = D.star ? D.star.n : (state ? FM.userTeam(state).n : ''); ui.packRep = '<p class="ok">' + (good.length > 1 ? good.length + ' Länder (' + good.map(function (g) { return FM.CTY[g.k].n; }).join(', ') + '): ' : '') + nc + ' Vereine und ' + np + ' Spieler gelesen, ' + hit + ' Wappen zugeordnet.</p>' + (good.length > 1 ? '<p>Land und Verein wählst du hier oder auf dem Startbildschirm.</p>' : '') + (miss.length ? '<p class="bad">Nicht zugeordnet: ' + miss.slice(0, 8).map(esc).join(', ') + (miss.length > 8 ? ' …' : '') + '</p>' : ''); render(); toast('Paket eingelesen.'); return window.scrollTo(0, 0); }
           var q = imgs[k++], nm = crestMatch(q.name, names);
           if (!nm) { miss.push(q.name); return next(); }
           crestAdd(q.blob, nm, function (ok) { if (ok) hit++; else miss.push(q.name); setTimeout(next, 0); });

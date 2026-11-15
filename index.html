@@ -1200,7 +1200,8 @@ function rival(state) {
 }
 function setRival(state, id) { var u = state.teams[state.uid], t = state.teams[id]; if (!t || t.id === u.id || t.lg !== u.lg) return 'Der Rivale muss in deiner Liga spielen.'; (state.rv || (state.rv = {}))[u.n] = t.n; delete state.rv['~' + u.n]; return ''; }
 function isDerby(state, oppId) { var r = rival(state); return !!r && r.id === oppId; }
-var MEOWN = [['car1', 'Gebrauchtwagen', 8000, 30, 1, 'Auto'], ['car2', 'Sportcoupé', 60000, 150, 2, 'Auto'], ['car3', 'Luxuslimousine', 180000, 400, 3, 'Auto'], ['home1', 'Eigentumswohnung', 150000, 200, 2, 'Wohnen'], ['home2', 'Haus mit Garten', 450000, 500, 3, 'Wohnen'], ['home3', 'Villa am See', 1500000, 1500, 5, 'Wohnen'], ['watch', 'Schweizer Uhr', 25000, 0, 1, 'Luxus'], ['boat', 'Segelyacht', 600000, 900, 4, 'Luxus']];
+var MEOWN = [['car1', 'Gebrauchtwagen', 8000, 30, 1, 'Auto'], ['car2', 'Sportcoupé', 60000, 150, 2, 'Auto'], ['car3', 'Luxuslimousine', 180000, 400, 3, 'Auto'], ['home1', 'Eigentumswohnung', 150000, 200, 2, 'Wohnen'], ['home2', 'Haus mit Garten', 450000, 500, 3, 'Wohnen'], ['home3', 'Villa am See', 1500000, 1500, 5, 'Wohnen'], ['home4', 'Ferienhaus am Meer', 900000, 800, 4, 'Wohnen'], ['home5', 'Penthouse in der Stadt', 2500000, 2000, 5, 'Wohnen'], ['moto', 'Motorrad', 20000, 40, 1, 'Auto'], ['car4', 'Oldtimer', 350000, 300, 3, 'Auto'], ['suit', 'Maßanzüge', 12000, 0, 1, 'Luxus'], ['watch', 'Schweizer Uhr', 25000, 0, 1, 'Luxus'], ['golf', 'Golfclub-Mitgliedschaft', 40000, 150, 2, 'Luxus'], ['wine', 'Weinkeller', 80000, 50, 2, 'Luxus'], ['piano', 'Konzertflügel', 90000, 0, 2, 'Luxus'], ['horse', 'Rennpferd', 250000, 600, 3, 'Luxus'], ['art', 'Kunstsammlung', 400000, 100, 3, 'Luxus'], ['boat', 'Segelyacht', 600000, 900, 4, 'Luxus'], ['jet', 'Privatjet', 6000000, 8000, 6, 'Luxus'], ['isle', 'Privatinsel', 15000000, 5000, 8, 'Luxus']];
+MEOWN.sort(function (a, b) { var g = ['Auto', 'Wohnen', 'Luxus']; return g.indexOf(a[5]) - g.indexOf(b[5]) || a[2] - b[2]; });
 var MEEDU = [['rhet', 'Rhetorikkurs', 15000, 'Gespräche in der Kabine gelingen öfter: Schlichten, Vertrösten und Überreden.'], ['nego', 'Verhandlungsseminar', 30000, 'Nachfordern bei Transfers und Nachverhandeln mit Sponsoren gelingen öfter.'], ['lic', 'Fußballlehrer-Lizenz', 60000, 'Ruf +5 sofort, dazu 10 % mehr Gehalt in jedem künftigen Vertrag.']];
 function meWage(state, t) {
   t = t || state.teams[state.uid]; var lg = Math.min(2, t.lg), M = state.me;
@@ -3061,7 +3062,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '15.11. 19:58';
+var BUILD = '15.11. 20:05';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -4001,6 +4002,7 @@ function popScan() {
   });
   if (ui.sum && (ui.sum.meBon || ui.sum.meNew) && !ui.sum._mp) { ui.sum._mp = 1; var mb = ui.sum.meBon || [], mn = ui.sum.meNew; if (mb.length || mn) pop('Dein Konto', (mb.length ? mb.map(function (x) { return esc(x[0]) + ': <b>+' + money(x[1]) + '</b>'; }).join('<br>') : '') + (mn ? (mb.length ? '<br>' : '') + 'Dein Vertrag wurde bis Ende Saison ' + seasonLabel(mn.until) + ' verlängert' + (mn.wage > mn.old ? ', das Gehalt steigt auf <b>' + money(mn.wage) + '</b> pro Woche.' : '.') : ''), [['OK'], ['Zu Privat', function () { go('private'); }]], 'm_bag'); }
   if (R && R.meSold && !R._ms) { R._ms = 1; pop('Privat', 'Dein Konto war im Minus. <b>' + esc(R.meSold) + '</b> wurde mit Verlust verkauft.', [['OK'], ['Zu Privat', function () { go('private'); }]], 'm_bag'); }
+  if (state.board && state.board.conf < 30) pk.bw = 1;
   var DLp = FM.deadline(state);
   if (DLp && !first) { DLp.seen = 1; var dls = FM.dlList(state); if (dls.length || DLp.bids) pop('Letzter Transfertag', 'Heute schließt das Transferfenster, auf dem Markt herrscht Hektik.' + (dls.length ? '<br><b>Schnäppchen</b> (nur heute zu diesem Preis):<br>' + dls.map(function (x) { return esc(x.p.n) + ' (' + FM.POS[x.p.p] + ', ' + x.p.a + ', Stärke ' + x.p.s + ') · ' + esc(x.club ? x.club.n : 'vereinslos') + ' · <b>' + money(x.fee) + '</b>'; }).join('<br>') : '') + (DLp.bids ? '<br>Außerdem ' + (DLp.bids === 1 ? 'liegt ein Angebot' : 'liegen ' + DLp.bids + ' Angebote') + ' für deine Spieler vor, deutlich über Marktwert.' : ''), dls.length ? [['Zu den Schnäppchen', function () { ui.tg = 'buy'; ui.tt = 'scout'; ui.sel = -1; go('transfers'); }], ['Später']] : [['OK']], 'm_sign'); }
   var PD = FM.pressDue(state), pck = 'pc' + state.season + '_' + state.round;
@@ -4016,7 +4018,7 @@ function popScan() {
     if (!few) (R.broken || []).forEach(function (n) { pop('Kabine', '<b>' + esc(n) + '</b> ist sauer: Die versprochene Einsatzzeit blieb aus.', null, 'm_talk'); });
     if (R.derby && R.derby.w && !few) pop(R.derby.w > 0 ? 'Derbysieg!' : 'Derbypleite', R.derby.w > 0 ? '<b>' + R.derby.gf + ':' + R.derby.ga + '</b> gegen ' + esc(R.derby.n) + '. Die Fans feiern, die Mannschaft ist obenauf, der Vorstand strahlt.' : '<b>' + R.derby.gf + ':' + R.derby.ga + '</b> gegen ' + esc(R.derby.n) + '. Die Fans sind bedient, die Stimmung in der Kabine leidet, der Vorstand ist verärgert.', null, 'pokal');
     if (R.scouted && R.scouted.length && !few) pop('Scouting', 'Der Scoutbericht liegt vor: ' + R.scouted.map(esc).join(', ') + '.', [['OK'], ['Zu den Berichten', function () { ui.tt = 'scout'; ui.sel = -1; go('transfers'); }]], 'm_sign');
-    if (R.boardNote) pop('Vorstand', esc(R.boardNote), null, 'm_sign'); else if (R.conf !== undefined && R.conf < 25) pop('Vorstand', 'In der Führungsetage wächst die Unruhe. Dein Stuhl wackelt.', [['OK'], ['Zum Vorstand', function () { go('board'); }]], 'm_sign');
+    if (R.boardNote) pop('Vorstand', esc(R.boardNote), null, 'm_sign'); else if (R.conf !== undefined && R.conf < 25 && !old.bw) pop('Vorstand', 'In der Führungsetage wächst die Unruhe. Dein Stuhl wackelt.', [['OK'], ['Zum Vorstand', function () { go('board'); }]], 'm_sign');
     if (R.boardCup && !few) pop('Vorstand', esc(R.boardCup), null, 'm_sign');
   }
   state.pk = pk;
@@ -5149,7 +5151,7 @@ function vPrivate() {
     FM.MEOWN.forEach(function (o) {
       var has = M.own.indexOf(o[0]) >= 0;
       if (o[5] !== grp) { grp = o[5]; h += '<p class="lbl" style="margin:0">' + grp.toUpperCase() + '</p>'; }
-      h += '<div class="panel"' + (has ? ' style="border-color:#c9a227"' : '') + '><div class="row" style="align-items:center;gap:10px"><b class="grow" style="font-size:16px">' + (has ? '★ ' : '') + o[1] + '</b><b>' + tk(o[2]) + '</b></div>' + fx([['Ruf +' + o[4], 1]].concat(o[3] ? [['Unterhalt ' + num(o[3]) + ' pro Woche', 0]] : [])) + (has ? '<button class="big sec2 sm" style="margin-top:10px" data-a="mesell" data-val="' + o[0] + '">Verkaufen · ' + tk(Math.round(o[2] * 0.7)) + '</button>' : '<button class="big sec2 sm" style="margin-top:10px" data-a="mebuy" data-val="' + o[0] + '"' + (M.cash < o[2] ? ' disabled' : '') + '>' + (M.cash < o[2] ? 'Noch ' + tk(o[2] - M.cash) + ' sparen' : 'Kaufen') + '</button>') + '</div>';
+      h += '<div class="panel"' + (has ? ' style="border-color:#c9a227"' : '') + '><div class="row" style="align-items:center;gap:10px">' + (PICS['me_' + o[0]] ? '<img class="pc" alt="" aria-hidden="true" src="' + PICS['me_' + o[0]] + '" width="96" height="72" style="width:96px;height:72px;image-rendering:pixelated;border:2px solid #052826;flex:none' + (has ? '' : ';filter:saturate(.55) brightness(.85)') + '">' : '') + '<div class="grow"><b style="font-size:16px;display:block">' + (has ? '★ ' : '') + o[1] + '</b><b>' + tk(o[2]) + '</b></div></div>' + fx([['Ruf +' + o[4], 1]].concat(o[3] ? [['Unterhalt ' + num(o[3]) + ' pro Woche', 0]] : [])) + (has ? '<button class="big sec2 sm" style="margin-top:10px" data-a="mesell" data-val="' + o[0] + '">Verkaufen · ' + tk(Math.round(o[2] * 0.7)) + '</button>' : '<button class="big sec2 sm" style="margin-top:10px" data-a="mebuy" data-val="' + o[0] + '"' + (M.cash < o[2] ? ' disabled' : '') + '>' + (M.cash < o[2] ? 'Noch ' + tk(o[2] - M.cash) + ' sparen' : 'Kaufen') + '</button>') + '</div>';
     });
   } else {
     h += '<p class="hint" style="margin:0">Ein Abschluss bleibt für die ganze Laufbahn, auch nach einem Vereinswechsel.</p>';

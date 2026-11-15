@@ -2696,7 +2696,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '15.11. 11:15';
+var BUILD = '15.11. 11:55';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -3142,7 +3142,7 @@ function upPills(list) {
 function vTraining() {
   var u = FM.userTeam(state), T = state.tr, tab = ui.trt === 'camp' && !state.camp ? 'plan' : ui.trt, h = sub('Training') + heroPic('hero_training', 'Spieler laufen auf dem Trainingsplatz um Hütchen, der Trainer schaut zu', 80);
   h += '';
-  var tabs = [['plan', 'Wochenplan'], ['ind', 'Einzeln'], ['staff', 'Trainerstab']]; if (state.camp) tabs.push(['camp', 'Trainingslager']);
+  var tabs = [['plan', 'Wochenplan'], ['ind', 'Einzeln'], ['staff', 'Trainerstab']]; if (state.camp) tabs.push(['camp', 'Camp']);
   h += tabBar('trt', tabs, tab);
   if (tab === 'plan') {
     var I = FM.planInfo(state), g = '<div class="wk">';

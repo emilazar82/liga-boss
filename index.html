@@ -2824,7 +2824,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '15.11. 16:45';
+var BUILD = '15.11. 17:00';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -2905,9 +2905,10 @@ function render() {
   var v = ui.view; if (state && ui.lg >= FM.NL(state)) ui.lg = FM.userTeam(state).lg;
   app.innerHTML = curFix(v === 'start' ? vStart() : v === 'menu' ? vMenu() : v === 'lineup' ? vLineup() : v === 'tactics' ? vTactics() : v === 'training' ? vTraining() : v === 'finance' ? vFinance() : v === 'sponsors' ? vSponsors() : v === 'stadium' ? vStadium() : v === 'contracts' ? vContracts() : v === 'cup' ? vCup() : v === 'toto' ? vToto() : v === 'hall' ? vHall() : v === 'youth' ? vYouth() : v === 'board' ? vBoard() : v === 'sacked' ? vSacked() : v === 'transfers' ? vTransfers() : v === 'table' ? vTable() : v === 'fixtures' ? vFixtures() : v === 'stats' ? vStats() : v === 'options' ? vOptions() : v === 'match' ? vMatch() : v === 'results' ? vResults() : v === 'season' ? vSeason() : v === 'talk' ? vTalk() : v === 'tour' ? vTour() : v === 'opening' ? vOpening() : v === 'summer' ? vSummer() : v === 'fame' ? vFame() : v === 'draw' ? vDraw() : v === 'custom' ? vCustom() : '');
   if (state && v === 'menu' && ui.pops.length) app.insertAdjacentHTML('beforeend', curFix(popHtml()));
+  if (state && v === 'menu' && NEWV && !ui.pops.length) app.insertAdjacentHTML('afterbegin', updHtml());
 }
 function vStart() {
-  var h = '<div class="logo" style="margin-top:14px">LIGA-BOSS</div><p class="hint" style="text-align:center;margin:0 0 4px">Retro-Fußballmanager · Arbeitstitel · Stand ' + BUILD + '</p>';
+  var h = '<div class="logo" style="margin-top:14px">LIGA-BOSS</div><p class="hint" style="text-align:center;margin:0 0 4px">Retro-Fußballmanager · Arbeitstitel · Stand ' + BUILD + '</p>' + updHtml();
   h += '<img class="heropic" alt="Fußballstadion bei Flutlicht mit vollen Rängen" src="' + PICS.flutlicht + '" width="192" height="144">';
   h += '<p style="text-align:center;margin:0 0 6px"><button class="mini" data-a="prefmus" style="padding:6px 12px">♪ Musik ' + (prefs.snd && prefs.mus !== false ? 'an' : 'aus') + '</button></p>';
   if (saved) {
@@ -3804,6 +3805,9 @@ function vTour() {
   h += '<div class="row">' + (pg ? '<button class="big sec2 sm" data-a="tourpg" data-val="' + (pg - 1) + '">Zurück</button>' : '') + (pg < 7 ? '<button class="big sm" data-a="tourpg" data-val="' + (pg + 1) + '">Weiter</button>' : '') + '</div>';
   return h + (pg < 7 ? '<button class="big sec2 sm" data-a="tourpg" data-val="7">Direkt zur Bilanz</button>' : done);
 }
+var NEWV = '';
+function updHtml() { return NEWV ? '<div class="panel" style="border-color:var(--yellow)"><p style="margin:0 0 8px;font-size:15px"><b>Neue Version verfügbar</b> (Stand ' + esc(NEWV) + '). Dein Spielstand bleibt erhalten.</p><button class="big" data-a="update">Neue Version laden</button></div>' : ''; }
+function updCheck() { try { if (!/^https?:/.test(location.protocol)) return; fetch('version.json?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { if (j && j.b && j.b !== BUILD) { NEWV = j.b; if (ui.view === 'start' || ui.view === 'menu') render(); } }).catch(function () { }); } catch (e) { } }
 function EUN() { return FM.euName(state || (saved ? saved.state : null)); }
 var EUFL = { de: 'GER', en: 'ENG', es: 'ESP', fr: 'FRA', it: 'ITA' };
 function euGrpHtml(T, gi) {
@@ -5164,6 +5168,7 @@ app.addEventListener('click', function (ev) {
   if (a === 'totoauto') { FM.totoAuto(state); ui.dirty = true; var yta = window.scrollY; render(); window.scrollTo(0, yta); return toast('Favoriten getippt. Du kannst einzelne Tipps noch ändern.'); }
   if (a === 'prefsnd') { prefs.snd = +b.getAttribute('data-val') === 1; if (!prefs.snd) { SND.crowd(false); SND.music(false); } try { localStorage.setItem('ligaboss-prefs', JSON.stringify(prefs)); } catch (e7) { } render(); if (prefs.snd) { SND.unlock(); setTimeout(function () { SND.whistle(1); }, 500); } return; }
   if (a === 'preftour') { prefs.tour = +b.getAttribute('data-val') === 1; try { localStorage.setItem('ligaboss-prefs', JSON.stringify(prefs)); } catch (e7) { } return render(); }
+  if (a === 'update') { persist(); location.replace(location.pathname + '?v=' + Date.now()); return; }
   if (a === 'pop') { var PP = ui.pops.shift(), PB = PP && PP.b[+b.getAttribute('data-val')]; if (PB && PB[1]) PB[1](); persist(); return render(); }
   if (a === 'tourpg') { ui.tpg = +b.getAttribute('data-val'); render(); return window.scrollTo(0, 0); }
   if (a === 'tourdone') { ui.tpg = 0; ui.match = null; persist(); return go(state.open ? 'opening' : state.pre ? 'summer' : 'menu'); }
@@ -5397,6 +5402,7 @@ app.addEventListener('change', function (ev) {
 loadLocal();
 if (saved) ui.name = FM.userTeam(saved.state).n;
 render();
+updCheck(); try { document.addEventListener('visibilitychange', function () { if (!document.hidden) updCheck(); }); } catch (eU) { }
 initCloud();
 })();
 </script>

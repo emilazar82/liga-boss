@@ -941,11 +941,12 @@ function moveCountry(state, k) {
   var names = {}; names[oldC] = (state.euq || []).map(function (id) { return state.teams[id] ? state.teams[id].n : ''; });
   Object.keys(state.fgq || {}).forEach(function (c) { names[c] = state.fgq[c].map(function (ix) { return state.fgn[c][ix] ? state.fgn[c][ix].n : ''; }); });
   delete W[j.c];
-  var ns = newGameCustom(D, j.n, W).state;
+  var ns = newGameCustom(D, j.n, W, true).state;
   ns.season = state.season; ns.y0 = state.y0; ns.wk0 = state.wk0; ns.fg0 = state.season;
   ['coach', 'rep', 'hist', 'car', 'ntj', 'tourH', 'tdone', 'eun'].forEach(function (f) { if (state[f] !== undefined) ns[f] = state[f]; });
   if (state.tour && !state.tour.on) ns.tour = state.tour;
-  if (state.me) { ns.me = state.me; meNewClub(ns); }
+  if (state.me) { ns.me = state.me; meNewClub(ns); ns.me.c0 = meNet(ns); ns.me.put = 0; }
+  if (state.rv) ns.rv = state.rv; if (state.nto) ns.nto = state.nto;
   ns.euq = (names[j.c] || []).map(function (n) { var t = ns.teams.filter(function (x) { return x.lg === 0 && x.n === n; })[0]; return t ? t.id : -1; }).filter(function (id) { return id >= 0; });
   ns.fgq = fgnTop(ns, false);
   Object.keys(ns.fgn).forEach(function (c) { var want = (names[c] || []).map(function (n) { var r = -1; ns.fgn[c].forEach(function (o, i) { if (o.n === n && !o.l) r = i; }); return r; }).filter(function (i) { return i >= 0; }), nq = c === 'de' ? 4 : 3; ns.fgq[c].forEach(function (i) { if (want.length < nq && want.indexOf(i) < 0) want.push(i); }); ns.fgq[c] = want.slice(0, nq); });
@@ -1230,7 +1231,7 @@ function meWage(state, t) {
 }
 function me(state) {
   if (!state.me) state.me = { cash: 0, own: [], edu: [], wage: 0, until: 0, log: [] };
-  if (state.me.c0 === undefined) state.me.c0 = state.cash;
+  if (state.me.c0 === undefined) state.me.c0 = meNet(state);
   var M = state.me, un = state.tour && state.tour.on && state.tour.cu !== undefined ? M.club : state.teams[state.uid].n;
   if (!M.wage || M.club !== un || (M.fresh && state.round === 0 && !state.live)) { var keepF = M.club === un && M.fresh; M.club = un; if (M.sh && M.sh.club !== un) meShareOut(state); M.wage = meWage(state); if (!keepF) { M.until = state.season + 1; M.ask = -1; M.fresh = 1; } }
   if (M.fresh && state.round > 0) delete M.fresh;
@@ -1246,7 +1247,7 @@ function meWeek(state) {
   return out;
 }
 function meBonus(state, sum, okGoal, cw, ew) {
-  var M = me(state), w = M.wage, list = [];
+  var M = me(state), part = M.js === state.season && M.jr > 0 ? clamp(1 - M.jr / RN(state), 0.05, 1) : 1, w = Math.round(M.wage * part), list = [];
   if (sum.lg === 0 && sum.place === 1) list.push(['Meisterprämie', 20 * w]);
   if (sum.move === 'auf') list.push(['Aufstiegsprämie', 20 * w]);
   if (cw) list.push(['Pokalprämie', 10 * w]);
@@ -1254,20 +1255,21 @@ function meBonus(state, sum, okGoal, cw, ew) {
   if (okGoal) list.push(['Saisonziel erreicht', 6 * w]);
   var tot = 0; list.forEach(function (x) { tot += x[1]; M.cash += x[1]; meLog(state, x[0], x[1]); });
   state.cash -= tot; sum.meBon = list; sum.meTot = tot;
-  if (!state.sacked && M.until <= state.season) { var nw = Math.max(meWage(state), M.wage); sum.meNew = { old: M.wage, wage: nw, until: state.season + 2 }; M.wage = nw; M.until = state.season + 2; }
+  var mk = meWage(state); if (!state.sacked && (M.until <= state.season || mk > M.wage)) { var nw = Math.max(mk, M.wage); sum.meNew = { old: M.wage, wage: nw, until: Math.max(M.until, state.season + 2) }; M.wage = nw; M.until = sum.meNew.until; }
 }
 function meSack(state) {
   var M = me(state); if (state.quit || M.sev === state.season + '_' + state.round) return 0;
-  var weeks = Math.max(0, (M.until - state.season) * RN(state) + RN(state) - state.round), a = Math.round(weeks * M.wage * 0.5);
+  var weeks = Math.min(RN(state), Math.max(0, (M.until - state.season) * RN(state) + RN(state) - state.round)), a = Math.round(weeks * M.wage * 0.5);
   M.sev = state.season + '_' + state.round; M.cash += a; if (a) meLog(state, 'Abfindung', a); M.lastSev = a; return a;
 }
-function meNewClub(state) { if (state.me && state.me.sh && state.me.sh.club !== state.teams[state.uid].n) meShareOut(state); var M = me(state), un0 = state.teams[state.uid].n, ck = state.cty || 'de';
+function meNewClub(state) { if (state.me) { state.me.js = state.season; state.me.jr = state.round; } if (state.me && state.me.sh && state.me.sh.club !== state.teams[state.uid].n) meShareOut(state); var M = me(state), un0 = state.teams[state.uid].n, ck = state.cty || 'de';
   (M.inv || []).forEach(function (e, i) { if (e.k === ck && e.n === un0 && !M.sh) { M.sh = { club: un0, pct: e.pct, paid: e.paid }; M.inv.splice(i, 1); } }); M.shk = ck; M.club = state.teams[state.uid].n; M.wage = meWage(state); M.until = state.season + 1; M.ask = -1; M.fresh = 1; }
 function meAsk(state) {
   var M = me(state); if (M.ask === state.season) return 'In dieser Saison hast du schon verhandelt.';
   if (state.round < 6) return 'Der Vorstand will erst ein paar Spieltage sehen (ab dem 7. Spieltag).';
+  if (M.wage >= meWage(state) * 1.25) return 'Mehr ist beim Vorstand nicht zu holen: Du verdienst schon deutlich über dem, was der Verein üblicherweise zahlt.';
   M.ask = state.season; var pch = clamp((state.board.conf - 35) / 60, 0.05, 0.85) + (meHas(state, 'nego') ? 0.1 : 0);
-  if (Math.random() < pch) { M.wage = Math.round(M.wage * 1.12 / 50) * 50; M.until = Math.max(M.until, state.season + 2); return 'ok'; }
+  if (Math.random() < pch) { M.wage = Math.round(M.wage * 1.12 / 50) * 50; return 'ok'; }
   state.board.conf = clamp(state.board.conf - 4, 1, 100); return 'Der Vorstand lehnt ab und ist über die Forderung verstimmt (Vertrauen −4).';
 }
 function meBuy(state, k) {
@@ -1286,31 +1288,51 @@ function meLearn(state, k) {
   if (M.cash < o[2]) return 'Dafür reicht dein Privatvermögen nicht.';
   M.cash -= o[2]; M.edu.push(k); if (k === 'lic') repAdd(state, 5); meLog(state, o[1], -o[2]); return '';
 }
+function meNet(state) {
+  var x = state.cash + (state.fin && state.fin.dep ? depSum(state) : 0) - (state.loan || 0); (state.debts || []).forEach(function (d) { x -= d.amt || 0; }); if (state.inv) x -= state.inv.amt || 0; return x;
+}
+function lgBaseVal(lg, kk) { return [25000000, 6000000, 1200000][Math.min(2, lg)] * (0.6 + 0.9 * kk); }
+function lgShift(lg, kk, pl, nn, prog, lowest) {
+  var b = lgBaseVal(lg, kk); if (!pl || prog < 0.3) return b;
+  if (lg > 0 && pl <= 3) return b + (lgBaseVal(lg - 1, 0.1) - b) * 0.8 * prog;
+  if (lg < lowest && pl > nn - 3) return b + (lgBaseVal(lg + 1, 0.9) - b) * 0.8 * prog;
+  return b;
+}
+function seasProg(state) { return state.over ? 1 : clamp(state.round / Math.max(1, RN(state)), 0, 1); }
 function clubVal(state, t) {
   var u = state.teams[state.uid]; t = t || u; var lg = Math.min(2, t.lg), kk = clamp((tStr(t) - [74, 62, 50][lg]) / [16, 10, 10][lg], 0, 1);
   var cap = t.id === u.id ? state.stad.cap : Math.round([30000, 15000, 8000][lg] * (1 + 1.5 * kk));
-  return Math.round(([25000000, 6000000, 1200000][lg] * (0.6 + 0.9 * kk) + cap * 150 + (t.id === u.id ? Math.max(0, state.cash) * 0.5 : 0)) / 10000) * 10000;
+  var tb = t.lg < 7 ? table(state, t.lg) : [], pl = 0; tb.forEach(function (x, i) { if (x.id === t.id) pl = i + 1; });
+  var base = lgShift(lg, kk, t.st && (t.st.s + t.st.u + t.st.n) ? pl : 0, tb.length, seasProg(state), NL(state) - 1);
+  var v = base + cap * 150 + (t.id === u.id ? meNet(state) * 0.5 : 0);
+  return Math.round(Math.max(v, base * 0.3) / 10000) * 10000;
 }
+function shareWin(state) { return !state.over && state.round <= RN(state) - 7; }
+var SHAREWIN = 'Anteile werden nur bis sieben Spieltage vor Saisonende gehandelt. Nach dem Saisonwechsel geht es wieder.';
 function mePct(state) { var M = state.me, u = state.teams[state.uid]; return M && M.sh && M.sh.club === u.n ? M.sh.pct : 0; }
 function meOwner(state) { return mePct(state) >= 100; }
 function meShareBuy(state, all) {
   var M = me(state), u = state.teams[state.uid], pct = mePct(state), V = clubVal(state);
   if (state.tour && state.tour.on) return 'Während des Turniers geht das nicht.';
   if (pct >= 100) return 'Der Verein gehört dir schon ganz.';
+  if (!shareWin(state)) return SHAREWIN;
   var step = all ? 100 - pct : pct >= 45 ? 100 - pct : 5, cost = Math.round(V * step / 100);
   if (M.cash < cost) return 'Dafür reicht dein Privatvermögen nicht (' + Math.round(cost / 1000) + ' T nötig).';
-  M.cash -= cost; M.sh = { club: u.n, pct: pct + step, paid: ((M.sh && M.sh.club === u.n && M.sh.paid) || 0) + cost }; M.shk = state.cty || 'de'; meLog(state, step + ' % Anteile an ' + u.n, -cost);
+  M.cash -= cost; var w0 = M.sh && M.sh.club === u.n && M.sh.bs === state.season ? M.sh.bw || 0 : pct * RN(state); M.sh = { club: u.n, pct: pct + step, paid: ((M.sh && M.sh.club === u.n && M.sh.paid) || 0) + cost, bs: state.season, bw: w0 + step * (RN(state) - state.round) }; M.shk = state.cty || 'de'; meLog(state, step + ' % Anteile an ' + u.n, -cost);
   if (M.sh.pct >= 100) { state.board.conf = Math.max(state.board.conf, 60); news(state, (state.coach || 'Der Trainer') + ' übernimmt ' + u.n + ' komplett und ist jetzt Besitzer und Trainer in einer Person.'); }
   return '';
 }
 function meShareSell(state) {
   var M = me(state), pct = mePct(state); if (!pct) return 'Du hältst keine Anteile.';
+  if (!shareWin(state)) return SHAREWIN;
+  if (state.live) return 'Während eines Spiels geht das nicht.';
   var step = pct >= 100 ? 100 : 5, got = Math.round(clubVal(state) * step / 100 * 0.9);
   M.cash += got; M.sh.pct = pct - step; if (M.sh.pct <= 0) delete M.sh; meLog(state, step + ' % Anteile verkauft', got); return '';
 }
 function meShareOut(state) {
   var M = state.me; if (!M || !M.sh) return 0; if (!M.inv) M.inv = [];
-  var k = M.shk || state.cty || 'de', sh = M.sh, pct = Math.floor(sh.pct / 10) * 10, rest = sh.pct - pct, t = null; state.teams.forEach(function (x) { if (x.n === sh.club) t = x; });
+  var k = M.shk || state.cty || 'de', sh = M.sh, pct = Math.floor(sh.pct / 10) * 10, rest = sh.pct - pct, t = null; state.teams.forEach(function (x) { if (x.n === sh.club && x.lg < 7) t = x; });
+  if (sh.debt) { var cut = Math.min(sh.pct, Math.ceil(sh.debt / Math.max(1, (t ? clubVal(state, t) : 1e6)) * 10) * 10); if (cut > 0) { meLog(state, cut + ' % an ' + sh.club + ' gehen an die Gläubiger', 0); sh.pct -= cut; pct = Math.floor(sh.pct / 10) * 10; rest = sh.pct - pct; } if (sh.pct <= 0) { delete M.sh; delete M.shk; return 0; } }
   var val = t ? clubVal(state, t) : (sh.paid || 0) / Math.max(1, sh.pct) * 100, got = 0; delete M.sh; delete M.shk;
   if (pct > 0 && M.inv.length < 6 && !M.inv.some(function (x) { return x.k === k && x.n === sh.club; })) { M.inv.push({ k: k, n: sh.club, pct: pct, paid: Math.round((sh.paid || 0) * pct / sh.pct), hist: [], s0: state.season }); meLog(state, pct + ' % an ' + sh.club + ' bleiben als Beteiligung', 0); }
   else rest = sh.pct;
@@ -1321,6 +1343,9 @@ function meStep(state) { return Math.max(50000, Math.round(Math.abs(state.cash) 
 function meDraw(state) {
   if (!meOwner(state)) return 'Geld entnehmen kann nur der Besitzer.';
   var M = me(state), a = meStep(state); if (state.cash - a < 0) return 'So viel ist nicht in der Vereinskasse.';
+  if (state.live) return 'Während eines Spiels geht das nicht.';
+  if ((state.loan || 0) > 0 || (state.debts || []).length) return 'Solange der Verein Kredit oder offene Raten hat, kannst du nichts entnehmen.';
+  if (state.cash - a < (M.c0 === undefined ? 0 : M.c0) * 0.8) return 'Entnehmen kannst du nur, was der Verein in dieser Saison erwirtschaftet hat – die Kasse darf nicht unter 80 % des Stands zu Saisonbeginn fallen.';
   if (M.dr === state.season + '_' + state.round) return 'Pro Spieltag ist nur eine Entnahme möglich.';
   M.dr = state.season + '_' + state.round; state.cash -= a; state.led.inv += a; var net = Math.round(a * 0.75); M.cash += net; meLog(state, 'Entnahme aus dem Verein', net);
   state.teams[state.uid].pl.forEach(function (p) { moAdd(p, -0.1); }); return '';
@@ -1328,7 +1353,7 @@ function meDraw(state) {
 function mePut(state) {
   var M = me(state); if (!mePct(state)) return 'Geld einlegen können nur Anteilseigner.';
   var a = Math.min(meStep(state), Math.floor(M.cash / 10000) * 10000); if (a < 10000) return 'Dafür reicht dein Privatvermögen nicht.';
-  M.cash -= a; state.cash += a; state.led.spon += a; meLog(state, 'Einlage in den Verein', -a); state.board.conf = clamp(state.board.conf + 2, 1, 100); return '';
+  M.cash -= a; state.cash += a; state.led.spon += a; M.put = (M.put || 0) + a; meLog(state, 'Einlage in den Verein', -a); if (M.pr !== state.season + '_' + state.round) { M.pr = state.season + '_' + state.round; state.board.conf = clamp(state.board.conf + 2, 1, 100); } return '';
 }
 function meBuyList(state) {
   var u = state.teams[state.uid], low = NL(state) - 1;
@@ -1345,18 +1370,19 @@ function meBuyClub(state, id) {
   news(state, (state.coach || 'Der Trainer') + ' kauft ' + n + ' und setzt sich selbst auf die Bank.'); return '';
 }
 function meSeason(state, sum) {
-  var M = me(state), pct = mePct(state); if (!pct) { M.c0 = state.cash; return; }
-  var profit = state.cash - (M.c0 === undefined ? state.cash : M.c0);
-  if (profit > 0) { var dv = Math.round(profit * pct / 100 * 0.3); state.cash -= dv; M.cash += dv; meLog(state, 'Gewinnanteil (' + pct + ' %)', dv); sum.meDiv = dv; }
+  var M = me(state), pct = mePct(state), net = meNet(state); if (!pct) { M.c0 = net; M.put = 0; return; }
+  var profit = Math.min(net - (M.c0 === undefined ? net : M.c0) - (M.put || 0), Math.max(0, state.cash));
+  var effP = M.sh && M.sh.bs === state.season ? (M.sh.bw || 0) / RN(state) : pct;
+  if (profit > 0 && effP > 0) { var dv = Math.round(profit * effP / 100 * 0.3); state.cash -= dv; M.cash += dv; meLog(state, 'Gewinnanteil (' + pct + ' %)', dv); sum.meDiv = dv; }
   if (pct >= 100 && state.cash < 0) { var cov = Math.min(Math.max(0, M.cash), -state.cash); if (cov > 0) { M.cash -= cov; state.cash += cov; meLog(state, 'Verlust des Vereins gedeckt', -cov); sum.meCov = cov; } }
-  M.c0 = state.cash;
+  M.c0 = meNet(state); M.put = 0;
 }
-function valGen(lg, str) { lg = Math.min(2, lg); var kk = clamp((str - [74, 62, 50][lg]) / [16, 10, 10][lg], 0, 1); return Math.round(([25000000, 6000000, 1200000][lg] * (0.6 + 0.9 * kk) + [30000, 15000, 8000][lg] * (1 + 1.5 * kk) * 150) / 10000) * 10000; }
+function valGen(lg, str, pl, nn, prog, lowest) { lg = Math.min(2, lg); var kk = clamp((str - [74, 62, 50][lg]) / [16, 10, 10][lg], 0, 1); return Math.round((lgShift(lg, kk, pl || 0, nn || 0, prog || 0, lowest === undefined ? 2 : lowest) + [30000, 15000, 8000][lg] * (1 + 1.5 * kk) * 150) / 10000) * 10000; }
 function invFind(state, k, n) {
   var home = state.cty || 'de', r = null;
   if (k === home) { state.teams.forEach(function (t) { if (!r && t.n === n && t.lg < 7) { var tb = table(state, t.lg), pl = 0; tb.forEach(function (x, i) { if (x.id === t.id) pl = i + 1; }); r = { home: true, t: t, id: t.id, lg: t.lg, str: Math.round(tStr(t)), pl: pl, nn: tb.length, lgn: lgName(state, t.lg), val: clubVal(state, t), sp: t.st ? t.st.s + t.st.u + t.st.n : 0 }; } }); return r; }
   var F = state.fgn && state.fgn[k]; if (!F) return null;
-  F.forEach(function (o, i) { if (r || o.n !== n) return; var l = o.l || 0, tb = flTable(state, k, l), pl = 0, sp = 0; tb.forEach(function (x, j) { if (x.ix === i) { pl = j + 1; sp = x.sp; } }); r = { home: false, o: o, id: fgnId(state, k, i), lg: l, str: Math.round(o.st), pl: pl, nn: tb.length, lgn: fgnLgs(state, k)[l] || '', val: valGen(l, o.st), sp: sp }; });
+  F.forEach(function (o, i) { if (r || o.n !== n) return; var l = o.l || 0, tb = flTable(state, k, l), pl = 0, sp = 0; tb.forEach(function (x, j) { if (x.ix === i) { pl = j + 1; sp = x.sp; } }); r = { home: false, o: o, id: fgnId(state, k, i), lg: l, str: Math.round(o.st), pl: pl, nn: tb.length, lgn: fgnLgs(state, k)[l] || '', val: valGen(l, o.st, sp ? pl : 0, tb.length, seasProg(state), fgnTiers(k).length - 1), sp: sp }; });
   return r;
 }
 function invInfo(state) {
@@ -1365,7 +1391,7 @@ function invInfo(state) {
 function invList(state, k, l) {
   var home = state.cty || 'de', u = state.teams[state.uid], out = [];
   if (k === home) state.teams.forEach(function (t) { if (t.lg === l && t.id !== u.id) out.push({ n: t.n, str: Math.round(tStr(t)), val: clubVal(state, t), id: t.id }); });
-  else (state.fgn && state.fgn[k] || []).forEach(function (o, i) { if ((o.l || 0) === l) out.push({ n: o.n, str: Math.round(o.st), val: valGen(l, o.st), id: fgnId(state, k, i) }); });
+  else (state.fgn && state.fgn[k] || []).forEach(function (o, i) { if ((o.l || 0) === l) { var ff = invFind(state, k, o.n); out.push({ n: o.n, str: Math.round(o.st), val: ff ? ff.val : valGen(l, o.st), id: fgnId(state, k, i) }); } });
   var tbn = {}; if (k === home) table(state, l).forEach(function (x, i) { tbn[x.n] = i + 1; }); else if (state.fgn && state.fgn[k]) flTable(state, k, l).forEach(function (x, i) { tbn[x.n] = i + 1; });
   out.forEach(function (x) { x.pl = tbn[x.n] || 0; }); return out.sort(function (a, b) { return (a.pl || 99) - (b.pl || 99); });
 }
@@ -1373,25 +1399,28 @@ function invBuy(state, k, n) {
   var M = me(state), u = state.teams[state.uid]; if (!M.inv) M.inv = [];
   if (k === (state.cty || 'de') && n === u.n) return 'An deinem eigenen Verein kaufst du Anteile im Kasten darüber.';
   var f = invFind(state, k, n); if (!f) return 'Der Verein ist nicht zu finden.';
+  if (!shareWin(state)) return SHAREWIN;
   var e = null; M.inv.forEach(function (x) { if (x.k === k && x.n === n) e = x; });
   if (!e && M.inv.length >= 6) return 'Mehr als sechs Beteiligungen verwaltet deine Bank nicht.';
   if (e && e.pct >= 100) return 'Der Verein gehört dir schon ganz.';
   var cost = Math.round(f.val * 0.1 * 1.05); if (M.cash < cost) return 'Dafür reicht dein Privatvermögen nicht.';
-  M.cash -= cost; if (!e) { e = { k: k, n: n, pct: 0, paid: 0, hist: [], s0: state.season }; M.inv.push(e); } e.pct += 10; e.paid += cost; meLog(state, '10 % an ' + n, -cost); return '';
+  M.cash -= cost; if (!e) { e = { k: k, n: n, pct: 0, paid: 0, hist: [], s0: state.season }; M.inv.push(e); } var ew0 = e.bs === state.season ? e.bw || 0 : e.pct * RN(state); e.bs = state.season; e.bw = ew0 + 10 * (RN(state) - state.round); e.pct += 10; e.paid += cost; meLog(state, '10 % an ' + n, -cost); return '';
 }
 function invSell(state, idx) {
   var M = me(state), e = (M.inv || [])[idx]; if (!e) return 'Die Beteiligung gibt es nicht mehr.';
+  if (!shareWin(state)) return SHAREWIN;
   var f = invFind(state, e.k, e.n), got = Math.round((f ? f.val : e.paid / Math.max(1, e.pct) * 100) * 0.1 * 0.92);
-  M.cash += got; e.pct -= 10; e.paid = Math.round(e.paid * (e.pct / (e.pct + 10))); meLog(state, '10 % an ' + e.n + ' verkauft', got); if (e.pct <= 0) M.inv.splice(idx, 1); return '';
+  M.cash += got; e.pct -= 10; if (e.bs === state.season) e.bw = Math.round((e.bw || 0) * (e.pct / (e.pct + 10))); e.paid = Math.round(e.paid * (e.pct / (e.pct + 10))); meLog(state, '10 % an ' + e.n + ' verkauft', got); if (e.pct <= 0) M.inv.splice(idx, 1); return '';
 }
 function invBoost(state, idx) {
   var M = me(state), e = (M.inv || [])[idx]; if (!e) return 'Die Beteiligung gibt es nicht mehr.';
   if (e.pct < 50) return 'Geld zuschießen kann nur, wer die Mehrheit hält.';
-  if (e.bo === state.season) return 'In dieser Saison hast du schon Geld zugeschossen.';
+  if (!M.ibo) M.ibo = {}; if (e.bo === state.season || M.ibo[e.k + '|' + e.n] === state.season) return 'In dieser Saison hast du schon Geld zugeschossen.';
   var f = invFind(state, e.k, e.n); if (!f) return 'Der Verein ist nicht zu finden.';
+  if (f.str >= [90, 72, 60][Math.min(2, f.lg)] + 4) return 'Der Kader ist für diese Liga schon so stark, dass ein Zuschuss kaum noch etwas bewirkt.';
   var cost = Math.round(f.val * 0.1 / 10000) * 10000; if (M.cash < cost) return 'Dafür reicht dein Privatvermögen nicht.';
-  M.cash -= cost; e.bo = state.season; e.paid += cost; meLog(state, 'Zuschuss für ' + e.n, -cost);
-  if (f.home) { var xi = bestEleven(f.t); f.t.pl.forEach(function (p) { if (xi.indexOf(p.i) >= 0 && p.s < 95) addS(p, 1); }); } else { f.o.st = Math.min(96, f.o.st + 1); if (f.o.s0 !== undefined) f.o.s0 = f.o.st; }
+  M.cash -= cost; e.bo = state.season; M.ibo[e.k + '|' + e.n] = state.season; e.paid += cost; meLog(state, 'Zuschuss für ' + e.n, -cost);
+  if (f.home) { var xi = bestEleven(f.t); f.t.pl.forEach(function (p) { if (xi.indexOf(p.i) >= 0 && p.s < 95) addS(p, 2); }); } else { f.o.st = Math.min(96, f.o.st + 2); if (f.o.s0 !== undefined) f.o.s0 = f.o.st; }
   return '';
 }
 function invSeason(state, sum) {
@@ -1400,7 +1429,7 @@ function invSeason(state, sum) {
   M.inv.forEach(function (e) {
     var f = invFind(state, e.k, e.n); if (!f || !f.pl) return;
     var cupI = !f.home && state.fc2 ? fcInfo(state, e.k) : null, cupWin = !!(cupI && cupI.win === e.n);
-    var rate = 0.035 * (1.5 - f.pl / f.nn) + (f.pl === 1 ? 0.02 : 0) + (cupWin ? 0.015 : 0), dv = Math.round(f.val * e.pct / 100 * rate / 100) * 100;
+    var rate = 0.035 * (1.5 - f.pl / f.nn) + (f.pl === 1 ? 0.02 : 0) + (cupWin ? 0.015 : 0), effP = e.bs === state.season ? (e.bw || 0) / RN(state) : e.pct, dv = Math.round(f.val * effP / 100 * rate / 100) * 100;
     M.cash += dv; e.hist.unshift({ s: state.season, lg: f.lg, lgn: f.lgn, pl: f.pl, nn: f.nn, dv: dv, val: f.val, cup: cupWin ? 1 : 0 }); if (e.hist.length > 6) e.hist.length = 6;
     meLog(state, 'Ausschüttung ' + e.n, dv); sum.meInv.push({ n: e.n, pl: f.pl, lgn: f.lgn, dv: dv });
   });
@@ -1451,10 +1480,11 @@ function resign(state) {
   if (state.tour && state.tour.on) return 'Während des Turniers geht das nicht.';
   var u = state.teams[state.uid], weak = null, bs = 1e9;
   state.teams.forEach(function (t) { if (t.lg !== NL(state) - 1 || t.id === u.id) return; var x = tStr(t); if (x < bs) { bs = x; weak = t; } });
-  var c = state.teams.filter(function (t) { return t.id !== u.id && t.id !== weak.id && t.lg < 7 && jobNeed(state, t) <= state.rep - 8; });
+  var again = state.rq === state.season, us = tStr(u); state.rq = state.season;
+  var c = again ? [] : state.teams.filter(function (t) { return t.id !== u.id && t.id !== weak.id && t.lg < 7 && t.lg >= u.lg && tStr(t) <= us + 2 && jobNeed(state, t) <= state.rep - 8; });
   c = shuffle(c).sort(function (a, b) { return a.lg - b.lg; });
   var top = c.filter(function (t) { return t.lg <= u.lg; }), pickd = shuffle(top).slice(0, 2).concat(shuffle(c.filter(function (t) { return t.lg > u.lg; })).slice(0, 1));
-  repAdd(state, -4); state.quit = 1; state.sacked = true; state.jobs = pickd.map(function (t) { return t.id; }).concat([weak.id]).slice(0, 3); delete state.jobx;
+  repAdd(state, again ? -10 : -4); state.quit = 1; state.sacked = true; state.jobs = pickd.map(function (t) { return t.id; }).concat([weak.id]).slice(0, 3); delete state.jobx;
   news(state, (state.coach || 'Der Trainer') + ' bittet um Vertragsauflösung und verlässt ' + u.n + '.');
   return '';
 }
@@ -1563,7 +1593,7 @@ function setGoalBonus(state, on) {
 }
 function setIns(state, on) { state.fin.ins = on ? 1 : 0; return ''; }
 function deposit(state, k, amt) {
-  var D = DEPO[k]; if (!D || amt < 10000) return 'Mindestens 10.000 DM.';
+  amt = Math.round(+amt); var D = DEPO[k]; if (!D || !(amt >= 10000)) return 'Mindestens 10.000 DM.';
   if (state.cash < amt) return 'So viel ist nicht in der Kasse.';
   if (state.fin.dep.length >= 4) return 'Mehr als vier Festgelder führt die Bank nicht.';
   state.cash -= amt; state.fin.dep.push({ amt: amt, due: absWeek(state) + D[0], rate: D[1] }); return '';
@@ -1708,7 +1738,11 @@ function clubMeans(state, u) {
   state.big = kk; return kk;
 }
 function takeOver(state, tid) {
+  if (state.tour && state.tour.on) return '';
   var old = state.teams[state.uid]; delete old.hb;
+  var hole = Math.max(0, -meNet(state));
+  if (hole > 0) { if (state.me && state.me.sh && state.me.sh.club === old.n && state.me.sh.pct >= 50) state.me.sh.debt = hole; else if (hole > [1500000, 600000, 250000][Math.min(2, old.lg)]) { repAdd(state, -8); news(state, (state.coach || 'Der Trainer') + ' hinterlässt bei ' + old.n + ' einen Schuldenberg. Das spricht sich herum.'); } }
+  old.pl.filter(function (p) { return p.loan !== undefined; }).forEach(function (p) { var ow = state.teams[p.loan]; old.pl = old.pl.filter(function (x) { return x !== p; }); delete p.loan; delete p.c; delete p.w; if (ow && ow.id !== old.id) ow.pl.push(p); else old.pl.push(p); });
   if (tid === undefined) tid = (state.jobs && state.jobs.length ? state.jobs[0] : sackJobs(state)[0]);
   if (!state.jobs || state.jobs.indexOf(tid) < 0) { if (!state.sacked) return ''; tid = sackJobs(state)[0]; }
   var best = state.teams[tid];
@@ -1720,7 +1754,7 @@ function takeOver(state, tid) {
   u.fo = '4-4-2'; u.au = 1; u.ei = 1; u.pr = 1; u.ps = 1; u.tp = 1; u.ab = 0; u.md = 0; u.lu = bestEleven(u);
   state.cash = [1500000, 600000, 250000][u.lg]; state.loan = 0; state.stad = { cap: [30000, 15000, 8000][u.lg], price: PRICE[u.lg], build: null };
   state.sp = null; state.spo = makeOffers(u.lg); state.offers = []; state.neg = {}; state.led = newLedger();
-  clubMeans(state, u); state.talks = []; if (state.me) { meNewClub(state); state.me.c0 = state.cash; }
+  clubMeans(state, u); state.talks = []; if (state.me) { meNewClub(state); state.me.c0 = state.cash; state.me.put = 0; }
   state.youth = null; state.ads = null; state.merch = null; state.dk = { n: 0, set: state.round > 0 }; state.board = null; state.market = null; state.camp = null; state.toto = null; state.sacked = false; delete state.quit; state.jobs = []; state.fjobs = []; state.staff = null; state.scq = []; state.debts = []; state.fin = null; state.inv = null; state.fh = null; state.ph = null; delete old.coh; delete old.std;
   ensure(state); state.board.conf = 55; if (state.round === 0) state.nj = 1;
   state.spf = spFac(state); state.spo = makeOffers(u.lg, state.spf);
@@ -1764,7 +1798,7 @@ function extOffer(state, id, years) {
 function extend(state, id, years) {
   var p = findP(state.teams[state.uid], id);
   if (!p) return 'Spieler nicht gefunden.';
-  years = years || (p.a >= 33 ? 1 : 2);
+  years = clamp(Math.round(+years) || (p.a >= 33 ? 1 : 2), 1, 4);
   var O = extOffer(state, id, years); if (O.no) return O.no;
   if (state.cash < O.fee) return 'Dafür reicht die Kasse nicht.';
   state.cash -= O.fee; state.led.hand += O.fee; p.c += years; p.w = O.wage; delete p.sg; p.mo = clamp((p.mo || 6) + 1, 1, 10); return '';
@@ -1927,7 +1961,7 @@ function scoutTips(state) {
   return out;
 }
 function offer(state, id, fee, wage, years, opt) {
-  ensure(state); opt = opt || {};
+  ensure(state); opt = opt || {}; years = clamp(Math.round(+years) || 2, 1, 4); opt.b = clamp(Math.round(+opt.b) || 0, 0, 3); fee = Math.max(0, +fee || 0); wage = Math.max(0, +wage || 0);
   var u = state.teams[state.uid], T = findTarget(state, id), N = state.neg[id] || (state.neg[id] = { n: 0, block: -1 });
   if (T && T.club && T.club.lg >= 8) opt.rs = 0;
   if (!T) return { ok: false, msg: 'Der Spieler ist nicht mehr zu haben.', end: true };
@@ -2029,6 +2063,7 @@ function toClub(state, p, club) {
 function acceptOffer(state, k) {
   var u = state.teams[state.uid], o = state.offers[k]; if (!o) return 'Das Angebot gibt es nicht mehr.';
   var p = findP(u, o.i); if (!p) return 'Der Spieler ist nicht mehr im Kader.';
+  if (u.pl.length <= 15) return 'Mindestens 15 Spieler müssen im Kader bleiben.';
   if (posCount(u, p.p) <= MINPOS[p.p]) return 'Mindestens ' + MINPOS[p.p] + ' ' + POS[p.p] + '-Spieler müssen im Kader bleiben.';
   var c = team(state, o.c), cut = p.rs !== undefined && state.teams[p.rs] ? Math.round(o.fee * 0.2) : 0;
   if (!c) { state.offers.splice(k, 1); return 'Das Angebot gibt es nicht mehr.'; }
@@ -2071,6 +2106,7 @@ function sell(state, id) {
   var u = state.teams[state.uid], p = findP(u, id);
   if (!p) return 'Spieler nicht gefunden.';
   if (p.loan !== undefined) return 'Ein geliehener Spieler kann nicht verkauft werden.';
+  if (u.pl.length <= 15) return 'Mindestens 15 Spieler müssen im Kader bleiben.';
   if (posCount(u, p.p) <= MINPOS[p.p]) return 'Mindestens ' + MINPOS[p.p] + ' ' + POS[p.p] + '-Spieler müssen im Kader bleiben.';
   state.cash += sellPrice(p); state.led.trIn += sellPrice(p);
   u.pl = u.pl.filter(function (x) { return x.i !== id; });
@@ -2660,8 +2696,8 @@ function applyData(state, D) {
   state.market = state.market || []; ensure(state);
   return { clubs: n, note: note };
 }
-function newGameCustom(D, fallbackName, ext) {
-  var st = D.star, state = newGame(st ? st.n : fallbackName, D.cty), u = state.teams[state.uid];
+function newGameCustom(D, fallbackName, ext, keepRep) {
+  var ext0rep = !!keepRep, st = D.star, state = newGame(st ? st.n : fallbackName, D.cty), u = state.teams[state.uid];
   if (ext) { fgnInit(state, ext); state.fgq = null; state.eu = null; state.euq = null; }
   if (st && st.lg !== u.lg) {
     var sw = state.teams.filter(function (t) { return t.lg === st.lg; }).sort(function (a, b) { return b.id - a.id; })[0];
@@ -2676,6 +2712,8 @@ function newGameCustom(D, fallbackName, ext) {
   state.eu = null; state.euq = null; state.fgq = null; ensure(state);
   if (!state.sp) { state.spf = spFac(state); state.spo = makeOffers(state.teams[state.uid].lg, state.spf); }
   if (st) clubMeans(state, state.teams[state.uid]);
+  if (state.me) { state.me.c0 = meNet(state); state.me.put = 0; }
+  if (st && !ext0rep) state.rep = Math.max(state.rep || 0, [st.lg === 0 && jobNeed(state, state.teams[state.uid]) >= 80 ? 60 : 45, 32, 20][Math.min(2, state.teams[state.uid].lg)]);
   if (state.board) { state.board.goal = boardGoal(state); state.board.amb = 0; }
   return { state: state, res: r };
 }
@@ -3050,14 +3088,14 @@ function finishSeason(state) {
   u.pl.forEach(function (p) { p.c--; });
   sum.youth = 0;
   var mins = [2, 4, 4, 2];
-  for (var pos = 0; pos < 4; pos++) while (posCount(u, pos) < mins[pos]) { var yp = makePlayer(state.nid++, pos, [68, 56, 44][sum.lg], rnd(17, 19)); yp.c = 3; u.pl.push(yp); sum.youth++; }
+  for (var pos = 0; pos < 4; pos++) while (posCount(u, pos) < mins[pos]) { if (u.pl.length >= MAXSQUAD) { var wk = u.pl.filter(function (q) { return q.p !== pos && posCount(u, q.p) > mins[q.p] && q.loan === undefined; }).sort(function (a, b) { return a.s - b.s; })[0]; if (!wk) break; u.pl = u.pl.filter(function (q) { return q !== wk; }); u.lu = u.lu.filter(function (id) { return id !== wk.i; }); } var yp = makePlayer(state.nid++, pos, [68, 56, 44][sum.lg], rnd(17, 19)); yp.c = 3; u.pl.push(yp); sum.youth++; }
   while (u.pl.length < 14) { var yq = makePlayer(state.nid++, pick([1, 2, 3]), [68, 56, 44][sum.lg], rnd(17, 19)); yq.c = 3; u.pl.push(yq); sum.youth++; }
   u.pl.forEach(function (p) { p.mo = Math.round(((p.mo === undefined ? 6 : p.mo) + 6) * 5) / 10; });
   var B = state.board, okGoal = sum.place <= B.goal;
   sum.goalBonus = 0; if (state.fin.goal && okGoal) { sum.goalBonus = wageSum(state) * 8; state.cash -= sum.goalBonus; state.led.prem += sum.goalBonus; }
   state.fin.goal = 0; if (state.inv && state.inv.until <= state.season) state.inv = null;
   state.stad.fans = Math.round(clamp((state.stad.fans || 1) + (sum.move === 'auf' ? 0.05 : sum.move === 'ab' ? -0.08 : 0), 0.6, 1.5) * 1000) / 1000;
-  B.conf = Math.round(clamp(B.conf + (okGoal ? 10 : -(8 + 2 * (sum.place - B.goal))) + (sum.move === 'auf' ? 20 : sum.move === 'ab' ? -25 : 0), 0, 100));
+  B.conf = Math.round(clamp(B.conf + (okGoal ? 10 : -(8 + 2 * (sum.place - B.goal))) + (sum.move === 'auf' ? 20 : sum.move === 'ab' ? -25 : 0) + (state.eu && state.eu.won ? 25 : 0) + (state.cup && state.cup.won ? 12 : 0), 0, 100));
   if (meOwner(state)) B.conf = Math.max(B.conf, 30);
   if (B.conf <= 0) state.sacked = true;
   sum.boardBonus = 0; if (okGoal && !state.sacked) { sum.boardBonus = Math.round(GRANT[sum.lg] * (B.amb === 2 ? 0.3 : B.amb === 1 ? 0.05 : 0.15)); state.cash += sum.boardBonus; }
@@ -3209,7 +3247,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '15.11. 21:25';
+var BUILD = '15.11. 21:29';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }

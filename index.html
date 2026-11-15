@@ -2703,7 +2703,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '15.11. 13:00';
+var BUILD = '15.11. 13:30';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -4642,11 +4642,12 @@ function vCupResults() {
   var h = '<div class="hdr"><div class="title grow">' + (R.tour ? TNM() : R.eu ? EUN() : 'Pokal') + ' · ' + R.name + '</div></div>';
   if (R.tour) {
     if (mine && mine.length > 3) h += scoreCard(mine[0], mine[1], mine[2], mine[3], (R.grp ? (R.won ? 'SIEG' : R.draw ? 'UNENTSCHIEDEN' : 'NIEDERLAGE') + (R.grpEnd ? '<br>' + (R.grpOk ? 'VIERTELFINALE ERREICHT' : 'IN DER GRUPPE AUSGESCHIEDEN') : '') : R.won ? (R.final ? 'TITEL GEWONNEN!' : 'WEITER') : 'AUSGESCHIEDEN') + (m.pen ? ' · NACH ELFMETERSCHIESSEN' : ''));
-    h += cupPaper(R, m) + absentHtml() + '<p class="lbl" style="margin:0">ALLE SPIELE DER RUNDE</p><div class="list">';
+    h += '<button class="big" data-a="tournext">Weiter</button>' + cupPaper(R, m) + absentHtml() + '<p class="lbl" style="margin:0">ALLE SPIELE DER RUNDE</p><div class="list">';
     R.ties.forEach(function (x) { h += tieRow(x); });
     return h + '</div><p class="hint" style="margin:0">* nach Elfmeterschießen</p><button class="big" data-a="tournext">Weiter</button>';
   }
   if (mine && mine.length > 3) h += scoreCard(mine[0], mine[1], mine[2], mine[3], (R.grp ? (R.won ? 'SIEG' : R.draw ? 'UNENTSCHIEDEN' : 'NIEDERLAGE') + (R.grpEnd ? '<br>' + (R.grpOk ? 'VIERTELFINALE ERREICHT' : 'IN DER GRUPPE AUSGESCHIEDEN') : '') : R.won ? (R.final ? (R.eu ? 'TITEL GEWONNEN!' : 'POKALSIEG!') : 'WEITER') : 'AUSGESCHIEDEN') + (m.pen ? '<br>NACH ELFMETERSCHIESSEN' : ''));
+  h += (R.won && !R.final && !R.eu ? '<button class="big" data-a="go" data-v="draw">Zur Auslosung</button>' : '<button class="big" data-a="go" data-v="menu">Zurück ins Büro</button>');
   h += cupPaper(R, m);
   var px = []; if (R.att) { px.push([num(R.att) + ' Zuschauer', 1]); px.push(['Einnahmen +' + money(R.inc), 1]); } if (R.prize) px.push(['Prämie +' + money(R.prize), 1]);
   h += '<div class="panel">' + (px.length ? fx(px) + '<div style="height:10px"></div>' : '') + '<div class="rings" style="grid-template-columns:1fr">' + ring(1, state.cash < 0 ? '#ff9a8f' : '#6df09a', tk(state.cash), 'Kasse') + '</div></div>';
@@ -4898,6 +4899,7 @@ function vResults() {
   state.sched[u.lg][R.round].forEach(function (x) { if (x[0] === u.id || x[1] === u.id) mine = x; });
   var h = '<div class="hdr"><div class="title grow">' + (R.round + 1) + '. Spieltag</div></div>';
   if (mine) h += scoreCard(mine[0], mine[1], mine[2], mine[3]);
+  h += R.sacked ? '<button class="big warn" data-a="go" data-v="sacked">Weiter</button>' : state.over ? '<button class="big" data-a="season">Saisonabschluss</button>' : '<button class="big" data-a="go" data-v="menu">Zurück ins Büro</button>';
   if (mine) h += paper(R, mine, u);
   var prev = state.ph.length > 1 ? state.ph[state.ph.length - 2] : pl, mv = prev - pl;
   h += '<div class="panel"><div class="rings">' + ring((n - pl + 1) / n, pl <= state.board.goal ? '#6df09a' : '#ffd84d', pl + '.<tspan font-size="9" fill="' + (mv > 0 ? '#6df09a' : mv < 0 ? '#ff9a8f' : '#b5e3de') + '"> ' + (mv > 0 ? '▲' : mv < 0 ? '▼' : '') + '</tspan>', 'Tabellenplatz') + ring(1, state.cash < 0 ? '#ff9a8f' : '#6df09a', tk(state.cash), 'Kasse') + (R.conf !== undefined ? ring(R.conf / 100, R.conf < 25 ? '#ff9a8f' : R.conf < 50 ? '#ffd84d' : '#6df09a', Math.round(R.conf), 'Vertrauen') : '') + '</div>';

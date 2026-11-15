@@ -828,6 +828,13 @@ function fgnInit(state, ext) {
     state.fgn[c] = L;
   });
 }
+function fgnReal(state) { var r = false; Object.keys(state.fgn || {}).forEach(function (c) { state.fgn[c].forEach(function (o) { if (o.ps) r = true; }); }); return r; }
+function fgnApply(state, ext, eun) {
+  fgnInit(state, ext); state.fgq = null; state.fx = []; if (eun) state.eun = eun;
+  state.offers = (state.offers || []).filter(function (o) { return state.teams[o.c]; });
+  if (state.eu && state.eu.v === 2 && !state.eu.off && state.eu.r === 0 && !state.eu.hist.length && !state.live) { state.eu = null; ensure(state); return 2; }
+  state.fgq = fgnTop(state, false); return 1;
+}
 function fgnLgs(state, c) { return [0, 1].map(function (l) { return (state.fgl && state.fgl[c] && state.fgl[c][l]) || CTY[c].lgs[l]; }); }
 function fgnTop(state, noise) {
   var q = {}; if (noise) state.fgr = {};
@@ -2614,7 +2621,7 @@ function topScorers(state, lg, n) {
   all.sort(function (a, b) { return b.g - a.g; });
   return all.slice(0, n);
 }
-return { NTN: NTN, TOURST: TOURST, tourDue: tourDue, tourKind: tourKind, tourStart: tourStart, tourTie: tourTie, startTour: startTour, tourRest: tourRest, tourInfo: tourInfo, ntAnswer: ntAnswer, weeklyOffers: weeklyOffers, fgnLgs: fgnLgs, fgnClubs: fgnClubs, fgnOpen: fgnOpen, cupDate: cupDate, euName: euName, euGroups: euGroups, tCty: tCty, EUDRAW: EUDRAW, exportData: exportData, parseData: parseData, applyData: applyData, newGameCustom: newGameCustom, winText: winText, startFriendly: startFriendly, cupGoalR: cupGoalR, friendly: friendly, friendInfo: friendInfo, car: car, liveTalk: liveTalk, talkInfo: talkInfo, talkAnswer: talkAnswer, liveTact: liveTact, liveTactInfo: liveTactInfo, tableX: tableX, teamInfo: teamInfo, leagueStats: leagueStats, totoAuto: totoAuto, totoMult: totoMult, hallSquad: hallSquad, boardAmb: boardAmb, boardAsk: boardAsk, boardTalk: boardTalk, GRANT: GRANT, youthTrial: youthTrial, youthLoan: youthLoan, youthDrop: youthDrop, youthProj: youthProj, sponProj: sponProj, sponReneg: sponReneg, extOffer: extOffer, raise: raise, release: release, releaseCost: releaseCost, EXT: EXT, VIPB: VIPB, setOps: setOps, capEff: capEff, attExpect: attExpect, LGF: LGF, SECC: SECC, PITC: PITC, PPR: PPR, PPN: PPN, DEPO: DEPO, INVAMT: INVAMT, absWeek: absWeek, wageSum: wageSum, setPP: setPP, setGoalBonus: setGoalBonus, setIns: setIns, deposit: deposit, breakDep: breakDep, depSum: depSum, investor: investor, winOpen: winOpen, scoutCap: scoutCap, scoutFee: scoutFee, scoutAsk: scoutAsk, scoutTips: scoutTips, posCount: posCount, planInfo: planInfo, setPreset: setPreset, STAFFN: STAFFN, staffLv: staffLv, staffWage: staffWage, staffCost: staffCost, setStaff: setStaff, indMax: indMax, tactInfo: tactInfo, euTie: euTie, startEu: startEu, EUNAME: EUNAME, EUPRIZE: EUPRIZE, jobInfo: jobInfo, adSlots: adSlots, adSign: adSign, MN: MN, MUP: MUP, MCOST: MCOST, merchExpect: merchExpect, merchUpgrade: merchUpgrade, DKD: DKD, dkPreview: dkPreview, dkSell: dkSell, extraCost: extraCost, stadExtra: stadExtra, upkeepOf: upkeepOf, goalText: goalText, takeOver: takeOver, SESS: SESS, planFit: planFit, setPlan: setPlan, setInd: setInd, CAMP: CAMP, campCost: campCost, campGo: campGo, ATN: ATN, ATW: ATW, YCOST: YCOST, YUP: YUP, YMAX: YMAX, youthUpgrade: youthUpgrade, promote: promote, POS: POS, FORMATIONS: FORMATIONS, LEAGUES: LEAGUES, ROUNDS: ROUNDS, CTY: CTY, cfg: cfg, NL: NL, NT: NT, RN: RN, HN: HN, lgName: lgName, newGame: newGame, userTeam: userTeam, team: team, table: table, place: place, nextMatch: nextMatch, playRound: playRound, finishSeason: finishSeason, bestEleven: bestEleven, lineupValid: lineupValid, counts: counts, need: need, eff: eff, findP: findP, dateOf: dateOf, seasonLabel: seasonLabel, topScorers: topScorers, ensure: ensure, value: value, salary: salary, buy: buy, sell: sell, sellPrice: sellPrice, MAXSQUAD: MAXSQUAD, signSponsor: signSponsor, loanMax: loanMax, loanStep: loanStep, borrow: borrow, repay: repay, setPrice: setPrice, calEvents: calEvents, startBuild: startBuild, blocks: blocks, buildPlan: buildPlan, BMAX: BMAX, BUILDS: BUILDS, handgeld: handgeld, extend: extend, PRICE: PRICE, cupTie: cupTie, cupPlay: cupPlay, startRound: startRound, startCup: startCup, baseWage: baseWage, demand: demand, offer: offer, loanFee: loanFee, canLoanIn: canLoanIn, loanIn: loanIn, loanOut: loanOut, toggleList: toggleList, acceptOffer: acceptOffer, rejectOffer: rejectOffer, haggle: haggle, findTarget: findTarget, liveNext: liveNext, liveSub: liveSub, liveBench: liveBench, finishLive: finishLive, liveAuto: liveAuto, avail: avail, CUPNAME: CUPNAME, CUPPRIZE: CUPPRIZE, hallPlay: hallPlay, totoMatches: totoMatches, totoTip: totoTip, totoComplete: totoComplete, TOTOSTAKE: TOTOSTAKE, TOTOWIN: TOTOWIN };
+return { NTN: NTN, TOURST: TOURST, tourDue: tourDue, tourKind: tourKind, tourStart: tourStart, tourTie: tourTie, startTour: startTour, tourRest: tourRest, tourInfo: tourInfo, ntAnswer: ntAnswer, fgnReal: fgnReal, fgnApply: fgnApply, weeklyOffers: weeklyOffers, fgnLgs: fgnLgs, fgnClubs: fgnClubs, fgnOpen: fgnOpen, cupDate: cupDate, euName: euName, euGroups: euGroups, tCty: tCty, EUDRAW: EUDRAW, exportData: exportData, parseData: parseData, applyData: applyData, newGameCustom: newGameCustom, winText: winText, startFriendly: startFriendly, cupGoalR: cupGoalR, friendly: friendly, friendInfo: friendInfo, car: car, liveTalk: liveTalk, talkInfo: talkInfo, talkAnswer: talkAnswer, liveTact: liveTact, liveTactInfo: liveTactInfo, tableX: tableX, teamInfo: teamInfo, leagueStats: leagueStats, totoAuto: totoAuto, totoMult: totoMult, hallSquad: hallSquad, boardAmb: boardAmb, boardAsk: boardAsk, boardTalk: boardTalk, GRANT: GRANT, youthTrial: youthTrial, youthLoan: youthLoan, youthDrop: youthDrop, youthProj: youthProj, sponProj: sponProj, sponReneg: sponReneg, extOffer: extOffer, raise: raise, release: release, releaseCost: releaseCost, EXT: EXT, VIPB: VIPB, setOps: setOps, capEff: capEff, attExpect: attExpect, LGF: LGF, SECC: SECC, PITC: PITC, PPR: PPR, PPN: PPN, DEPO: DEPO, INVAMT: INVAMT, absWeek: absWeek, wageSum: wageSum, setPP: setPP, setGoalBonus: setGoalBonus, setIns: setIns, deposit: deposit, breakDep: breakDep, depSum: depSum, investor: investor, winOpen: winOpen, scoutCap: scoutCap, scoutFee: scoutFee, scoutAsk: scoutAsk, scoutTips: scoutTips, posCount: posCount, planInfo: planInfo, setPreset: setPreset, STAFFN: STAFFN, staffLv: staffLv, staffWage: staffWage, staffCost: staffCost, setStaff: setStaff, indMax: indMax, tactInfo: tactInfo, euTie: euTie, startEu: startEu, EUNAME: EUNAME, EUPRIZE: EUPRIZE, jobInfo: jobInfo, adSlots: adSlots, adSign: adSign, MN: MN, MUP: MUP, MCOST: MCOST, merchExpect: merchExpect, merchUpgrade: merchUpgrade, DKD: DKD, dkPreview: dkPreview, dkSell: dkSell, extraCost: extraCost, stadExtra: stadExtra, upkeepOf: upkeepOf, goalText: goalText, takeOver: takeOver, SESS: SESS, planFit: planFit, setPlan: setPlan, setInd: setInd, CAMP: CAMP, campCost: campCost, campGo: campGo, ATN: ATN, ATW: ATW, YCOST: YCOST, YUP: YUP, YMAX: YMAX, youthUpgrade: youthUpgrade, promote: promote, POS: POS, FORMATIONS: FORMATIONS, LEAGUES: LEAGUES, ROUNDS: ROUNDS, CTY: CTY, cfg: cfg, NL: NL, NT: NT, RN: RN, HN: HN, lgName: lgName, newGame: newGame, userTeam: userTeam, team: team, table: table, place: place, nextMatch: nextMatch, playRound: playRound, finishSeason: finishSeason, bestEleven: bestEleven, lineupValid: lineupValid, counts: counts, need: need, eff: eff, findP: findP, dateOf: dateOf, seasonLabel: seasonLabel, topScorers: topScorers, ensure: ensure, value: value, salary: salary, buy: buy, sell: sell, sellPrice: sellPrice, MAXSQUAD: MAXSQUAD, signSponsor: signSponsor, loanMax: loanMax, loanStep: loanStep, borrow: borrow, repay: repay, setPrice: setPrice, calEvents: calEvents, startBuild: startBuild, blocks: blocks, buildPlan: buildPlan, BMAX: BMAX, BUILDS: BUILDS, handgeld: handgeld, extend: extend, PRICE: PRICE, cupTie: cupTie, cupPlay: cupPlay, startRound: startRound, startCup: startCup, baseWage: baseWage, demand: demand, offer: offer, loanFee: loanFee, canLoanIn: canLoanIn, loanIn: loanIn, loanOut: loanOut, toggleList: toggleList, acceptOffer: acceptOffer, rejectOffer: rejectOffer, haggle: haggle, findTarget: findTarget, liveNext: liveNext, liveSub: liveSub, liveBench: liveBench, finishLive: finishLive, liveAuto: liveAuto, avail: avail, CUPNAME: CUPNAME, CUPPRIZE: CUPPRIZE, hallPlay: hallPlay, totoMatches: totoMatches, totoTip: totoTip, totoComplete: totoComplete, TOTOSTAKE: TOTOSTAKE, TOTOWIN: TOTOWIN };
 })();
 </script>
 
@@ -2696,7 +2703,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '15.11. 12:00';
+var BUILD = '15.11. 12:30';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -2757,6 +2764,7 @@ function go(view) {
   if (timer) { cancelAnimationFrame(timer); timer = null; }
   if (state && (view === 'opening' || view === 'menu' || view === 'summer') && FM.tourDue(state) && state.round === 0 && !state.sacked) { FM.tourStart(state); ui.tpg = 0; persist(); view = 'tour'; }
   if (state && state.tour && state.tour.on && { tour: 1, lineup: 1, tactics: 1, match: 1, results: 1 }[view] !== 1) view = 'tour';
+  if (state && view === 'menu' && !ui.fsync && !(state.tour && state.tour.on)) { ui.fsync = true; syncForeign(); }
   if (state && view === 'menu') popScan();
   if (ui.dirty && view === 'menu') persist();
   if (view === 'results') ui.pp = 0;
@@ -3051,6 +3059,7 @@ function saveCrests() {
           var o = g.result, had = Object.keys(CRESTS).length, k;
           if (o && typeof o === 'object') { for (k in CRESTS) if (!o[k]) o[k] = CRESTS[k]; CRESTS = o; }
           CDB = db;
+          try { var g2 = db.transaction('kv').objectStore('kv').get('customs'); g2.onsuccess = function () { var o2 = g2.result, ch = false; if (o2 && typeof o2 === 'object' && typeof custAll !== 'undefined') { for (var k2 in o2) if (!custAll[k2]) { custAll[k2] = o2[k2]; ch = true; } if (ch) ui.fsync = false; if (ch && typeof render === 'function' && (ui.view === 'start' || ui.view === 'custom')) render(); } }; } catch (e4) { }
           if (had) cdbPut(function () { try { localStorage.removeItem('ligaboss-crests'); } catch (e) { } });
           if (o && typeof ui !== 'undefined' && typeof render === 'function' && (ui.view === 'start' || ui.view === 'menu' || ui.view === 'custom')) render();
         };
@@ -4753,13 +4762,24 @@ function vDraw() {
 }
 var custTxt = ''; try { custTxt = localStorage.getItem('ligaboss-custom') || ''; } catch (e5) { }
 var custAll = {}; try { custAll = JSON.parse(localStorage.getItem('ligaboss-customs') || '{}') || {}; } catch (e7) { custAll = {}; }
-function custKeep() { var d = custData(); if (d && custTxt) custAll[d.cty || 'de'] = custTxt; try { localStorage.setItem('ligaboss-customs', JSON.stringify(custAll)); } catch (e) { } }
+function custSave() { try { localStorage.setItem('ligaboss-customs', JSON.stringify(custAll)); } catch (e) { } try { if (CDB) CDB.transaction('kv', 'readwrite').objectStore('kv').put(custAll, 'customs'); } catch (e2) { } }
+function custKeep() { var d = custData(); if (d && custTxt) custAll[d.cty || 'de'] = custTxt; custSave(); }
+function syncForeign(quiet) {
+  if (!state || !state.fgn || FM.fgnReal(state)) return 0;
+  var me = state.cty || 'de', own = custAll[me], un = FM.userTeam(state).n; if (!own || own.indexOf(un) < 0) return 0;
+  var ext = {}, n = 0, eun = ''; custCtys().forEach(function (k) { if (k === me) return; try { var dx = FM.parseData(custAll[k]); if (dx.clubs) { ext[k] = dx; n++; if (dx.eun) eun = dx.eun; } } catch (e) { } });
+  if (!n) return 0;
+  try { var d0 = FM.parseData(own); if (d0.eun) eun = d0.eun; } catch (e3) { }
+  var r = FM.fgnApply(state, ext, eun); persist();
+  if (!quiet) toast(r === 2 ? 'Ausland und ' + EUN() + ' mit echten Daten gefüllt.' : 'Ausland mit echten Daten gefüllt. Die ' + EUN() + ' folgt ab der nächsten Saison.');
+  return r;
+}
 function custCtys() { return Object.keys(FM.CTY).filter(function (k) { return custAll[k]; }); }
 function ctyChips() { var d = custData(), ks = custCtys(), on = d ? (d.cty || 'de') : ''; if (ks.length < 2) return ''; return '<div class="pklg' + (ks.length > 3 ? ' c5' : '') + '">' + ks.map(function (k) { return '<button class="' + (k === on ? 'on' : '') + '" data-a="pkcty" data-val="' + k + '">' + FM.CTY[k].n + '</button>'; }).join('') + '</div>'; }
 function custRead() { var ta = document.getElementById('custTa'); if (ta) custTxt = ta.value; try { localStorage.setItem('ligaboss-custom', custTxt); } catch (e) { } return custTxt; }
 function vCustom() {
   var st = state || (saved ? saved.state : null), h = '<div class="hdr"><button class="back" data-a="go" data-v="' + (state ? 'options' : 'start') + '">‹ Zurück</button><div class="title grow">EIGENE DATEN</div></div>';
-  h += '<div class="panel"><p class="lbl">KOMPLETTPAKET</p><p class="hint" style="margin:0 0 8px">Eine ZIP-Datei mit Datensatz (Textdatei) und Wappen-Bildern. Das Spiel liest beides in einem Schritt ein.</p><label class="big sm flab">Paket (ZIP) wählen<input type="file" accept=".zip,application/zip" data-f="pack" hidden></label>';
+  h += '<div class="panel"><p class="lbl">KOMPLETTPAKET</p><p class="hint" style="margin:0 0 8px">Eine ZIP-Datei mit Datensatz (Textdatei) und Wappen-Bildern. Das Spiel liest beides in einem Schritt ein.</p><p class="hint" style="margin:0 0 8px">Geladene Länder: <b style="color:var(--yellow)">' + (custCtys().length ? custCtys().map(function (k) { return FM.CTY[k].n; }).join(', ') : custData() ? FM.CTY[custData().cty || 'de'].n : 'keine') + '</b></p><label class="big sm flab">Paket (ZIP) wählen<input type="file" accept=".zip,application/zip" data-f="pack" hidden></label>';
   if (ui.packRep) h += '<div class="crep" style="margin-top:8px">' + ui.packRep + '</div>';
   if (ui.pack) {
     var CDv = custData(), LNv = FM.CTY[(CDv && CDv.cty) || 'de'].lgs.map(function (x, i) { return (CDv && CDv.lgn && CDv.lgn[i]) || x; });
@@ -5172,11 +5192,11 @@ app.addEventListener('change', function (ev) {
         var cur = custData(), ck = cur ? (cur.cty || 'de') : 'de', act = good.filter(function (g) { return g.k === ck; })[0] || good.filter(function (g) { return g.k === 'de'; })[0] || good[0];
         good.forEach(function (g) { custAll[g.k] = g.t; });
         custTxt = act.t; try { localStorage.setItem('ligaboss-custom', custTxt); } catch (e) { }
-        try { localStorage.setItem('ligaboss-customs', JSON.stringify(custAll)); } catch (e2) { }
+        custSave();
         var D = act.D, L = D.lg.map(function (g) { return (g || []).map(function (c) { return c.n; }); }), names = [], nc = 0, np = 0, hit = 0, miss = [], k = 0;
         good.forEach(function (g) { nc += g.D.clubs; np += g.D.players; g.D.lg.forEach(function (lg) { (lg || []).forEach(function (c) { names.push(c.n); }); }); });
         (function next() {
-          if (k >= imgs.length) { ui.pack = L; ui.packLg = null; ui.packPick = D.star ? D.star.n : (state ? FM.userTeam(state).n : ''); ui.packRep = '<p class="ok">' + (good.length > 1 ? good.length + ' Länder (' + good.map(function (g) { return FM.CTY[g.k].n; }).join(', ') + '): ' : '') + nc + ' Vereine und ' + np + ' Spieler gelesen, ' + hit + ' Wappen zugeordnet.</p>' + (good.length > 1 ? '<p>Land und Verein wählst du hier oder auf dem Startbildschirm.</p>' : '') + (miss.length ? '<p class="bad">Nicht zugeordnet: ' + miss.slice(0, 8).map(esc).join(', ') + (miss.length > 8 ? ' …' : '') + '</p>' : ''); render(); toast('Paket eingelesen.'); return window.scrollTo(0, 0); }
+          if (k >= imgs.length) { ui.pack = L; ui.packLg = null; ui.packPick = D.star ? D.star.n : (state ? FM.userTeam(state).n : ''); ui.packRep = '<p class="ok">' + (good.length > 1 ? good.length + ' Länder (' + good.map(function (g) { return FM.CTY[g.k].n; }).join(', ') + '): ' : '') + nc + ' Vereine und ' + np + ' Spieler gelesen, ' + hit + ' Wappen zugeordnet.</p>' + (good.length > 1 ? '<p>Land und Verein wählst du hier oder auf dem Startbildschirm.</p>' : '') + (miss.length ? '<p class="bad">Nicht zugeordnet: ' + miss.slice(0, 8).map(esc).join(', ') + (miss.length > 8 ? ' …' : '') + '</p>' : ''); ui.fsync = false; render(); toast('Paket eingelesen.'); return window.scrollTo(0, 0); }
           var q = imgs[k++], nm = crestMatch(q.name, names);
           if (!nm) { miss.push(q.name); return next(); }
           crestAdd(q.blob, nm, function (ok) { if (ok) hit++; else miss.push(q.name); setTimeout(next, 0); });

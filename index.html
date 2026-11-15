@@ -2824,7 +2824,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '15.11. 17:30';
+var BUILD = '15.11. 17:45';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -2908,7 +2908,7 @@ function render() {
   if (state && v === 'menu' && NEWV && !ui.pops.length) app.insertAdjacentHTML('afterbegin', updHtml());
 }
 function vStart() {
-  var h = '<div class="logo" style="margin-top:14px">LIGA-BOSS</div><p class="hint" style="text-align:center;margin:0 0 4px">Retro-Fußballmanager · Arbeitstitel · Stand ' + BUILD + '</p>' + updHtml();
+  var h = '<div class="logo" style="margin-top:14px">LIGA-BOSS</div><p class="hint" style="text-align:center;margin:0 0 4px">Retro-Fußballmanager · Arbeitstitel · Stand ' + BUILD + '</p>' + updHtml() + updBtn();
   h += '<img class="heropic" alt="Fußballstadion bei Flutlicht mit vollen Rängen" src="' + PICS.flutlicht + '" width="192" height="144">';
   h += '<p style="text-align:center;margin:0 0 6px"><button class="mini" data-a="prefmus" style="padding:6px 12px">♪ Musik ' + (prefs.snd && prefs.mus !== false ? 'an' : 'aus') + '</button></p>';
   if (saved) {
@@ -3807,6 +3807,12 @@ function vTour() {
 }
 var NEWV = '';
 function updHtml() { return NEWV ? '<div class="panel" style="border-color:var(--yellow)"><p style="margin:0 0 8px;font-size:15px"><b>Neue Version verfügbar</b> (Stand ' + esc(NEWV) + '). Dein Spielstand bleibt erhalten.</p><button class="big" data-a="update">Neue Version laden</button></div>' : ''; }
+function updBtn() { return NEWV ? '' : '<div style="text-align:center"><button class="big sec2 sm" style="width:auto;padding:0 18px;min-height:38px;font-size:13px" data-a="updcheck">' + (ui.updw ? 'Prüfe …' : 'Auf Updates prüfen') + '</button></div>'; }
+function updManual() {
+  if (ui.updw) return; ui.updw = true; render();
+  var done = function (msg) { ui.updw = false; render(); if (msg) toast(msg); };
+  try { fetch('version.json?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { if (j && j.b && j.b !== BUILD) { NEWV = j.b; ui.updw = false; persist(); location.replace(location.pathname + '?v=' + Date.now()); } else done(j ? 'Du hast die aktuelle Version (Stand ' + BUILD + ').' : 'Die Prüfung ist hier nicht möglich.'); }).catch(function () { done('Keine Verbindung. Bitte später noch einmal versuchen.'); }); } catch (e) { done('Die Prüfung ist hier nicht möglich.'); }
+}
 function updCheck() { try { if (!/^https?:/.test(location.protocol)) return; fetch('version.json?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { if (j && j.b && j.b !== BUILD) { NEWV = j.b; if (ui.view === 'start' || ui.view === 'menu') render(); } }).catch(function () { }); } catch (e) { } }
 function EUN() { return FM.euName(state || (saved ? saved.state : null)); }
 var EUFL = { de: 'GER', en: 'ENG', es: 'ESP', fr: 'FRA', it: 'ITA' };
@@ -4058,6 +4064,7 @@ function vOptions() {
   var h = sub('Optionen');
   h += '<div class="panel"><p class="lbl">SPIELSZENEN</p>' + tiles('pref', [[0, 'Mit Szenen', 'o_scene', sm('Spielfeld mit Figuren')], [1, 'Nur Ticker', 'o_tick', sm('spart Zeit und Akku', 0)]], prefs.fast ? 1 : 0, 'pk2') + '</div>';
   h += '<div class="panel"><p class="lbl">TEMPO BEIM ANPFIFF</p>' + tiles('prefs', [[1, 'Normal', 'o_s1'], [2.5, 'Schneller', 'o_s2']], prefs.speed > 1 ? 2.5 : 1, 'pk2') + '<p class="hint" style="margin:8px 0 0">Im Spiel kannst du jederzeit umschalten.</p></div>';
+  h += '<div class="panel"><p class="lbl">VERSION</p><p class="hint" style="margin:0 0 8px">Stand ' + BUILD + '</p>' + (NEWV ? '<button class="big" data-a="update">Neue Version laden (Stand ' + esc(NEWV) + ')</button>' : '<button class="big sec2 sm" data-a="updcheck">' + (ui.updw ? 'Prüfe …' : 'Auf Updates prüfen') + '</button>') + '</div>';
   h += '<div class="panel"><p class="lbl">EM UND WM</p>' + tiles('preftour', [[0, 'Kompakt', 'o_tick', sm('alles auf einer Seite')], [1, 'Ausführlich', 'o_scene', sm('Spieltag für Spieltag')]], prefs.tour ? 1 : 0, 'pk2') + '<p class="hint" style="margin:8px 0 0">Alle zwei Jahre im Sommer: EM 2028, WM 2030 und so weiter.</p></div>';
   h += '<div class="panel">' + acard('m_sign', 'Eigene Daten', 'Vereinsnamen, Kader und Wappen importieren') + '<button class="big sec2 sm" data-a="go" data-v="custom">Öffnen</button></div>';
   h += '<div class="panel"><p class="lbl">TRAINER</p><div class="field" style="margin:0 0 8px"><label for="coach">Dein Name</label><input id="coach" maxlength="24" value="' + esc(coachN() || ui.coach || '') + '" autocomplete="off"></div><button class="big sm" data-a="coachset">Namen übernehmen</button></div>';
@@ -5168,6 +5175,7 @@ app.addEventListener('click', function (ev) {
   if (a === 'totoauto') { FM.totoAuto(state); ui.dirty = true; var yta = window.scrollY; render(); window.scrollTo(0, yta); return toast('Favoriten getippt. Du kannst einzelne Tipps noch ändern.'); }
   if (a === 'prefsnd') { prefs.snd = +b.getAttribute('data-val') === 1; if (!prefs.snd) { SND.crowd(false); SND.music(false); } try { localStorage.setItem('ligaboss-prefs', JSON.stringify(prefs)); } catch (e7) { } render(); if (prefs.snd) { SND.unlock(); setTimeout(function () { SND.whistle(1); }, 500); } return; }
   if (a === 'preftour') { prefs.tour = +b.getAttribute('data-val') === 1; try { localStorage.setItem('ligaboss-prefs', JSON.stringify(prefs)); } catch (e7) { } return render(); }
+  if (a === 'updcheck') return updManual();
   if (a === 'update') { persist(); location.replace(location.pathname + '?v=' + Date.now()); return; }
   if (a === 'pop') { var PP = ui.pops.shift(), PB = PP && PP.b[+b.getAttribute('data-val')]; if (PB && PB[1]) PB[1](); persist(); return render(); }
   if (a === 'tourpg') { ui.tpg = +b.getAttribute('data-val'); render(); return window.scrollTo(0, 0); }

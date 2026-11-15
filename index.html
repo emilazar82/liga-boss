@@ -925,6 +925,7 @@ function moveCountry(state, k) {
   ns.season = state.season; ns.y0 = state.y0; ns.wk0 = state.wk0; ns.fg0 = state.season;
   ['coach', 'rep', 'hist', 'car', 'ntj', 'tourH', 'tdone', 'eun'].forEach(function (f) { if (state[f] !== undefined) ns[f] = state[f]; });
   if (state.tour && !state.tour.on) ns.tour = state.tour;
+  if (state.me) { ns.me = state.me; meNewClub(ns); }
   ns.euq = (names[j.c] || []).map(function (n) { var t = ns.teams.filter(function (x) { return x.lg === 0 && x.n === n; })[0]; return t ? t.id : -1; }).filter(function (id) { return id >= 0; });
   ns.fgq = fgnTop(ns, false);
   Object.keys(ns.fgn).forEach(function (c) { var want = (names[c] || []).map(function (n) { var r = -1; ns.fgn[c].forEach(function (o, i) { if (o.n === n && !o.l) r = i; }); return r; }).filter(function (i) { return i >= 0; }), nq = c === 'de' ? 4 : 3; ns.fgq[c].forEach(function (i) { if (want.length < nq && want.indexOf(i) < 0) want.push(i); }); ns.fgq[c] = want.slice(0, nq); });
@@ -1199,6 +1200,69 @@ function rival(state) {
 }
 function setRival(state, id) { var u = state.teams[state.uid], t = state.teams[id]; if (!t || t.id === u.id || t.lg !== u.lg) return 'Der Rivale muss in deiner Liga spielen.'; (state.rv || (state.rv = {}))[u.n] = t.n; delete state.rv['~' + u.n]; return ''; }
 function isDerby(state, oppId) { var r = rival(state); return !!r && r.id === oppId; }
+var MEOWN = [['car1', 'Gebrauchtwagen', 8000, 30, 1, 'Auto'], ['car2', 'Sportcoupé', 60000, 150, 2, 'Auto'], ['car3', 'Luxuslimousine', 180000, 400, 3, 'Auto'], ['home1', 'Eigentumswohnung', 150000, 200, 2, 'Wohnen'], ['home2', 'Haus mit Garten', 450000, 500, 3, 'Wohnen'], ['home3', 'Villa am See', 1500000, 1500, 5, 'Wohnen'], ['watch', 'Schweizer Uhr', 25000, 0, 1, 'Luxus'], ['boat', 'Segelyacht', 600000, 900, 4, 'Luxus']];
+var MEEDU = [['rhet', 'Rhetorikkurs', 15000, 'Gespräche in der Kabine gelingen öfter: Schlichten, Vertrösten und Überreden.'], ['nego', 'Verhandlungsseminar', 30000, 'Nachfordern bei Transfers und Nachverhandeln mit Sponsoren gelingen öfter.'], ['lic', 'Fußballlehrer-Lizenz', 60000, 'Ruf +5 sofort, dazu 10 % mehr Gehalt in jedem künftigen Vertrag.']];
+function meWage(state, t) {
+  t = t || state.teams[state.uid]; var lg = Math.min(2, t.lg), M = state.me;
+  var w = [9000, 3500, 1200][lg] * (0.7 + 0.8 * (state.rep || 0) / 100) * (1 + 0.6 * clamp((tStr(t) - [74, 62, 50][lg]) / [16, 10, 10][lg], 0, 1)) * (M && M.edu.indexOf('lic') >= 0 ? 1.1 : 1);
+  return Math.round(w / 50) * 50;
+}
+function me(state) {
+  if (!state.me) state.me = { cash: 0, own: [], edu: [], wage: 0, until: 0, log: [] };
+  var M = state.me, un = state.tour && state.tour.on && state.tour.cu !== undefined ? M.club : state.teams[state.uid].n;
+  if (!M.wage || M.club !== un || (M.fresh && state.round === 0 && !state.live)) { var keepF = M.club === un && M.fresh; M.club = un; M.wage = meWage(state); if (!keepF) { M.until = state.season + 1; M.ask = -1; M.fresh = 1; } }
+  if (M.fresh && state.round > 0) delete M.fresh;
+  return M;
+}
+function meHas(state, k) { return !!state.me && state.me.edu.indexOf(k) >= 0; }
+function meUpkeep(state) { var x = 0; MEOWN.forEach(function (o) { if (state.me.own.indexOf(o[0]) >= 0) x += o[3]; }); return x; }
+function meLog(state, t, v) { var M = me(state); M.log.unshift({ s: state.season, r: state.round, t: t, v: v }); if (M.log.length > 12) M.log.length = 12; }
+function meWeek(state) {
+  var M = me(state), up = meUpkeep(state), out = null;
+  M.cash += M.wage - up; state.cash -= M.wage; state.led.staff += M.wage;
+  if (M.cash < 0 && M.own.length) { var best = null; MEOWN.forEach(function (o) { if (M.own.indexOf(o[0]) >= 0 && (!best || o[2] > best[2])) best = o; }); M.own = M.own.filter(function (x) { return x !== best[0]; }); var got = Math.round(best[2] * 0.6); M.cash += got; meLog(state, best[1] + ' notverkauft', got); out = best[1]; }
+  return out;
+}
+function meBonus(state, sum, okGoal, cw, ew) {
+  var M = me(state), w = M.wage, list = [];
+  if (sum.lg === 0 && sum.place === 1) list.push(['Meisterprämie', 20 * w]);
+  if (sum.move === 'auf') list.push(['Aufstiegsprämie', 20 * w]);
+  if (cw) list.push(['Pokalprämie', 10 * w]);
+  if (ew) list.push(['Europapokalprämie', 25 * w]);
+  if (okGoal) list.push(['Saisonziel erreicht', 6 * w]);
+  var tot = 0; list.forEach(function (x) { tot += x[1]; M.cash += x[1]; meLog(state, x[0], x[1]); });
+  state.cash -= tot; sum.meBon = list; sum.meTot = tot;
+  if (!state.sacked && M.until <= state.season) { var nw = Math.max(meWage(state), M.wage); sum.meNew = { old: M.wage, wage: nw, until: state.season + 2 }; M.wage = nw; M.until = state.season + 2; }
+}
+function meSack(state) {
+  var M = me(state); if (state.quit || M.sev === state.season + '_' + state.round) return 0;
+  var weeks = Math.max(0, (M.until - state.season) * RN(state) + RN(state) - state.round), a = Math.round(weeks * M.wage * 0.5);
+  M.sev = state.season + '_' + state.round; M.cash += a; if (a) meLog(state, 'Abfindung', a); M.lastSev = a; return a;
+}
+function meNewClub(state) { var M = me(state); M.club = state.teams[state.uid].n; M.wage = meWage(state); M.until = state.season + 1; M.ask = -1; M.fresh = 1; }
+function meAsk(state) {
+  var M = me(state); if (M.ask === state.season) return 'In dieser Saison hast du schon verhandelt.';
+  if (state.round < 6) return 'Der Vorstand will erst ein paar Spieltage sehen (ab dem 7. Spieltag).';
+  M.ask = state.season; var pch = clamp((state.board.conf - 35) / 60, 0.05, 0.85) + (meHas(state, 'nego') ? 0.1 : 0);
+  if (Math.random() < pch) { M.wage = Math.round(M.wage * 1.12 / 50) * 50; M.until = Math.max(M.until, state.season + 2); return 'ok'; }
+  state.board.conf = clamp(state.board.conf - 4, 1, 100); return 'Der Vorstand lehnt ab und ist über die Forderung verstimmt (Vertrauen −4).';
+}
+function meBuy(state, k) {
+  var M = me(state), o = null; MEOWN.forEach(function (x) { if (x[0] === k) o = x; }); if (!o) return 'Das gibt es nicht.';
+  if (M.own.indexOf(k) >= 0) return 'Das gehört dir schon.';
+  if (M.cash < o[2]) return 'Dafür reicht dein Privatvermögen nicht.';
+  M.cash -= o[2]; M.own.push(k); repAdd(state, o[4]); meLog(state, o[1] + ' gekauft', -o[2]); return '';
+}
+function meSell(state, k) {
+  var M = me(state), o = null; MEOWN.forEach(function (x) { if (x[0] === k) o = x; }); if (!o || M.own.indexOf(k) < 0) return 'Das gehört dir nicht.';
+  var got = Math.round(o[2] * 0.7); M.own = M.own.filter(function (x) { return x !== k; }); M.cash += got; repAdd(state, -o[4]); meLog(state, o[1] + ' verkauft', got); return '';
+}
+function meLearn(state, k) {
+  var M = me(state), o = null; MEEDU.forEach(function (x) { if (x[0] === k) o = x; }); if (!o) return 'Den Kurs gibt es nicht.';
+  if (M.edu.indexOf(k) >= 0) return 'Den Abschluss hast du schon.';
+  if (M.cash < o[2]) return 'Dafür reicht dein Privatvermögen nicht.';
+  M.cash -= o[2]; M.edu.push(k); if (k === 'lic') repAdd(state, 5); meLog(state, o[1], -o[2]); return '';
+}
 function dlLast(state) { var r = state.round, H = HN(state); return r === 5 || r === H + 2; }
 function deadline(state) {
   if (state.sacked || state.over || state.live || !dlLast(state) || (state.tour && state.tour.on)) return null;
@@ -1336,7 +1400,7 @@ function signSponsor(state, k, years) {
 }
 function sponReneg(state, k) {
   var o = state.spo && state.spo[k]; if (!o) return 'Kein Angebot.'; if (o.rn) return 'Hier ist nichts mehr zu holen.';
-  var r = Math.random(); o.rn = 1;
+  var r = Math.random() - (meHas(state, 'nego') ? 0.12 : 0); o.rn = 1;
   if (r < 0.5) { ['fix', 'win', 'bonus', 'pos'].forEach(function (q) { o[q] = r500((o[q] || 0) * 1.12); }); o.att = Math.round((o.att || 0) * 1.12 * 10) / 10; return 'ok'; }
   if (r < 0.8 || state.spo.length <= 2) return o.n + ' bleibt bei seinem Angebot.';
   state.spo.splice(k, 1); return o.n + ' fühlt sich unter Druck gesetzt und zieht das Angebot zurück.';
@@ -1512,7 +1576,7 @@ function takeOver(state, tid) {
   u.fo = '4-4-2'; u.au = 1; u.ei = 1; u.pr = 1; u.ps = 1; u.tp = 1; u.ab = 0; u.md = 0; u.lu = bestEleven(u);
   state.cash = [1500000, 600000, 250000][u.lg]; state.loan = 0; state.stad = { cap: [30000, 15000, 8000][u.lg], price: PRICE[u.lg], build: null };
   state.sp = null; state.spo = makeOffers(u.lg); state.offers = []; state.neg = {}; state.led = newLedger();
-  clubMeans(state, u);
+  clubMeans(state, u); if (state.me) meNewClub(state);
   state.youth = null; state.ads = null; state.merch = null; state.dk = { n: 0, set: state.round > 0 }; state.board = null; state.market = null; state.camp = null; state.toto = null; state.sacked = false; delete state.quit; state.jobs = []; state.fjobs = []; state.staff = null; state.scq = []; state.debts = []; state.fin = null; state.inv = null; state.fh = null; state.ph = null; delete old.coh; delete old.std;
   ensure(state); state.board.conf = 55; if (state.round === 0) state.nj = 1;
   state.spf = spFac(state); state.spo = makeOffers(u.lg, state.spf);
@@ -1608,6 +1672,7 @@ function ensure(state) {
   if (!state.eu) euInit(state);
   fgnFix(state); if (!(state.tour && state.tour.on)) flSync(state);
   if (state.hall === undefined) state.hall = null;
+  me(state);
   if (!state.offers) state.offers = [];
   if (!state.neg) state.neg = {};
   if (!state.news) state.news = [];
@@ -1833,7 +1898,7 @@ function acceptOffer(state, k) {
 function rejectOffer(state, k) { state.offers.splice(k, 1); }
 function haggle(state, k) {
   var o = state.offers[k]; if (!o || o.h) return 'Hier lässt sich nichts mehr herausholen.';
-  if (Math.random() < 0.5) { o.fee = r1000(o.fee * 1.15); o.h = 1; return 'ok'; }
+  if (Math.random() < 0.5 + (meHas(state, 'nego') ? 0.15 : 0)) { o.fee = r1000(o.fee * 1.15); o.h = 1; return 'ok'; }
   var n = (team(state, o.c) || { n: 'Der Verein' }).n; state.offers.splice(k, 1); return n + ' zieht das Angebot zurück.';
 }
 function aiDeals(state) {
@@ -2206,10 +2271,10 @@ function talkAnswer(state, idx, o) {
   var p = findP(u, t.i), g = 1, x = '', n = p.n;
   if (t.k === 'time') {
     if (o === 0) { p.prm = state.round + 2; moAdd(p, 1); x = n + ' nimmt dich beim Wort. In den nächsten 3 Spielen will er auflaufen.'; }
-    else if (o === 1) { if (Math.random() < 0.5) { moAdd(p, 0.4); x = n + ' zeigt Verständnis und wartet auf seine Chance.'; } else { moAdd(p, -0.6); g = 0; x = n + ' hat mehr erwartet und geht enttäuscht.'; } }
+    else if (o === 1) { if (Math.random() < 0.5 + (meHas(state, 'rhet') ? 0.2 : 0)) { moAdd(p, 0.4); x = n + ' zeigt Verständnis und wartet auf seine Chance.'; } else { moAdd(p, -0.6); g = 0; x = n + ' hat mehr erwartet und geht enttäuscht.'; } }
     else { p.tl = 2; p.wl = 1; x = n + ' steht jetzt auf der Transferliste. ' + winText(state); }
   } else if (t.k === 'move') {
-    if (o === 0) { if (Math.random() < 0.3 + state.board.conf / 250) { p.mo = Math.max(p.mo, 5); x = n + ' lässt sich umstimmen und bleibt.'; } else { moAdd(p, -0.5); g = 0; x = n + ' bleibt bei seinem Wunsch.'; } }
+    if (o === 0) { if (Math.random() < 0.3 + state.board.conf / 250 + (meHas(state, 'rhet') ? 0.15 : 0)) { p.mo = Math.max(p.mo, 5); x = n + ' lässt sich umstimmen und bleibt.'; } else { moAdd(p, -0.5); g = 0; x = n + ' bleibt bei seinem Wunsch.'; } }
     else if (o === 1) { p.tl = 2; p.wl = 1; moAdd(p, 1); x = n + ' bedankt sich und steht auf der Transferliste. ' + winText(state); }
     else { moAdd(p, -0.3); p.tq = state.round + 30; g = 0; x = n + ' fügt sich. Begeistert ist er nicht.'; }
   } else if (t.k === 'wage') {
@@ -2222,7 +2287,7 @@ function talkAnswer(state, idx, o) {
     else { moAdd(p, -1.2); g = 0; if (Math.random() < 0.5) { p.f = clamp(p.f - 2, 1, 10); x = n + ' ist tief enttäuscht. Das sieht man ihm auf dem Platz an.'; } else x = n + ' nimmt es hin, aber das Thema ist nicht vom Tisch.'; }
   } else if (t.k === 'feud') {
     var q = findP(u, t.j) || p;
-    if (o === 0) { if (Math.random() < 0.6) { moAdd(p, 0.3); moAdd(q, 0.3); x = n + ' und ' + q.n + ' geben sich die Hand.'; } else { moAdd(p, -0.4); moAdd(q, -0.4); g = 0; x = 'Die Aussprache bringt nichts. ' + n + ' und ' + q.n + ' gehen sich aus dem Weg.'; } }
+    if (o === 0) { if (Math.random() < 0.6 + (meHas(state, 'rhet') ? 0.25 : 0)) { moAdd(p, 0.3); moAdd(q, 0.3); x = n + ' und ' + q.n + ' geben sich die Hand.'; } else { moAdd(p, -0.4); moAdd(q, -0.4); g = 0; x = 'Die Aussprache bringt nichts. ' + n + ' und ' + q.n + ' gehen sich aus dem Weg.'; } }
     else if (o === 1) { moAdd(p, 0.8); moAdd(q, -1); x = n + ' fühlt sich bestätigt. ' + q.n + ' ist sauer auf dich.'; }
     else { moAdd(p, -0.3); moAdd(q, -0.3); u.coh = clamp((u.coh === undefined ? 50 : u.coh) + 4, 0, 100); var fn = Math.round((salary(p) + salary(q)) / 2 / 100) * 100; state.cash += fn; state.led.prem -= fn; x = 'Beide zahlen in die Mannschaftskasse (' + fn + '). Die Kabine weiß jetzt, wo die Grenze ist.'; }
     q.tq = state.round;
@@ -2767,6 +2832,7 @@ function roundFinish(state, L, h, a) {
   out.round = r;
   if (r === HR) { var okW = place(state, u.id) <= state.board.goal; state.board.conf = clamp(state.board.conf + (okW ? 5 : -5), 1, 100); out.boardNote = okW ? 'Zwischenbilanz zur Winterpause: Der Vorstand ist ' + (state.coach ? 'mit Trainer ' + state.coach + ' ' : '') + 'zufrieden, das Saisonziel ist in Reichweite.' : 'Zwischenbilanz zur Winterpause: Der Vorstand mahnt' + (state.coach ? ' Trainer ' + state.coach : '') + '. Platz ' + place(state, u.id) + ' reicht nicht für das Saisonziel.'; }
   boardWeek(state, r, place(state, u.id), u.id === h.id ? out.match.hg : out.match.ag, u.id === h.id ? out.match.ag : out.match.hg);
+  var meOut = meWeek(state); if (meOut) out.meSold = meOut;
   var dOpp = u.id === h.id ? a : h;
   if (state.pc && state.pc.r === r) {
     var pgf = u.id === h.id ? out.match.hg : out.match.ag, pga = u.id === h.id ? out.match.ag : out.match.hg, pw = pgf > pga ? 1 : pgf < pga ? -1 : 0;
@@ -2784,7 +2850,7 @@ function roundFinish(state, L, h, a) {
     news(state, dw > 0 ? 'Derbysieg! ' + u.n + ' schlägt ' + dOpp.n + ' ' + dgf + ':' + dga + '.' : dw < 0 ? 'Derbypleite: ' + u.n + ' verliert ' + dgf + ':' + dga + ' gegen ' + dOpp.n + '.' : 'Das Derby zwischen ' + u.n + ' und ' + dOpp.n + ' endet ' + dgf + ':' + dga + '.');
   }
   state.fh.push(state.cash); state.ph.push(place(state, u.id));
-  out.conf = state.board.conf; out.sacked = !!state.sacked; if (state.sacked) { repAdd(state, -10); state.jobs = sackJobs(state); }
+  out.conf = state.board.conf; out.sacked = !!state.sacked; if (state.sacked) { repAdd(state, -10); state.jobs = sackJobs(state); out.sev = meSack(state); }
   state.round++;
   if (state.round >= RN(state)) state.over = true;
   return out;
@@ -2855,7 +2921,7 @@ function finishSeason(state) {
   ntOffer(state, tabs[0][0].id === state.uid || (state.cup && state.cup.won) || (state.eu && state.eu.won));
   state.fx = []; state.fgq = fgnTop(state, true); fgnAge(state); sum.fgr = Object.keys(state.fgr || {}).map(function (c) { var r = state.fgr[c]; return [CTY[c].n, r.ch, r.up, r.dn]; }); sum.euqF = Object.keys(state.fgq).map(function (c) { return [CTY[c].n, state.fgq[c].map(function (ix) { return state.fgn[c][ix].n; })]; });
   sum.board = { goal: goalText(sum.lg, B.goal, state), ok: okGoal, conf: B.conf, sacked: !!state.sacked };
-  carSeason(state, sum, okGoal);
+  carSeason(state, sum, okGoal); meBonus(state, sum, okGoal, !!(state.cup && state.cup.won), !!(state.eu && state.eu.won));
   if (!state.sacked) B.conf = Math.round((B.conf + 60) / 2);
   state.hist.push({ s: state.season, lg: sum.lg, pl: sum.place });
   var mv3 = moves.map(function (m) { return [m[0], m[0].lg, m[1]]; });
@@ -2875,7 +2941,7 @@ function finishSeason(state) {
   state.market = null; if (!(state.sp && state.sp.until >= state.season)) { if (state.sp) sum.spEnd = state.sp.n; state.sp = null; } state.spo = null; state.led = newLedger(); state.cup = null; state.hall = null; state.camp = null; state.toto = null; state.ads = null; state.dk = null; state.eu = null; state.fh = null; state.ph = null; ensure(state);
   state.pre = { n: 0, log: [] }; state.camp = { due: true }; state.open = !state.sacked;
   u.coh = Math.max(30, (u.coh === undefined ? 50 : u.coh) - 20);
-  state.jobs = state.sacked ? sackJobs(state) : seasonJobs(state, lastPl);
+  state.jobs = state.sacked ? sackJobs(state) : seasonJobs(state, lastPl); if (state.sacked) sum.sev = meSack(state);
   state.fjobs = !state.sacked && Math.random() < 0.5 ? fgnJobs(state) : [];
   sum.rep = state.rep;
   sum.newLg = u.lg;
@@ -2913,7 +2979,7 @@ function topScorers(state, lg, n) {
   all.sort(function (a, b) { return b.g - a.g; });
   return all.slice(0, n);
 }
-return { NTN: NTN, TOURST: TOURST, tourDue: tourDue, tourKind: tourKind, tourStart: tourStart, tourTie: tourTie, startTour: startTour, tourRest: tourRest, tourInfo: tourInfo, ntAnswer: ntAnswer, ACH: ACH, achState: achState, achNew: achNew, deadline: deadline, dlList: dlList, pressDue: pressDue, pressAnswer: pressAnswer, rival: rival, setRival: setRival, isDerby: isDerby, resign: resign, fgnAge: fgnAge, fgnTopX: fgnTop, clubTeam: clubTeam, spFac: spFac, fjobInfo: fjobInfo, moveCountry: moveCountry, fgnJobs: fgnJobs, worldExport: worldExport, flTable: flTable, flInfo: flInfo, flScorers: flScorers, fgnReal: fgnReal, fgnApply: fgnApply, weeklyOffers: weeklyOffers, fgnLgs: fgnLgs, fgnClubs: fgnClubs, fgnOpen: fgnOpen, cupDate: cupDate, euName: euName, euGroups: euGroups, tCty: tCty, EUDRAW: EUDRAW, exportData: exportData, parseData: parseData, applyData: applyData, newGameCustom: newGameCustom, winText: winText, startFriendly: startFriendly, cupGoalR: cupGoalR, friendly: friendly, friendInfo: friendInfo, car: car, liveTalk: liveTalk, talkInfo: talkInfo, talkAnswer: talkAnswer, liveTact: liveTact, liveTactInfo: liveTactInfo, tableX: tableX, teamInfo: teamInfo, leagueStats: leagueStats, totoAuto: totoAuto, totoMult: totoMult, hallSquad: hallSquad, boardAmb: boardAmb, boardAsk: boardAsk, boardTalk: boardTalk, GRANT: GRANT, youthTrial: youthTrial, youthLoan: youthLoan, youthDrop: youthDrop, youthProj: youthProj, sponProj: sponProj, sponReneg: sponReneg, extOffer: extOffer, raise: raise, release: release, releaseCost: releaseCost, EXT: EXT, VIPB: VIPB, setOps: setOps, capEff: capEff, attExpect: attExpect, LGF: LGF, SECC: SECC, PITC: PITC, PPR: PPR, PPN: PPN, DEPO: DEPO, INVAMT: INVAMT, absWeek: absWeek, wageSum: wageSum, setPP: setPP, setGoalBonus: setGoalBonus, setIns: setIns, deposit: deposit, breakDep: breakDep, depSum: depSum, investor: investor, winOpen: winOpen, scoutCap: scoutCap, scoutFee: scoutFee, scoutAsk: scoutAsk, scoutTips: scoutTips, posCount: posCount, planInfo: planInfo, setPreset: setPreset, STAFFN: STAFFN, staffLv: staffLv, staffWage: staffWage, staffCost: staffCost, setStaff: setStaff, indMax: indMax, tactInfo: tactInfo, euTie: euTie, startEu: startEu, EUNAME: EUNAME, EUPRIZE: EUPRIZE, jobInfo: jobInfo, adSlots: adSlots, adSign: adSign, MN: MN, MUP: MUP, MCOST: MCOST, merchExpect: merchExpect, merchUpgrade: merchUpgrade, DKD: DKD, dkPreview: dkPreview, dkSell: dkSell, extraCost: extraCost, stadExtra: stadExtra, upkeepOf: upkeepOf, goalText: goalText, takeOver: takeOver, SESS: SESS, planFit: planFit, setPlan: setPlan, setInd: setInd, CAMP: CAMP, campCost: campCost, campGo: campGo, ATN: ATN, ATW: ATW, YCOST: YCOST, YUP: YUP, YMAX: YMAX, youthUpgrade: youthUpgrade, promote: promote, POS: POS, FORMATIONS: FORMATIONS, LEAGUES: LEAGUES, ROUNDS: ROUNDS, CTY: CTY, cfg: cfg, NL: NL, NT: NT, RN: RN, HN: HN, lgName: lgName, newGame: newGame, userTeam: userTeam, team: team, table: table, place: place, nextMatch: nextMatch, playRound: playRound, finishSeason: finishSeason, bestEleven: bestEleven, lineupValid: lineupValid, counts: counts, need: need, eff: eff, findP: findP, dateOf: dateOf, seasonLabel: seasonLabel, topScorers: topScorers, ensure: ensure, value: value, salary: salary, buy: buy, sell: sell, sellPrice: sellPrice, MAXSQUAD: MAXSQUAD, signSponsor: signSponsor, loanMax: loanMax, loanStep: loanStep, borrow: borrow, repay: repay, setPrice: setPrice, calEvents: calEvents, startBuild: startBuild, blocks: blocks, buildPlan: buildPlan, BMAX: BMAX, BUILDS: BUILDS, handgeld: handgeld, extend: extend, PRICE: PRICE, cupTie: cupTie, cupPlay: cupPlay, startRound: startRound, startCup: startCup, baseWage: baseWage, demand: demand, offer: offer, loanFee: loanFee, canLoanIn: canLoanIn, loanIn: loanIn, loanOut: loanOut, toggleList: toggleList, acceptOffer: acceptOffer, rejectOffer: rejectOffer, haggle: haggle, findTarget: findTarget, liveNext: liveNext, liveSub: liveSub, liveBench: liveBench, finishLive: finishLive, liveAuto: liveAuto, avail: avail, CUPNAME: CUPNAME, CUPPRIZE: CUPPRIZE, hallPlay: hallPlay, totoMatches: totoMatches, totoTip: totoTip, totoComplete: totoComplete, TOTOSTAKE: TOTOSTAKE, TOTOWIN: TOTOWIN };
+return { NTN: NTN, TOURST: TOURST, tourDue: tourDue, tourKind: tourKind, tourStart: tourStart, tourTie: tourTie, startTour: startTour, tourRest: tourRest, tourInfo: tourInfo, ntAnswer: ntAnswer, ACH: ACH, achState: achState, achNew: achNew, MEOWN: MEOWN, MEEDU: MEEDU, me: me, meWage: meWage, meUpkeep: meUpkeep, meAsk: meAsk, meBuy: meBuy, meSell: meSell, meLearn: meLearn, deadline: deadline, dlList: dlList, pressDue: pressDue, pressAnswer: pressAnswer, rival: rival, setRival: setRival, isDerby: isDerby, resign: resign, fgnAge: fgnAge, fgnTopX: fgnTop, clubTeam: clubTeam, spFac: spFac, fjobInfo: fjobInfo, moveCountry: moveCountry, fgnJobs: fgnJobs, worldExport: worldExport, flTable: flTable, flInfo: flInfo, flScorers: flScorers, fgnReal: fgnReal, fgnApply: fgnApply, weeklyOffers: weeklyOffers, fgnLgs: fgnLgs, fgnClubs: fgnClubs, fgnOpen: fgnOpen, cupDate: cupDate, euName: euName, euGroups: euGroups, tCty: tCty, EUDRAW: EUDRAW, exportData: exportData, parseData: parseData, applyData: applyData, newGameCustom: newGameCustom, winText: winText, startFriendly: startFriendly, cupGoalR: cupGoalR, friendly: friendly, friendInfo: friendInfo, car: car, liveTalk: liveTalk, talkInfo: talkInfo, talkAnswer: talkAnswer, liveTact: liveTact, liveTactInfo: liveTactInfo, tableX: tableX, teamInfo: teamInfo, leagueStats: leagueStats, totoAuto: totoAuto, totoMult: totoMult, hallSquad: hallSquad, boardAmb: boardAmb, boardAsk: boardAsk, boardTalk: boardTalk, GRANT: GRANT, youthTrial: youthTrial, youthLoan: youthLoan, youthDrop: youthDrop, youthProj: youthProj, sponProj: sponProj, sponReneg: sponReneg, extOffer: extOffer, raise: raise, release: release, releaseCost: releaseCost, EXT: EXT, VIPB: VIPB, setOps: setOps, capEff: capEff, attExpect: attExpect, LGF: LGF, SECC: SECC, PITC: PITC, PPR: PPR, PPN: PPN, DEPO: DEPO, INVAMT: INVAMT, absWeek: absWeek, wageSum: wageSum, setPP: setPP, setGoalBonus: setGoalBonus, setIns: setIns, deposit: deposit, breakDep: breakDep, depSum: depSum, investor: investor, winOpen: winOpen, scoutCap: scoutCap, scoutFee: scoutFee, scoutAsk: scoutAsk, scoutTips: scoutTips, posCount: posCount, planInfo: planInfo, setPreset: setPreset, STAFFN: STAFFN, staffLv: staffLv, staffWage: staffWage, staffCost: staffCost, setStaff: setStaff, indMax: indMax, tactInfo: tactInfo, euTie: euTie, startEu: startEu, EUNAME: EUNAME, EUPRIZE: EUPRIZE, jobInfo: jobInfo, adSlots: adSlots, adSign: adSign, MN: MN, MUP: MUP, MCOST: MCOST, merchExpect: merchExpect, merchUpgrade: merchUpgrade, DKD: DKD, dkPreview: dkPreview, dkSell: dkSell, extraCost: extraCost, stadExtra: stadExtra, upkeepOf: upkeepOf, goalText: goalText, takeOver: takeOver, SESS: SESS, planFit: planFit, setPlan: setPlan, setInd: setInd, CAMP: CAMP, campCost: campCost, campGo: campGo, ATN: ATN, ATW: ATW, YCOST: YCOST, YUP: YUP, YMAX: YMAX, youthUpgrade: youthUpgrade, promote: promote, POS: POS, FORMATIONS: FORMATIONS, LEAGUES: LEAGUES, ROUNDS: ROUNDS, CTY: CTY, cfg: cfg, NL: NL, NT: NT, RN: RN, HN: HN, lgName: lgName, newGame: newGame, userTeam: userTeam, team: team, table: table, place: place, nextMatch: nextMatch, playRound: playRound, finishSeason: finishSeason, bestEleven: bestEleven, lineupValid: lineupValid, counts: counts, need: need, eff: eff, findP: findP, dateOf: dateOf, seasonLabel: seasonLabel, topScorers: topScorers, ensure: ensure, value: value, salary: salary, buy: buy, sell: sell, sellPrice: sellPrice, MAXSQUAD: MAXSQUAD, signSponsor: signSponsor, loanMax: loanMax, loanStep: loanStep, borrow: borrow, repay: repay, setPrice: setPrice, calEvents: calEvents, startBuild: startBuild, blocks: blocks, buildPlan: buildPlan, BMAX: BMAX, BUILDS: BUILDS, handgeld: handgeld, extend: extend, PRICE: PRICE, cupTie: cupTie, cupPlay: cupPlay, startRound: startRound, startCup: startCup, baseWage: baseWage, demand: demand, offer: offer, loanFee: loanFee, canLoanIn: canLoanIn, loanIn: loanIn, loanOut: loanOut, toggleList: toggleList, acceptOffer: acceptOffer, rejectOffer: rejectOffer, haggle: haggle, findTarget: findTarget, liveNext: liveNext, liveSub: liveSub, liveBench: liveBench, finishLive: finishLive, liveAuto: liveAuto, avail: avail, CUPNAME: CUPNAME, CUPPRIZE: CUPPRIZE, hallPlay: hallPlay, totoMatches: totoMatches, totoTip: totoTip, totoComplete: totoComplete, TOTOSTAKE: TOTOSTAKE, TOTOWIN: TOTOWIN };
 })();
 </script>
 
@@ -2995,7 +3061,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '15.11. 19:43';
+var BUILD = '15.11. 19:58';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -3080,7 +3146,7 @@ function tabBar(act, items, cur) { return '<div class="tabs">' + items.map(funct
 function backSel(t) { return '<div class="row" style="align-items:center"><button class="back" data-a="sel" data-id="' + ui.sel + '">‹ Liste</button><b class="grow">' + t + '</b></div>'; }
 function render() {
   var v = ui.view; if (state && ui.lg >= FM.NL(state)) ui.lg = FM.userTeam(state).lg;
-  app.innerHTML = curFix(v === 'start' ? vStart() : v === 'menu' ? vMenu() : v === 'lineup' ? vLineup() : v === 'tactics' ? vTactics() : v === 'training' ? vTraining() : v === 'finance' ? vFinance() : v === 'sponsors' ? vSponsors() : v === 'stadium' ? vStadium() : v === 'contracts' ? vContracts() : v === 'cup' ? vCup() : v === 'toto' ? vToto() : v === 'hall' ? vHall() : v === 'youth' ? vYouth() : v === 'board' ? vBoard() : v === 'sacked' ? vSacked() : v === 'transfers' ? vTransfers() : v === 'table' ? vTable() : v === 'fixtures' ? vFixtures() : v === 'stats' ? vStats() : v === 'options' ? vOptions() : v === 'match' ? vMatch() : v === 'results' ? vResults() : v === 'season' ? vSeason() : v === 'talk' ? vTalk() : v === 'tour' ? vTour() : v === 'opening' ? vOpening() : v === 'summer' ? vSummer() : v === 'fame' ? vFame() : v === 'draw' ? vDraw() : v === 'custom' ? vCustom() : '');
+  app.innerHTML = curFix(v === 'start' ? vStart() : v === 'menu' ? vMenu() : v === 'lineup' ? vLineup() : v === 'tactics' ? vTactics() : v === 'training' ? vTraining() : v === 'finance' ? vFinance() : v === 'sponsors' ? vSponsors() : v === 'stadium' ? vStadium() : v === 'contracts' ? vContracts() : v === 'cup' ? vCup() : v === 'toto' ? vToto() : v === 'hall' ? vHall() : v === 'youth' ? vYouth() : v === 'board' ? vBoard() : v === 'sacked' ? vSacked() : v === 'transfers' ? vTransfers() : v === 'table' ? vTable() : v === 'fixtures' ? vFixtures() : v === 'stats' ? vStats() : v === 'options' ? vOptions() : v === 'match' ? vMatch() : v === 'results' ? vResults() : v === 'season' ? vSeason() : v === 'talk' ? vTalk() : v === 'tour' ? vTour() : v === 'opening' ? vOpening() : v === 'summer' ? vSummer() : v === 'fame' ? vFame() : v === 'private' ? vPrivate() : v === 'draw' ? vDraw() : v === 'custom' ? vCustom() : '');
   if (state && v === 'menu' && ui.pops.length) app.insertAdjacentHTML('beforeend', curFix(popHtml()));
   if (state && v === 'menu' && NEWV && !ui.pops.length) app.insertAdjacentHTML('afterbegin', updHtml());
 }
@@ -3173,7 +3239,7 @@ function vMenu() {
   h += '<div class="sec"><h2>VEREIN</h2><div class="tiles">' + tile('go', 'finance', 'finanzen', 'Finanzen', '', state.cash < 0 ? '!Minus' : '') + tile('go', 'stadium', 'stadion', 'Stadion', '', state.stad.build ? '~Bau' : '') + tile('go', 'sponsors', 'sponsoren', 'Sponsoren', '', state.sp ? (state.ads.on.length < FM.adSlots(state) && state.ads.off.length ? 'Banden frei' : (state.sp.until === undefined || state.sp.until <= state.season) && state.round >= FM.RN(state) - 4 ? '~endet' : '') : '!offen') + tile('go', 'contracts', 'vertraege', 'Verträge', '', expiring(u) ? (state.round >= FM.RN(state) - 8 ? '!' : '') + expiring(u) + ' enden' : '') + tile('go', 'board', 'vorstand_t', 'Vorstand', '', state.board.conf < 25 ? '!Warnung' : state.jobs.length || (state.fjobs || []).length || state.nto ? 'Angebot' : '') + tile('go', 'youth', 'jugend', 'Jugend', '', yrdy ? yrdy + ' letzte Saison' : '') + '</div></div>';
   h += '<div class="sec"><h2>WETTBEWERB</h2><div class="tiles">' + tile('go', 'table', 'tabelle', 'Tabelle') + tile('go', 'fixtures', 'spielplan', 'Spielplan') + tile('go', 'cup', 'pokal', 'Pokal', '', state.cup.due || state.eu.due ? '!heute' : state.cup.won ? '~Sieger' : '') + tile('go', 'stats', 'statistik', 'Statistik') + '</div></div>';
   var hd = state.hall && state.hall.due;
-  h += '<div class="sec"><h2>WEITERES</h2><div class="tiles">' + tile('go', 'toto', 'toto', 'Toto', '', FM.totoComplete(state) ? '~getippt' : state.round < FM.RN(state) && !state.over ? 'tippen' : '') + (state.hall ? tile('go', 'hall', 'halle', 'Halle', '', hd ? 'offen' : '') : tile('', '', 'halle', 'Halle', 'Winter')) + tile('go', 'fame', 'ruhm', 'Ruhmeshalle') + '</div></div>';
+  h += '<div class="sec"><h2>WEITERES</h2><div class="tiles">' + tile('go', 'toto', 'toto', 'Toto', '', FM.totoComplete(state) ? '~getippt' : state.round < FM.RN(state) && !state.over ? 'tippen' : '') + (state.hall ? tile('go', 'hall', 'halle', 'Halle', '', hd ? 'offen' : '') : tile('', '', 'halle', 'Halle', 'Winter')) + tile('go', 'fame', 'ruhm', 'Ruhmeshalle') + tile('go', 'private', 'm_bag', 'Privat', '', FM.me(state).cash >= 8000 && !FM.me(state).own.length ? 'Geld da' : '') + '</div></div>';
   if (!opp) h += '<button class="big" data-a="kickoff">' + (ct ? (isEu ? EUN() + ': Anpfiff' : 'Pokalspiel starten') : 'Spieltag starten') + '</button>';
   return h;
 }
@@ -3933,6 +3999,8 @@ function popScan() {
     var key = 'fj' + x.c + x.n; pk[key] = 1; if (old[key] || first) return; var j = FM.fjobInfo(state, k); if (!j) return;
     pop('Angebot aus dem Ausland', flag(EUFL[j.c]) + ' <b>' + esc(j.n) + '</b> (' + esc(j.cn) + ', ' + esc(j.lgn) + ', Kaderstärke ' + j.str + ') möchte dich als Trainer verpflichten. Das Angebot gilt bis zum 1. Spieltag.', [['Angebot ansehen', function () { go('board'); }], ['Ablehnen', function () { state.fjobs = state.fjobs.filter(function (y) { return y !== x; }); toast('Angebot abgelehnt.'); }], ['Später entscheiden', null, 'unter Vorstand']], 'm_sign');
   });
+  if (ui.sum && (ui.sum.meBon || ui.sum.meNew) && !ui.sum._mp) { ui.sum._mp = 1; var mb = ui.sum.meBon || [], mn = ui.sum.meNew; if (mb.length || mn) pop('Dein Konto', (mb.length ? mb.map(function (x) { return esc(x[0]) + ': <b>+' + money(x[1]) + '</b>'; }).join('<br>') : '') + (mn ? (mb.length ? '<br>' : '') + 'Dein Vertrag wurde bis Ende Saison ' + seasonLabel(mn.until) + ' verlängert' + (mn.wage > mn.old ? ', das Gehalt steigt auf <b>' + money(mn.wage) + '</b> pro Woche.' : '.') : ''), [['OK'], ['Zu Privat', function () { go('private'); }]], 'm_bag'); }
+  if (R && R.meSold && !R._ms) { R._ms = 1; pop('Privat', 'Dein Konto war im Minus. <b>' + esc(R.meSold) + '</b> wurde mit Verlust verkauft.', [['OK'], ['Zu Privat', function () { go('private'); }]], 'm_bag'); }
   var DLp = FM.deadline(state);
   if (DLp && !first) { DLp.seen = 1; var dls = FM.dlList(state); if (dls.length || DLp.bids) pop('Letzter Transfertag', 'Heute schließt das Transferfenster, auf dem Markt herrscht Hektik.' + (dls.length ? '<br><b>Schnäppchen</b> (nur heute zu diesem Preis):<br>' + dls.map(function (x) { return esc(x.p.n) + ' (' + FM.POS[x.p.p] + ', ' + x.p.a + ', Stärke ' + x.p.s + ') · ' + esc(x.club ? x.club.n : 'vereinslos') + ' · <b>' + money(x.fee) + '</b>'; }).join('<br>') : '') + (DLp.bids ? '<br>Außerdem ' + (DLp.bids === 1 ? 'liegt ein Angebot' : 'liegen ' + DLp.bids + ' Angebote') + ' für deine Spieler vor, deutlich über Marktwert.' : ''), dls.length ? [['Zu den Schnäppchen', function () { ui.tg = 'buy'; ui.tt = 'scout'; ui.sel = -1; go('transfers'); }], ['Später']] : [['OK']], 'm_sign'); }
   var PD = FM.pressDue(state), pck = 'pc' + state.season + '_' + state.round;
@@ -4141,7 +4209,7 @@ function vBoard() {
 }
 function vSacked() {
   var u = FM.userTeam(state);
-  return '<div class="logo" style="font-size:16px">' + (state.quit ? 'VERTRAG AUFGELÖST' : 'ENTLASSEN') + '</div><div class="panel"><p class="title" style="margin:0 0 6px">' + (state.quit ? 'Du hast ' + esc(u.n) + ' verlassen.' : esc(u.n) + ' trennt sich von ' + (coachN() ? esc(coachN()) : 'dir') + '.') + '</p><p class="hint" style="margin:0">' + (state.quit ? 'Der Vorstand hat deiner Bitte entsprochen. ' : 'Der Vorstand hat das Vertrauen verloren. Deine Laufbahn geht trotzdem weiter: ') + '' + (state.jobs.length > 1 ? 'Diese Vereine suchen einen Trainer.' : 'Ein Verein sucht einen Trainer.') + ' Du übernimmst dort Kader, Kasse und Stadion.</p></div>' + jobsHtml();
+  return '<div class="logo" style="font-size:16px">' + (state.quit ? 'VERTRAG AUFGELÖST' : 'ENTLASSEN') + '</div><div class="panel"><p class="title" style="margin:0 0 6px">' + (state.quit ? 'Du hast ' + esc(u.n) + ' verlassen.' : esc(u.n) + ' trennt sich von ' + (coachN() ? esc(coachN()) : 'dir') + '.') + '</p><p class="hint" style="margin:0">' + (state.quit ? 'Der Vorstand hat deiner Bitte entsprochen. Eine Abfindung gibt es nicht. ' : 'Der Vorstand hat das Vertrauen verloren.' + (state.me && state.me.lastSev ? ' Du bekommst <b>' + money(state.me.lastSev) + '</b> Abfindung auf dein Privatkonto.' : '') + ' Deine Laufbahn geht trotzdem weiter: ') + '' + (state.jobs.length > 1 ? 'Diese Vereine suchen einen Trainer.' : 'Ein Verein sucht einen Trainer.') + ' Du übernimmst dort Kader, Kasse und Stadion.</p></div>' + jobsHtml();
 }
 function vYouth() {
   var Y = state.youth, u = FM.userTeam(state), h = sub('Jugend'), fo = Y.fo || 0;
@@ -5065,6 +5133,33 @@ function vSummer() {
   h += inf('Die Vorbereitung endet mit dem Anpfiff des 1. Spieltags. Über den Sommer geht ein Teil der Eingespieltheit verloren, Testspiele holen sie zurück. Testspiele gegen starke Gegner bringen Zuschauereinnahmen, eine Niederlage gegen den Dorfverein drückt die Stimmung.');
   return h;
 }
+function vPrivate() {
+  var M = FM.me(state), u = FM.userTeam(state), tab = ui.pvt || 'con', h = sub('Privat'), up = FM.meUpkeep(state), RNn = FM.RN(state);
+  h += '<div class="tbar"><div><span>Vermögen</span><b>' + tk(M.cash) + '</b></div><div><span>Gehalt / Wo.</span><b>' + num(M.wage) + '</b></div><div><span>Unterhalt / Wo.</span><b>' + (up ? num(up) : '–') + '</b></div></div>';
+  h += chips('pvt', [['con', 'Vertrag'], ['own', 'Besitz'], ['edu', 'Fortbildung']], tab);
+  if (tab === 'con') {
+    var left = Math.max(0, (M.until - state.season) * RNn + RNn - state.round);
+    h += '<div class="panel"><p class="lbl">TRAINERVERTRAG · ' + esc(u.n.toUpperCase()) + '</p>' + kv('Gehalt pro Woche', money(M.wage)) + kv('Pro Saison', money(M.wage * RNn)) + kv('Läuft bis', 'Ende Saison ' + seasonLabel(M.until)) + kv('Abfindung bei Entlassung', money(Math.round(left * M.wage * 0.5))) + '<p class="hint" style="margin:8px 0 0">Das Gehalt zahlt der Verein aus seiner Kasse. Wirst du entlassen, bekommst du die Hälfte des Restvertrags. Bittest du selbst um Auflösung, gibt es nichts.</p></div>';
+    h += '<div class="panel"><p class="lbl">PRÄMIEN LAUT VERTRAG</p>' + kv('Saisonziel erreicht', money(6 * M.wage)) + kv('Pokalsieg', money(10 * M.wage)) + kv('Aufstieg', money(20 * M.wage)) + kv('Meisterschaft', money(20 * M.wage)) + kv('Europapokalsieg', money(25 * M.wage)) + '</div>';
+    h += '<div class="panel">' + acard('m_sign', 'Mehr Gehalt fordern', 'Einmal pro Saison, ab dem 7. Spieltag.') + fx([['Gehalt +12 % und Vertrag verlängert', 1], ['Bei Ablehnung Vertrauen −4', 0]]) + '<button class="big sec2 sm" style="margin-top:10px" data-a="measkw"' + (M.ask === state.season ? ' disabled' : '') + '>' + (M.ask === state.season ? 'In dieser Saison schon verhandelt' : 'Mehr Gehalt fordern') + '</button><p class="hint" style="margin:8px 0 0">Je höher das Vertrauen des Vorstands (jetzt ' + Math.round(state.board.conf) + '), desto eher sagt er ja. Läuft der Vertrag aus, wird er zum Saisonende automatisch um zwei Jahre verlängert, mit dem Gehalt, das dein Ruf dann wert ist.</p></div>';
+    if (M.log.length) { h += '<div class="panel"><p class="lbl">LETZTE BEWEGUNGEN</p>'; M.log.forEach(function (x) { h += kv(esc(x.t) + ' <span class="hint">· ' + seasonLabel(x.s) + '</span>', (x.v > 0 ? '+' : '') + money(x.v)); }); h += '</div>'; }
+  } else if (tab === 'own') {
+    h += '<p class="hint" style="margin:0">Besitz hebt deinen Ruf – und der bringt bessere Sponsoren, Jobangebote und Gehälter. Er kostet aber Unterhalt, auch wenn du bei einem kleineren Verein landest. Reicht das Geld nicht mehr, wird das Teuerste mit Verlust verkauft.</p>';
+    var grp = '';
+    FM.MEOWN.forEach(function (o) {
+      var has = M.own.indexOf(o[0]) >= 0;
+      if (o[5] !== grp) { grp = o[5]; h += '<p class="lbl" style="margin:0">' + grp.toUpperCase() + '</p>'; }
+      h += '<div class="panel"' + (has ? ' style="border-color:#c9a227"' : '') + '><div class="row" style="align-items:center;gap:10px"><b class="grow" style="font-size:16px">' + (has ? '★ ' : '') + o[1] + '</b><b>' + tk(o[2]) + '</b></div>' + fx([['Ruf +' + o[4], 1]].concat(o[3] ? [['Unterhalt ' + num(o[3]) + ' pro Woche', 0]] : [])) + (has ? '<button class="big sec2 sm" style="margin-top:10px" data-a="mesell" data-val="' + o[0] + '">Verkaufen · ' + tk(Math.round(o[2] * 0.7)) + '</button>' : '<button class="big sec2 sm" style="margin-top:10px" data-a="mebuy" data-val="' + o[0] + '"' + (M.cash < o[2] ? ' disabled' : '') + '>' + (M.cash < o[2] ? 'Noch ' + tk(o[2] - M.cash) + ' sparen' : 'Kaufen') + '</button>') + '</div>';
+    });
+  } else {
+    h += '<p class="hint" style="margin:0">Ein Abschluss bleibt für die ganze Laufbahn, auch nach einem Vereinswechsel.</p>';
+    FM.MEEDU.forEach(function (o) {
+      var has = M.edu.indexOf(o[0]) >= 0;
+      h += '<div class="panel"' + (has ? ' style="border-color:#c9a227"' : '') + '><div class="row" style="align-items:center;gap:10px"><b class="grow" style="font-size:16px">' + (has ? '★ ' : '') + o[1] + '</b><b>' + tk(o[2]) + '</b></div><p class="hint" style="margin:6px 0 0">' + o[3] + '</p>' + (has ? '' : '<button class="big sec2 sm" style="margin-top:10px" data-a="melearn" data-val="' + o[0] + '"' + (M.cash < o[2] ? ' disabled' : '') + '>' + (M.cash < o[2] ? 'Noch ' + tk(o[2] - M.cash) + ' sparen' : 'Anmelden') + '</button>') + '</div>';
+    });
+  }
+  return h;
+}
 function vFame() {
   var C = FM.car(state), u = FM.userTeam(state), h = sub('Ruhmeshalle') + heroPic('hero_ruhmhalle', 'Vitrine mit goldenen Pokalen, Medaillen und Mannschaftsfotos', 107), st = u.st;
   var W = C.w + st.s, D = C.d + st.u, L = C.l + st.n, GF = C.gf + st.tf, GA = C.ga + st.ta, N = W + D + L, TN = { m: 'Meister', p: 'Pokalsieger', e: EUN() + '-Sieger', a: 'Aufstieg' };
@@ -5387,6 +5482,9 @@ app.addEventListener('click', function (ev) {
   if (a === 'prefpw') { prefs.pw = +b.getAttribute('data-val') === 1 ? 1 : 0; try { localStorage.setItem('ligaboss-prefs', JSON.stringify(prefs)); } catch (e7) { } return render(); }
   if (a === 'preftour') { prefs.tour = +b.getAttribute('data-val') === 1; try { localStorage.setItem('ligaboss-prefs', JSON.stringify(prefs)); } catch (e7) { } return render(); }
   if (a === 'updcheck') return updManual();
+  if (a === 'pvt') { ui.pvt = b.getAttribute('data-val'); return render(); }
+  if (a === 'measkw') { var mq = FM.meAsk(state); persist(); render(); return toast(mq === 'ok' ? 'Der Vorstand stimmt zu: 12 % mehr Gehalt.' : mq); }
+  if (a === 'mebuy' || a === 'mesell' || a === 'melearn') { var mv = b.getAttribute('data-val'), mr = a === 'mebuy' ? FM.meBuy(state, mv) : a === 'mesell' ? FM.meSell(state, mv) : FM.meLearn(state, mv); persist(); var my = window.scrollY; render(); window.scrollTo(0, my); return toast(mr || (a === 'mebuy' ? 'Gekauft. Dein Ruf steigt.' : a === 'mesell' ? 'Verkauft.' : 'Abschluss in der Tasche.')); }
   if (a === 'rsg') { ui.rsg = true; return render(); }
   if (a === 'rsgno') { ui.rsg = false; return render(); }
   if (a === 'rsgyes') { ui.rsg = false; var rq = FM.resign(state); if (rq) return toast(rq); ui.pops = []; persist(); return go('sacked'); }

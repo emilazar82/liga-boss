@@ -811,7 +811,7 @@ function fgnInv(c, L, l) {
   ord.forEach(function (i) { var st = l ? rnd(58, 69) : rnd(70, 82), o = { n: ctyClub(c, i), st: st, s0: st }; if (l) o.l = l; L.push(o); });
 }
 function fgnInit(state, ext) {
-  var me = state.cty || 'de'; state.fgn = {}; state.fgl = {}; state.fg0 = state.season; state.fg2 = 1;
+  var me = state.cty || 'de'; state.fgn = {}; state.fgl = {}; state.fg0 = state.season; state.fg2 = 1; state.fl = null;
   Object.keys(CTY).forEach(function (c) {
     if (c === me) return;
     var D = ext && ext[c], L = [];
@@ -828,6 +828,64 @@ function fgnInit(state, ext) {
     state.fgn[c] = L;
   });
 }
+function flIdx(state, c, l) { var r = []; (state.fgn[c] || []).forEach(function (o, i) { if ((o.l || 0) === l) r.push(i); }); return r; }
+function flInit(state) {
+  state.fl = {};
+  Object.keys(state.fgn || {}).forEach(function (c) {
+    state.fgn[c].forEach(function (o) { o.t = [0, 0, 0, 0, 0]; delete o.g; });
+    state.fl[c] = [0, 1].map(function (l) { return { ix: shuffle(flIdx(state, c, l)), md: 0, last: null }; });
+  });
+}
+function flRounds(L) { var n = L.ix.length + (L.ix.length % 2); return n < 2 ? 0 : 2 * (n - 1); }
+function flPairs(L, r) {
+  var T = L.ix.slice(); if (T.length % 2) T.push(-1);
+  var n = T.length, h = n - 1, rr = r % h, sec = r >= h, list = [T[0]], k, out = [];
+  for (k = 0; k < h; k++) list.push(T[1 + ((k - rr + h * 4) % h)]);
+  for (k = 0; k < n / 2; k++) { var a = list[k], b = list[n - 1 - k], hm = k === 0 ? rr % 2 === 0 : k % 2 === 0; if (a < 0 || b < 0) continue; if (sec) hm = !hm; out.push(hm ? [a, b] : [b, a]); }
+  return out;
+}
+function pois(l) { var L = Math.exp(-l), k = 0, p = 1; do { k++; p *= Math.random(); } while (p > L && k < 12); return k - 1; }
+var FLC = {};
+function flCand(state, c, i) {
+  var key = c + i; if (FLC[key]) return FLC[key];
+  var o = state.fgn[c][i], yrs = state.season - (state.fg0 || state.season), r = [];
+  if (o.ps) o.ps.forEach(function (x) { var f = x.split('|'), pos = +f[0], age = +f[2] + yrs; if (age >= 37 || !pos) return; r.push([f[1], [0, 1, 3, 7][pos] * Math.max(1, +f[3] - 55)]); });
+  else {
+    if (!o.sc) { usePools(c); o.sc = [3, 3, 3, 2, 2, 1].map(function (pos) { return makePlayer(0, pos, 60).n; }); useCty(state); }
+    o.sc.forEach(function (nm, k) { r.push([nm, [9, 6, 4, 3, 2, 1][k]]); });
+  }
+  r.sort(function (a, b) { return b[1] - a[1]; }); r = r.slice(0, 12); var sum = 0; r.forEach(function (x) { sum += x[1]; });
+  return (FLC[key] = { r: r, sum: sum });
+}
+function flGoal(state, c, i) { var C = flCand(state, c, i), o = state.fgn[c][i]; if (!C.sum) return; var x = Math.random() * C.sum, k = 0; while (k < C.r.length - 1 && (x -= C.r[k][1]) > 0) k++; o.g = o.g || {}; o.g[C.r[k][0]] = (o.g[C.r[k][0]] || 0) + 1; }
+function flPlay(state, c, li) {
+  var L = state.fl[c][li], F = state.fgn[c], last = [];
+  flPairs(L, L.md).forEach(function (m) {
+    var a = F[m[0]], b = F[m[1]], d = clamp(a.st - b.st, -25, 25), hg = pois(1.5 * Math.exp(0.045 * d)), ag = pois(1.15 * Math.exp(-0.045 * d)), k;
+    if (!a.t) a.t = [0, 0, 0, 0, 0]; if (!b.t) b.t = [0, 0, 0, 0, 0];
+    a.t[3] += hg; a.t[4] += ag; b.t[3] += ag; b.t[4] += hg; if (hg > ag) { a.t[0]++; b.t[2]++; } else if (hg < ag) { b.t[0]++; a.t[2]++; } else { a.t[1]++; b.t[1]++; }
+    for (k = 0; k < hg; k++) flGoal(state, c, m[0]); for (k = 0; k < ag; k++) flGoal(state, c, m[1]);
+    last.push([m[0], m[1], hg, ag]);
+  });
+  L.md++; L.last = last;
+}
+function flSync(state, all) {
+  if (!state.fgn) return; if (!state.fl) flInit(state);
+  FLC = {}; var prog = all || state.over ? 1 : state.round / Math.max(1, RN(state));
+  Object.keys(state.fl).forEach(function (c) { state.fl[c].forEach(function (L, li) { var n = flRounds(L), tg = Math.min(n, Math.round(prog * n)), g = 0; while (L.md < tg && g++ < 60) flPlay(state, c, li); }); });
+}
+function flTable(state, c, l) {
+  flSync(state); var F = state.fgn[c] || [];
+  return flIdx(state, c, l).map(function (i) { var o = F[i], t = o.t || [0, 0, 0, 0, 0]; return { ix: i, id: fgnId(state, c, i), n: o.n, s: t[0], u: t[1], nn: t[2], sp: t[0] + t[1] + t[2], tf: t[3], ta: t[4], pk: t[0] * 3 + t[1], st: Math.round(o.st), c1: o.c1, c2: o.c2 }; }).sort(function (a, b) { return b.pk - a.pk || (b.tf - b.ta) - (a.tf - a.ta) || b.tf - a.tf || b.st - a.st; });
+}
+function flInfo(state, c, l) {
+  flSync(state); var L = state.fl[c][l], F = state.fgn[c], nm = function (m) { return [F[m[0]].n, F[m[1]].n, m[2], m[3]]; }, n = flRounds(L);
+  return { md: L.md, n: n, last: (L.last || []).map(nm), next: L.md < n ? flPairs(L, L.md).map(function (m) { return [F[m[0]].n, F[m[1]].n]; }) : [] };
+}
+function flScorers(state, c, l, n) {
+  flSync(state); var all = []; flIdx(state, c, l).forEach(function (i) { var o = state.fgn[c][i]; Object.keys(o.g || {}).forEach(function (nm) { all.push({ n: nm, t: o.n, g: o.g[nm] }); }); });
+  return all.sort(function (a, b) { return b.g - a.g; }).slice(0, n);
+}
 function fgnReal(state) { var r = false; Object.keys(state.fgn || {}).forEach(function (c) { state.fgn[c].forEach(function (o) { if (o.ps) r = true; }); }); return r; }
 function fgnApply(state, ext, eun) {
   fgnInit(state, ext); state.fgq = null; state.fx = []; if (eun) state.eun = eun;
@@ -837,20 +895,23 @@ function fgnApply(state, ext, eun) {
 }
 function fgnLgs(state, c) { return [0, 1].map(function (l) { return (state.fgl && state.fgl[c] && state.fgl[c][l]) || CTY[c].lgs[l]; }); }
 function fgnTop(state, noise) {
-  var q = {}; if (noise) state.fgr = {};
+  var q = {}; if (noise) { state.fgr = {}; flSync(state, true); }
   Object.keys(state.fgn).forEach(function (c) {
-    var L = state.fgn[c], n = c === 'de' ? 4 : 3;
-    if (noise) L.forEach(function (o) { o.st = clamp(o.st + rnd(-1, 1), (o.s0 || o.st) - 5, (o.s0 || o.st) + 5); });
-    var R = L.map(function (o, i) { return { i: i, l: o.l || 0, v: o.st + (noise ? (rnd(-5, 5) + rnd(-5, 5)) / 2 : 0) }; }).sort(function (a, b) { return b.v - a.v; });
-    var A = R.filter(function (x) { return !x.l; }), B = R.filter(function (x) { return x.l === 1; });
+    var L = state.fgn[c], n = c === 'de' ? 4 : 3, A, B;
+    if (noise) { A = flTable(state, c, 0).map(function (x) { return { i: x.ix }; }); B = flTable(state, c, 1).map(function (x) { return { i: x.ix }; }); }
+    else { var R = L.map(function (o, i) { return { i: i, l: o.l || 0, v: o.st }; }).sort(function (a, b) { return b.v - a.v; }); A = R.filter(function (x) { return !x.l; }); B = R.filter(function (x) { return x.l === 1; }); }
     q[c] = A.slice(0, n).map(function (x) { return x.i; });
-    if (noise && A.length > 8 && B.length >= 3) {
-      var dn = A.slice(-3), up = B.slice(0, 3);
-      state.fgr[c] = { ch: L[A[0].i].n, up: up.map(function (x) { return L[x.i].n; }), dn: dn.map(function (x) { return L[x.i].n; }) };
-      dn.forEach(function (x) { var o = L[x.i]; o.l = 1; o.s0 = (o.s0 || o.st) - 2; o.st -= 2; });
-      up.forEach(function (x) { var o = L[x.i]; delete o.l; o.s0 = (o.s0 || o.st) + 2; o.st += 2; });
+    if (noise) {
+      L.forEach(function (o) { o.st = clamp(o.st + rnd(-1, 1), (o.s0 || o.st) - 5, (o.s0 || o.st) + 5); });
+      if (A.length > 8 && B.length >= 3) {
+        var dn = A.slice(-3), up = B.slice(0, 3);
+        state.fgr[c] = { ch: L[A[0].i].n, up: up.map(function (x) { return L[x.i].n; }), dn: dn.map(function (x) { return L[x.i].n; }) };
+        dn.forEach(function (x) { var o = L[x.i]; o.l = 1; o.s0 = (o.s0 || o.st) - 2; o.st -= 2; });
+        up.forEach(function (x) { var o = L[x.i]; delete o.l; o.s0 = (o.s0 || o.st) + 2; o.st += 2; });
+      }
     }
   });
+  if (noise) state.fl = null;
   return q;
 }
 function fgnTeam(state, id, c, o) {
@@ -864,6 +925,7 @@ function fgnTeam(state, id, c, o) {
     var d = Math.round(o.st - (o.s0 || o.st)); if (d) t.pl.forEach(function (p) { p.s = clamp(p.s + d, 20, 97); p.at = null; fixP(p); });
   }
   if (o.c1) { t.c1 = o.c1; t.c2 = o.c2; } if (o.k1) { t.k1 = o.k1; t.k2 = o.k2; t.k3 = o.k3; }
+  if (!o.ps && o.sc) { var byS = t.pl.slice().sort(function (a, b) { return b.s - a.s; }), tk = {}; o.sc.forEach(function (nm, k) { var pos = [3, 3, 3, 2, 2, 1][k], p = byS.filter(function (x) { return x.p === pos && !tk[x.i]; })[0]; if (p) { p.n = nm; tk[p.i] = 1; } }); }
   if (!state.nid) state.nid = 100000; t.pl.forEach(function (p) { p.i = state.nid++; });
   t.cty = c; t.fl = o.l || 0; t.fo = pick(Object.keys(FORMATIONS)); t.co = mkCoach(); t.co.w = rnd(0, 60); aiTactics(t); t.lu = bestEleven(t);
   useCty(state);
@@ -885,7 +947,7 @@ function euInit(state) {
   state.eu = { eu: true, v: 2, r: 0, g: G, fx: fx, ties: fx[0], byes: [], hist: [], due: false, out: q.indexOf(state.uid) < 0, won: false, nm: EUNAME, pz: EUPRIZE, last: 8 };
 }
 function fxFind(state, id) { var F = (state && state.fx) || []; for (var k = 0; k < F.length; k++) if (F[k].id === id) return F[k]; return undefined; }
-function fgnFix(state) { if (state.fgn && !state.fg2) { state.fg2 = 1; Object.keys(state.fgn).forEach(function (c) { if (!state.fgn[c].some(function (o) { return o.l === 1; })) fgnInv(c, state.fgn[c], 1); }); } }
+function fgnFix(state) { if (state.fgn && !state.fg2) { state.fg2 = 1; state.fl = null; Object.keys(state.fgn).forEach(function (c) { if (!state.fgn[c].some(function (o) { return o.l === 1; })) fgnInv(c, state.fgn[c], 1); }); } }
 function fgnClubs(state, c, l) {
   fgnFix(state);
   var L = (state.fgn && state.fgn[c]) || [], ci = Object.keys(CTY).indexOf(c), inEu = {}; ((state.eu && state.eu.g) || []).forEach(function (g) { g.forEach(function (id) { inEu[id] = 1; }); });
@@ -1381,7 +1443,7 @@ function ensure(state) {
   if (!state.cup) cupInit(state);
   if (state.eu && !state.eu.v) { if (!state.eu.r && !state.eu.hist.length) state.eu = null; else state.eu = { eu: true, v: 2, r: 9, g: [], fx: [], ties: [], byes: [], hist: [], due: false, out: true, won: false, nm: EUNAME, pz: EUPRIZE, last: 8, off: true }; }
   if (!state.eu) euInit(state);
-  fgnFix(state);
+  fgnFix(state); if (!(state.tour && state.tour.on)) flSync(state);
   if (state.hall === undefined) state.hall = null;
   if (!state.offers) state.offers = [];
   if (!state.neg) state.neg = {};
@@ -2621,7 +2683,7 @@ function topScorers(state, lg, n) {
   all.sort(function (a, b) { return b.g - a.g; });
   return all.slice(0, n);
 }
-return { NTN: NTN, TOURST: TOURST, tourDue: tourDue, tourKind: tourKind, tourStart: tourStart, tourTie: tourTie, startTour: startTour, tourRest: tourRest, tourInfo: tourInfo, ntAnswer: ntAnswer, fgnReal: fgnReal, fgnApply: fgnApply, weeklyOffers: weeklyOffers, fgnLgs: fgnLgs, fgnClubs: fgnClubs, fgnOpen: fgnOpen, cupDate: cupDate, euName: euName, euGroups: euGroups, tCty: tCty, EUDRAW: EUDRAW, exportData: exportData, parseData: parseData, applyData: applyData, newGameCustom: newGameCustom, winText: winText, startFriendly: startFriendly, cupGoalR: cupGoalR, friendly: friendly, friendInfo: friendInfo, car: car, liveTalk: liveTalk, talkInfo: talkInfo, talkAnswer: talkAnswer, liveTact: liveTact, liveTactInfo: liveTactInfo, tableX: tableX, teamInfo: teamInfo, leagueStats: leagueStats, totoAuto: totoAuto, totoMult: totoMult, hallSquad: hallSquad, boardAmb: boardAmb, boardAsk: boardAsk, boardTalk: boardTalk, GRANT: GRANT, youthTrial: youthTrial, youthLoan: youthLoan, youthDrop: youthDrop, youthProj: youthProj, sponProj: sponProj, sponReneg: sponReneg, extOffer: extOffer, raise: raise, release: release, releaseCost: releaseCost, EXT: EXT, VIPB: VIPB, setOps: setOps, capEff: capEff, attExpect: attExpect, LGF: LGF, SECC: SECC, PITC: PITC, PPR: PPR, PPN: PPN, DEPO: DEPO, INVAMT: INVAMT, absWeek: absWeek, wageSum: wageSum, setPP: setPP, setGoalBonus: setGoalBonus, setIns: setIns, deposit: deposit, breakDep: breakDep, depSum: depSum, investor: investor, winOpen: winOpen, scoutCap: scoutCap, scoutFee: scoutFee, scoutAsk: scoutAsk, scoutTips: scoutTips, posCount: posCount, planInfo: planInfo, setPreset: setPreset, STAFFN: STAFFN, staffLv: staffLv, staffWage: staffWage, staffCost: staffCost, setStaff: setStaff, indMax: indMax, tactInfo: tactInfo, euTie: euTie, startEu: startEu, EUNAME: EUNAME, EUPRIZE: EUPRIZE, jobInfo: jobInfo, adSlots: adSlots, adSign: adSign, MN: MN, MUP: MUP, MCOST: MCOST, merchExpect: merchExpect, merchUpgrade: merchUpgrade, DKD: DKD, dkPreview: dkPreview, dkSell: dkSell, extraCost: extraCost, stadExtra: stadExtra, upkeepOf: upkeepOf, goalText: goalText, takeOver: takeOver, SESS: SESS, planFit: planFit, setPlan: setPlan, setInd: setInd, CAMP: CAMP, campCost: campCost, campGo: campGo, ATN: ATN, ATW: ATW, YCOST: YCOST, YUP: YUP, YMAX: YMAX, youthUpgrade: youthUpgrade, promote: promote, POS: POS, FORMATIONS: FORMATIONS, LEAGUES: LEAGUES, ROUNDS: ROUNDS, CTY: CTY, cfg: cfg, NL: NL, NT: NT, RN: RN, HN: HN, lgName: lgName, newGame: newGame, userTeam: userTeam, team: team, table: table, place: place, nextMatch: nextMatch, playRound: playRound, finishSeason: finishSeason, bestEleven: bestEleven, lineupValid: lineupValid, counts: counts, need: need, eff: eff, findP: findP, dateOf: dateOf, seasonLabel: seasonLabel, topScorers: topScorers, ensure: ensure, value: value, salary: salary, buy: buy, sell: sell, sellPrice: sellPrice, MAXSQUAD: MAXSQUAD, signSponsor: signSponsor, loanMax: loanMax, loanStep: loanStep, borrow: borrow, repay: repay, setPrice: setPrice, calEvents: calEvents, startBuild: startBuild, blocks: blocks, buildPlan: buildPlan, BMAX: BMAX, BUILDS: BUILDS, handgeld: handgeld, extend: extend, PRICE: PRICE, cupTie: cupTie, cupPlay: cupPlay, startRound: startRound, startCup: startCup, baseWage: baseWage, demand: demand, offer: offer, loanFee: loanFee, canLoanIn: canLoanIn, loanIn: loanIn, loanOut: loanOut, toggleList: toggleList, acceptOffer: acceptOffer, rejectOffer: rejectOffer, haggle: haggle, findTarget: findTarget, liveNext: liveNext, liveSub: liveSub, liveBench: liveBench, finishLive: finishLive, liveAuto: liveAuto, avail: avail, CUPNAME: CUPNAME, CUPPRIZE: CUPPRIZE, hallPlay: hallPlay, totoMatches: totoMatches, totoTip: totoTip, totoComplete: totoComplete, TOTOSTAKE: TOTOSTAKE, TOTOWIN: TOTOWIN };
+return { NTN: NTN, TOURST: TOURST, tourDue: tourDue, tourKind: tourKind, tourStart: tourStart, tourTie: tourTie, startTour: startTour, tourRest: tourRest, tourInfo: tourInfo, ntAnswer: ntAnswer, flTable: flTable, flInfo: flInfo, flScorers: flScorers, fgnReal: fgnReal, fgnApply: fgnApply, weeklyOffers: weeklyOffers, fgnLgs: fgnLgs, fgnClubs: fgnClubs, fgnOpen: fgnOpen, cupDate: cupDate, euName: euName, euGroups: euGroups, tCty: tCty, EUDRAW: EUDRAW, exportData: exportData, parseData: parseData, applyData: applyData, newGameCustom: newGameCustom, winText: winText, startFriendly: startFriendly, cupGoalR: cupGoalR, friendly: friendly, friendInfo: friendInfo, car: car, liveTalk: liveTalk, talkInfo: talkInfo, talkAnswer: talkAnswer, liveTact: liveTact, liveTactInfo: liveTactInfo, tableX: tableX, teamInfo: teamInfo, leagueStats: leagueStats, totoAuto: totoAuto, totoMult: totoMult, hallSquad: hallSquad, boardAmb: boardAmb, boardAsk: boardAsk, boardTalk: boardTalk, GRANT: GRANT, youthTrial: youthTrial, youthLoan: youthLoan, youthDrop: youthDrop, youthProj: youthProj, sponProj: sponProj, sponReneg: sponReneg, extOffer: extOffer, raise: raise, release: release, releaseCost: releaseCost, EXT: EXT, VIPB: VIPB, setOps: setOps, capEff: capEff, attExpect: attExpect, LGF: LGF, SECC: SECC, PITC: PITC, PPR: PPR, PPN: PPN, DEPO: DEPO, INVAMT: INVAMT, absWeek: absWeek, wageSum: wageSum, setPP: setPP, setGoalBonus: setGoalBonus, setIns: setIns, deposit: deposit, breakDep: breakDep, depSum: depSum, investor: investor, winOpen: winOpen, scoutCap: scoutCap, scoutFee: scoutFee, scoutAsk: scoutAsk, scoutTips: scoutTips, posCount: posCount, planInfo: planInfo, setPreset: setPreset, STAFFN: STAFFN, staffLv: staffLv, staffWage: staffWage, staffCost: staffCost, setStaff: setStaff, indMax: indMax, tactInfo: tactInfo, euTie: euTie, startEu: startEu, EUNAME: EUNAME, EUPRIZE: EUPRIZE, jobInfo: jobInfo, adSlots: adSlots, adSign: adSign, MN: MN, MUP: MUP, MCOST: MCOST, merchExpect: merchExpect, merchUpgrade: merchUpgrade, DKD: DKD, dkPreview: dkPreview, dkSell: dkSell, extraCost: extraCost, stadExtra: stadExtra, upkeepOf: upkeepOf, goalText: goalText, takeOver: takeOver, SESS: SESS, planFit: planFit, setPlan: setPlan, setInd: setInd, CAMP: CAMP, campCost: campCost, campGo: campGo, ATN: ATN, ATW: ATW, YCOST: YCOST, YUP: YUP, YMAX: YMAX, youthUpgrade: youthUpgrade, promote: promote, POS: POS, FORMATIONS: FORMATIONS, LEAGUES: LEAGUES, ROUNDS: ROUNDS, CTY: CTY, cfg: cfg, NL: NL, NT: NT, RN: RN, HN: HN, lgName: lgName, newGame: newGame, userTeam: userTeam, team: team, table: table, place: place, nextMatch: nextMatch, playRound: playRound, finishSeason: finishSeason, bestEleven: bestEleven, lineupValid: lineupValid, counts: counts, need: need, eff: eff, findP: findP, dateOf: dateOf, seasonLabel: seasonLabel, topScorers: topScorers, ensure: ensure, value: value, salary: salary, buy: buy, sell: sell, sellPrice: sellPrice, MAXSQUAD: MAXSQUAD, signSponsor: signSponsor, loanMax: loanMax, loanStep: loanStep, borrow: borrow, repay: repay, setPrice: setPrice, calEvents: calEvents, startBuild: startBuild, blocks: blocks, buildPlan: buildPlan, BMAX: BMAX, BUILDS: BUILDS, handgeld: handgeld, extend: extend, PRICE: PRICE, cupTie: cupTie, cupPlay: cupPlay, startRound: startRound, startCup: startCup, baseWage: baseWage, demand: demand, offer: offer, loanFee: loanFee, canLoanIn: canLoanIn, loanIn: loanIn, loanOut: loanOut, toggleList: toggleList, acceptOffer: acceptOffer, rejectOffer: rejectOffer, haggle: haggle, findTarget: findTarget, liveNext: liveNext, liveSub: liveSub, liveBench: liveBench, finishLive: finishLive, liveAuto: liveAuto, avail: avail, CUPNAME: CUPNAME, CUPPRIZE: CUPPRIZE, hallPlay: hallPlay, totoMatches: totoMatches, totoTip: totoTip, totoComplete: totoComplete, TOTOSTAKE: TOTOSTAKE, TOTOWIN: TOTOWIN };
 })();
 </script>
 
@@ -2703,7 +2765,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '15.11. 13:30';
+var BUILD = '15.11. 14:30';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -3284,7 +3346,9 @@ function vTransfers() {
         if (!(ui.tlg < FM.NL(state)) && !fgCh.some(function (x) { return x[0] === ui.tlg; })) ui.tlg = 0;
         h += chips('tlg', lgCh, ui.tlg) + (fgCh.length ? '<p class="lbl" style="margin:0">AUSLAND</p>' + chips('tlg', fgCh, ui.tlg) : '') + '<div class="list">';
         if (ui.tlg >= 10) { var fl = ui.tfl ? 1 : 0; h = h.slice(0, -18) + chips('tfl', FM.fgnLgs(state, CK[ui.tlg - 10]).map(function (n, i) { return [i, n]; }), fl) + '<div class="list">'; }
-        if (ui.tlg >= 10) FM.fgnClubs(state, CK[ui.tlg - 10], ui.tfl ? 1 : 0).forEach(function (t, k) { h += '<button class="trr" style="grid-template-columns:30px minmax(0,1fr) 70px" data-a="tclub" data-val="' + t.id + '"><span>' + (k + 1) + '.</span><span class="nm">' + (crestImg(t.n, 20) || crestSvg(t.c1 || CRC[k % 9], t.c2 || '#f4efe1', k % 4, crestL(t.n), 20)) + esc(t.n) + (t.cl ? ' ★' : '') + '</span><span>Stärke ' + t.st + '</span></button>'; });
+        var fPl = {}; if (ui.tlg >= 10) FM.flTable(state, CK[ui.tlg - 10], ui.tfl ? 1 : 0).forEach(function (x, k) { fPl[x.n] = k + 1; });
+        if (ui.tlg >= 10) FM.fgnClubs(state, CK[ui.tlg - 10], ui.tfl ? 1 : 0).sort(function (a, b) { return (fPl[a.n] || 99) - (fPl[b.n] || 99); }).forEach(function (t, k) { h += '<button class="trr" style="grid-template-columns:30px minmax(0,1fr) 70px" data-a="tclub" data-val="' + t.id + '"><span>' + (k + 1) + '.</span><span class="nm">' + (crestImg(t.n, 20) || crestSvg(t.c1 || CRC[k % 9], t.c2 || '#f4efe1', k % 4, crestL(t.n), 20)) + esc(t.n) + (t.cl ? ' ★' : '') + '</span><span>Stärke ' + t.st + '</span></button>'; });
+        if (ui.tlg >= 10) h += '</div><p class="hint" style="margin:0">Reihenfolge nach aktuellem Tabellenplatz.</p><div>';
         else FM.table(state, ui.tlg).forEach(function (t, k) { if (t.id !== u.id) h += '<button class="trr" style="grid-template-columns:30px minmax(0,1fr) 60px" data-a="tclub" data-val="' + t.id + '"><span>' + (k + 1) + '.</span><span class="nm">' + crest(t.id, 20) + esc(t.n) + '</span><span>' + t.st.pk + ' Pkt</span></button>'; });
         h += '</div>';
       } else {
@@ -3825,9 +3889,25 @@ function vYouth() {
   else h += '<p class="hint" style="margin:0">Die Jugendabteilung ist voll ausgebaut.</p>';
   return h + inf('Jede Saison kommen neue Talente zwischen 15 und 17 Jahren. Eine bessere Jugendabteilung bringt mehr und stärkere Spieler, die sich schneller entwickeln.') + '</div>';
 }
-function lgTabs() { return chips('lg', FM.cfg(state).size.map(function (x, i) { return [i, FM.lgName(state, i)]; }), ui.lg); }
+function fgKeys() { var my = state.cty || 'de'; return Object.keys(FM.CTY).filter(function (k) { return k !== my && state.fgn && state.fgn[k]; }); }
+function lgTabs() {
+  var fg = fgKeys(); if (ui.fc && fg.indexOf(ui.fc) < 0) ui.fc = '';
+  var h = chips('lg', FM.cfg(state).size.map(function (x, i) { return [i, FM.lgName(state, i)]; }), ui.fc ? -1 : ui.lg);
+  if (fg.length) h += '<p class="lbl" style="margin:0">AUSLAND</p>' + chips('fc', fg.map(function (k) { return [k, FM.CTY[k].n]; }), ui.fc || '') + (ui.fc ? chips('fl', FM.fgnLgs(state, ui.fc).map(function (n, i) { return [i, n]; }), ui.fl ? 1 : 0) : '');
+  return h;
+}
+function fCrest(x, k, sz) { return crestImg(x.n, sz) || crestSvg(x.c1 || CRC[(x.ix + 3) % 9], x.c2 || '#f4efe1', x.ix % 4, crestL(x.n), sz); }
+function fTies(list, ttl) { if (!list.length) return ''; return '<p class="lbl" style="margin:6px 0 0">' + ttl + '</p><div class="list">' + list.map(function (m) { return '<div style="display:grid;grid-template-columns:1fr 50px 1fr;gap:6px;align-items:center;padding:8px 6px;background:var(--panel);font-size:13px"><span style="text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(m[0]) + ' ' + (crestImg(m[0], 18) || '') + '</span><b style="text-align:center">' + (m.length > 2 ? m[2] + ':' + m[3] : '–') + '</b><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (crestImg(m[1], 18) || '') + ' ' + esc(m[1]) + '</span></div>'; }).join('') + '</div>'; }
+function vTableF() {
+  var c = ui.fc, l = ui.fl ? 1 : 0, T = FM.flTable(state, c, l), I = FM.flInfo(state, c, l), nE = c === 'de' ? 4 : 3, h = sub('Tabelle') + lgTabs();
+  h += '<div class="panel" style="padding:8px"><p class="hint" style="margin:0 0 6px;text-align:center">' + esc(FM.fgnLgs(state, c)[l]) + ' · ' + I.md + '. von ' + I.n + ' Spieltagen</p><table><thead><tr><th></th><th>Verein</th><th>Sp</th><th>S-U-N</th><th>Tore</th><th>Pkt</th></tr></thead><tbody>';
+  T.forEach(function (x, k) { var eu = l === 0 && k < nE, up = l === 1 && k < 3, dn = l === 0 && k >= T.length - 3; h += '<tr class="tr' + (x.id < 5000 ? ' me' : '') + '"' + (x.id < 5000 ? ' style="background:rgba(47,99,196,.25)"' : '') + '><td class="z ' + (up || eu ? 'up' : dn ? 'dn' : '') + '">' + (eu ? '★' : up ? '▲' : dn ? '▼' : '') + '</td><td class="tn"><span class="rk">' + (k + 1) + '.</span>' + fCrest(x, k, 20) + '<span class="nm">' + esc(x.n) + '</span></td><td>' + x.sp + '</td><td>' + x.s + '-' + x.u + '-' + x.nn + '</td><td>' + x.tf + ':' + x.ta + '</td><td><b>' + x.pk + '</b></td></tr>'; });
+  h += '</tbody></table></div>' + fTies(I.last, 'LETZTER SPIELTAG') + fTies(I.next, 'NÄCHSTER SPIELTAG');
+  return h + inf((l === 0 ? '★ ' + EUN() + ' in der nächsten Saison · ▼ Abstiegsplatz' : '▲ Aufstiegsplatz') + '. Blau hinterlegt: spielt in dieser Saison in der ' + EUN() + '. Die Auslandsligen laufen im Takt deiner Liga mit; Ligen mit mehr Spieltagen spielen dafür öfter unter der Woche.', 'Legende');
+}
 function fmDots(fm) { var h = '<span class="fmd" role="img" aria-label="Letzte Spiele: ' + (fm.join(' ') || 'keine') + '">'; for (var k = 0; k < 5; k++) h += '<i class="' + (fm[k] || '') + '"></i>'; return h + '</span>'; }
 function vTable() {
+  if (ui.fc && fgKeys().indexOf(ui.fc) >= 0) return vTableF();
   var t = FM.tableX(state, ui.lg, ui.tbm), h = sub('Tabelle') + lgTabs() + chips('tbm', [['all', 'Gesamt'], ['home', 'Heim'], ['away', 'Auswärts'], ['form', 'Letzte 5']], ui.tbm);
   h += '<div class="panel" style="padding:8px"><table><thead><tr><th></th><th>Verein</th><th>Sp</th><th>Tore</th><th>Pkt</th><th>Form</th></tr></thead><tbody>';
   t.forEach(function (x, k) {
@@ -3861,6 +3941,9 @@ function vFixtures() {
       if (r === FM.HN(state) - 1) h += '<div class="fx" style="background:#0a3a3e;grid-template-columns:1fr"><span>' + (FM.cfg(state).wb ? 'Winterpause' : 'Saisonhälfte') + ' · Hallenturnier, Trainingslager, Transferfenster</span></div>';
     });
     h += '</div>' + inf('H = Heimspiel · A = Auswärtsspiel. Der Punkt zeigt, wie schwer das Spiel nach Kaderstärke wird: grün leichter, gelb ausgeglichen, rot schwerer. Rechts steht der Tabellenplatz des Gegners.', 'Legende');
+  } else if (ui.fc && fgKeys().indexOf(ui.fc) >= 0) {
+    var FI = FM.flInfo(state, ui.fc, ui.fl ? 1 : 0);
+    h += lgTabs() + '<div class="panel" style="text-align:center"><p class="title" style="margin:0">' + esc(FM.fgnLgs(state, ui.fc)[ui.fl ? 1 : 0]) + '</p><p class="hint" style="margin:0">' + FI.md + '. von ' + FI.n + ' Spieltagen gespielt</p></div>' + fTies(FI.last, 'LETZTER SPIELTAG') + fTies(FI.next, 'NÄCHSTER SPIELTAG');
   } else {
     var rmx = state.sched[ui.lg].length - 1, rd = Math.max(0, Math.min(rmx, ui.fxr < 0 ? Math.min(rmx, state.round) : ui.fxr));
     h += '<div class="row" style="align-items:center"><button class="big sec2" style="width:64px" data-a="fxr" data-val="' + (rd - 1) + '" aria-label="Spieltag zurück"' + (rd <= 0 ? ' disabled' : '') + '>‹</button><div class="grow title" style="text-align:center">' + (rd + 1) + '. Spieltag</div><button class="big sec2" style="width:64px" data-a="fxr" data-val="' + (rd + 1) + '" aria-label="Spieltag vor"' + (rd >= rmx ? ' disabled' : '') + '>›</button></div>' + lgTabs() + '<div class="list">';
@@ -3873,6 +3956,12 @@ function statBars(rows, col, suffix) { var mx = 1, h = ''; rows.forEach(function
 function vStats() {
   var u = FM.userTeam(state), h = sub('Statistik') + tabBar('stm', [['lg', 'Liga'], ['me', 'Mein Kader'], ['hist', 'Chronik']], ui.stm);
   if (ui.stm === 'lg') {
+    if (ui.fc && fgKeys().indexOf(ui.fc) >= 0) {
+      var fl = ui.fl ? 1 : 0, FS = FM.flScorers(state, ui.fc, fl, 12), FT = FM.flTable(state, ui.fc, fl);
+      h += lgTabs() + '<div class="panel"><p class="lbl">' + lic('t4') + 'TORJÄGER · ' + esc(FM.fgnLgs(state, ui.fc)[fl]).toUpperCase() + '</p>' + (FS.length ? statBars(FS.map(function (x) { return [x.n + ' · ' + x.t, x.g, -1]; }), '#ffd84d') : '<p class="hint" style="margin:0">Noch keine Tore gefallen.</p>') + '</div>';
+      h += '<div class="panel"><p class="lbl">' + lic('i2') + 'BESTER ANGRIFF · TORE</p>' + statBars(FT.slice().sort(function (a, b) { return b.tf - a.tf; }).slice(0, 5).map(function (x) { return [x.n, x.tf, -1]; }), '#6df09a') + '</div><div class="panel"><p class="lbl">' + lic('m_shield') + 'BESTE ABWEHR · GEGENTORE</p>' + statBars(FT.slice().sort(function (a, b) { return a.ta - b.ta; }).slice(0, 5).map(function (x) { return [x.n, x.ta, -1]; }), '#5fb7c9') + '</div><div class="panel"><p class="lbl">' + lic('m_shirt') + 'STÄRKSTE KADER</p>' + statBars(FT.slice().sort(function (a, b) { return b.st - a.st; }).slice(0, 5).map(function (x) { return [x.n, x.st, -1]; }), '#8fd0ff') + '</div>';
+      return h;
+    }
     h += lgTabs(); var ts = FM.topScorers(state, ui.lg, 10), LS = FM.leagueStats(state, ui.lg);
     h += '<div class="panel"><p class="lbl">' + lic('t4') + 'TORJÄGER</p>' + (ts.length ? statBars(ts.map(function (x) { return [x.n + ' · ' + x.t, x.g, x.tid]; }), '#ffd84d') : '<p class="hint" style="margin:0">Noch keine Tore gefallen.</p>') + '</div>';
     h += '<div class="panel"><p class="lbl">' + lic('i2') + 'BESTER ANGRIFF · TORE</p>' + statBars(LS.att, '#6df09a') + '</div><div class="panel"><p class="lbl">' + lic('m_shield') + 'BESTE ABWEHR · GEGENTORE</p>' + statBars(LS.def, '#5fb7c9') + '</div><div class="panel"><p class="lbl">' + lic('m_shirt') + 'STÄRKSTE KADER</p>' + statBars(LS.str, '#8fd0ff') + '</div>';
@@ -5105,7 +5194,9 @@ app.addEventListener('click', function (ev) {
     if (err) return toast(err);
     ui.sel = -1; persist(); render(); return toast(a === 'buy' ? 'Spieler verpflichtet. Er steht noch nicht in der Startelf.' : 'Spieler verkauft.');
   }
-  if (a === 'lg') { ui.lg = +b.getAttribute('data-val'); return render(); }
+  if (a === 'lg') { ui.lg = +b.getAttribute('data-val'); ui.fc = ''; return render(); }
+  if (a === 'fc') { var fv = b.getAttribute('data-val'); ui.fc = ui.fc === fv ? '' : fv; ui.fl = 0; return render(); }
+  if (a === 'fl') { ui.fl = +b.getAttribute('data-val'); return render(); }
   if (a === 'kickoff') {
     if (state.sacked) return go('sacked');
     if (!FM.lineupValid(u)) { toast('Die Startelf ist nicht vollständig. Verletzte und gesperrte Spieler müssen ersetzt werden.'); return go('lineup'); }

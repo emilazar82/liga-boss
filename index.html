@@ -531,6 +531,7 @@ td.tn{white-space:nowrap}td.tn .rk{display:inline-block;width:24px;text-align:ri
 .splogo{display:inline-block;max-width:100%;height:auto;vertical-align:middle;border-radius:4px}.slots{flex-wrap:wrap;gap:8px}.slots span.empty{display:inline-flex;align-items:center;justify-content:center;width:132px;height:40px;border:2px dashed #3d7a74;color:#7fb5ae;font-size:12px;border-radius:4px;opacity:1}
 .fl{display:inline-block;width:15px;height:10px;border:1px solid #0b1622;margin-right:5px;vertical-align:-1px;flex:none;border-radius:1px}
 .adst{display:flex;gap:2px;background:#0b1622;border:3px solid #0b1622;border-bottom:0;padding:1px}.adst img,.adst i{flex:1 1 0;min-width:0;height:auto;aspect-ratio:320/93;display:block;background:#39454d}
+.row.spb>.big{flex:1 1 0;min-width:0;padding-left:4px;padding-right:4px;font-size:10.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -961,12 +962,40 @@ function fgnTop(state, noise) {
   if (noise) state.fl = null;
   return q;
 }
+function fgnAge(state) {
+  var yrs = state.season - (state.fg0 || state.season), FOR = ['FRA', 'BRA', 'ARG', 'POR', 'NED', 'SEN', 'MAR', 'CRO', 'SRB', 'POL', 'DEN', 'NGA', 'JPN', 'USA', 'BEL', 'AUT', 'SUI'];
+  Object.keys(state.fgn || {}).forEach(function (c) {
+    usePools(c); var home = CTYNAT[c];
+    state.fgn[c].forEach(function (o) {
+      if (!o.ps) return;
+      var P = [], cnt = [0, 0, 0, 0];
+      o.ps.forEach(function (x) {
+        var f = x.split('|'), pos = +f[0], age = +f[2] + yrs, str = +f[3], ta = f[5] ? +f[5] : rnd(2, 4);
+        if (age > 31) str -= Math.min(yrs, age - 31); else if (age <= 24) str += Math.min(yrs, 3);
+        age++;
+        if (age <= 23) str += clamp(rnd(0, 1) + ta - 2, 0, 4); else if (age <= 29) str += rnd(-1, 1); else if (age <= 32) str -= rnd(0, 2); else str -= rnd(1, 3);
+        if (age >= 37 || (age >= 34 && Math.random() < 0.35) || str < 30) return;
+        P.push([pos, f[1], age, clamp(str, 25, 97), f[4] || '', ta]); cnt[pos]++;
+      });
+      var base = Math.round(o.st), nNew = rnd(2, 3), need = [3, 7, 7, 5], k;
+      function youth(pos) { var ta = Math.random() < 0.12 ? 5 : Math.random() < 0.3 ? 4 : rnd(2, 3); P.push([pos, makePlayer(0, pos, 60).n, rnd(17, 19), clamp(base - rnd(9, 17) + ta, 25, 90), Math.random() < 0.8 && home ? home : pick(FOR), ta]); cnt[pos]++; }
+      for (k = 0; k < 4; k++) while (cnt[k] < need[k]) { youth(k); nNew--; }
+      while (nNew-- > 0 && P.length < 26) youth(pick([1, 1, 2, 2, 3]));
+      if (P.length > 26) { P.sort(function (a, b) { return b[3] - a[3]; }); P = P.slice(0, 26); }
+      o.ps = P.map(function (x) { return x.join('|'); });
+      var top = P.map(function (x) { return x[3]; }).sort(function (a, b) { return b - a; }).slice(0, 14), av = 0; top.forEach(function (v) { av += v; });
+      if (top.length >= 11) o.st = Math.round((o.st + av / top.length) / 2 * 10) / 10;
+      o.s0 = o.st;
+    });
+  });
+  useCty(state); state.fg0 = state.season + 1;
+}
 function fgnTeam(state, id, c, o) {
   usePools(c);
   var t = makeTeam(id, o.n, 9, o.st), yrs = state.season - (state.fg0 || state.season);
   if (o.ps) {
     var pl = [], cnt = [0, 0, 0, 0];
-    o.ps.forEach(function (x) { var f = x.split('|'), pos = +f[0], age = +f[2] + yrs, str = +f[3]; if (age >= 37 || pl.length >= 24) return; if (age > 31) str -= Math.min(yrs, age - 31); else if (age <= 24) str += Math.min(yrs, 3); var p = makePlayer(id * 100 + pl.length, pos, str, age); p.n = f[1]; p.s = clamp(str, 20, 97); p.at = null; fixP(p); if (f[4]) p.nat = f[4]; cnt[pos]++; pl.push(p); });
+    o.ps.forEach(function (x) { var f = x.split('|'), pos = +f[0], age = +f[2] + yrs, str = +f[3]; if (age >= 37 || pl.length >= 24) return; if (age > 31) str -= Math.min(yrs, age - 31); else if (age <= 24) str += Math.min(yrs, 3); var p = makePlayer(id * 100 + pl.length, pos, str, age); p.n = f[1]; p.s = clamp(str, 20, 97); p.at = null; fixP(p); if (f[4]) p.nat = f[4]; if (f[5]) p.ta = +f[5]; cnt[pos]++; pl.push(p); });
     [2, 5, 5, 3].forEach(function (mn, pos) { while (cnt[pos] < mn && pl.length < 26) { pl.push(makePlayer(id * 100 + pl.length, pos, o.st - 4)); cnt[pos]++; } });
     t.pl = pl;
     var d = Math.round(o.st - (o.s0 || o.st)); if (d) t.pl.forEach(function (p) { p.s = clamp(p.s + d, 20, 97); p.at = null; fixP(p); });
@@ -1014,6 +1043,7 @@ var NTEU = ['GER', 'FRA', 'ESP', 'ENG', 'ITA', 'POR', 'NED', 'BEL', 'CRO', 'DEN'
 var NTPOOL = { GER: 'de', AUT: 'de', SUI: 'de', ENG: 'en', SCO: 'en', WAL: 'en', USA: 'en', CAN: 'en', AUS: 'en', NGA: 'en', GHA: 'en', ESP: 'es', ARG: 'es', URU: 'es', COL: 'es', MEX: 'es', ECU: 'es', FRA: 'fr', BEL: 'fr', SEN: 'fr', CIV: 'fr', CMR: 'fr', MAR: 'fr', ALG: 'fr', ITA: 'it' };
 var NTKIT = { GER: ['#f4efe1', '#1a1a1a'], FRA: ['#1f3f8f', '#f4efe1'], ESP: ['#c8102e', '#ffc400'], ENG: ['#f4efe1', '#1f2f6f'], ITA: ['#1f5fbf', '#f4efe1'], POR: ['#b01020', '#0a6a3a'], NED: ['#f36c21', '#1a1a1a'], BEL: ['#c8102e', '#1a1a1a'], CRO: ['#d8232a', '#f4efe1'], BRA: ['#ffdf00', '#009c3b'], ARG: ['#74acdf', '#f4efe1'], DEN: ['#c60c30', '#f4efe1'], SUI: ['#d52b1e', '#f4efe1'], AUT: ['#d8232a', '#f4efe1'], SWE: ['#fecc00', '#006aa7'], URU: ['#5aa7df', '#1a1a1a'], MEX: ['#0a6a3a', '#f4efe1'], JPN: ['#1f2f8f', '#f4efe1'] };
 var TOURNM = ['Gruppe · 1. Spieltag', 'Gruppe · 2. Spieltag', 'Gruppe · 3. Spieltag', 'Viertelfinale', 'Halbfinale', 'Finale'], TOURST = ['Gruppenphase', 'Viertelfinale', 'Halbfinale', 'Finale', 'Titel'], CTYNAT = { de: 'GER', en: 'ENG', es: 'ESP', fr: 'FRA', it: 'ITA' };
+function clubTeam(state) { var T = state.tour; return state.teams[T && T.on && T.cu !== undefined ? T.cu : state.uid]; }
 function tourKind(y) { return y % 4 === 0 ? 'EM' : y % 4 === 2 ? 'WM' : ''; }
 function tourDue(state) { return !!tourKind(state.season) && state.season > (state.y0 || 1995) && state.tdone !== state.season && !(state.tour && state.tour.on); }
 function withTour(state, fn) { var c = state.cup; state.cup = state.tour.c; try { return fn(); } finally { state.tour.c = state.cup; state.cup = c; } }
@@ -1474,7 +1504,7 @@ function release(state, id) {
 }
 function ensure(state) {
   if (!state.nid) state.nid = 100000;
-  if (state.tour && state.tour.on && state.tour.cu !== undefined) return;
+  if (state.tour && state.tour.on && state.tour.cu !== undefined) return state;
   useCty(state); if (!state.teams.some(function (t) { return t.lg === 9; })) { var f0 = state.teams.length; FOREIGN.forEach(function (n, k) { state.teams.push(makeTeam(f0 + k, n, 9, rnd(73, 84))); }); }
   state.teams.forEach(function (t) { if (t.id === state.uid) delete t.co; else if (!t.co) { t.co = mkCoach(); t.co.w = rnd(0, 60); } if (t.pr === undefined) { if (t.id === state.uid) { t.pr = 1; t.ps = 1; t.tp = 1; t.ab = 0; t.md = 0; } else aiTactics(t); } });
   if (state.rep === undefined) state.rep = 20;
@@ -2682,7 +2712,7 @@ function finishSeason(state) {
   sum.euq = q.map(function (id) { return state.teams[id].n; }); sum.euChamp = state.eu && state.eu.champ !== undefined ? state.teams[state.eu.champ].n : '';
   if (!state.fgn) fgnInit(state, null);
   ntOffer(state, tabs[0][0].id === state.uid || (state.cup && state.cup.won) || (state.eu && state.eu.won));
-  state.fx = []; state.fgq = fgnTop(state, true); sum.fgr = Object.keys(state.fgr || {}).map(function (c) { var r = state.fgr[c]; return [CTY[c].n, r.ch, r.up, r.dn]; }); sum.euqF = Object.keys(state.fgq).map(function (c) { return [CTY[c].n, state.fgq[c].map(function (ix) { return state.fgn[c][ix].n; })]; });
+  state.fx = []; state.fgq = fgnTop(state, true); fgnAge(state); sum.fgr = Object.keys(state.fgr || {}).map(function (c) { var r = state.fgr[c]; return [CTY[c].n, r.ch, r.up, r.dn]; }); sum.euqF = Object.keys(state.fgq).map(function (c) { return [CTY[c].n, state.fgq[c].map(function (ix) { return state.fgn[c][ix].n; })]; });
   sum.board = { goal: goalText(sum.lg, B.goal, state), ok: okGoal, conf: B.conf, sacked: !!state.sacked };
   carSeason(state, sum, okGoal);
   if (!state.sacked) B.conf = Math.round((B.conf + 60) / 2);
@@ -2742,7 +2772,7 @@ function topScorers(state, lg, n) {
   all.sort(function (a, b) { return b.g - a.g; });
   return all.slice(0, n);
 }
-return { NTN: NTN, TOURST: TOURST, tourDue: tourDue, tourKind: tourKind, tourStart: tourStart, tourTie: tourTie, startTour: startTour, tourRest: tourRest, tourInfo: tourInfo, ntAnswer: ntAnswer, spFac: spFac, fjobInfo: fjobInfo, moveCountry: moveCountry, fgnJobs: fgnJobs, worldExport: worldExport, flTable: flTable, flInfo: flInfo, flScorers: flScorers, fgnReal: fgnReal, fgnApply: fgnApply, weeklyOffers: weeklyOffers, fgnLgs: fgnLgs, fgnClubs: fgnClubs, fgnOpen: fgnOpen, cupDate: cupDate, euName: euName, euGroups: euGroups, tCty: tCty, EUDRAW: EUDRAW, exportData: exportData, parseData: parseData, applyData: applyData, newGameCustom: newGameCustom, winText: winText, startFriendly: startFriendly, cupGoalR: cupGoalR, friendly: friendly, friendInfo: friendInfo, car: car, liveTalk: liveTalk, talkInfo: talkInfo, talkAnswer: talkAnswer, liveTact: liveTact, liveTactInfo: liveTactInfo, tableX: tableX, teamInfo: teamInfo, leagueStats: leagueStats, totoAuto: totoAuto, totoMult: totoMult, hallSquad: hallSquad, boardAmb: boardAmb, boardAsk: boardAsk, boardTalk: boardTalk, GRANT: GRANT, youthTrial: youthTrial, youthLoan: youthLoan, youthDrop: youthDrop, youthProj: youthProj, sponProj: sponProj, sponReneg: sponReneg, extOffer: extOffer, raise: raise, release: release, releaseCost: releaseCost, EXT: EXT, VIPB: VIPB, setOps: setOps, capEff: capEff, attExpect: attExpect, LGF: LGF, SECC: SECC, PITC: PITC, PPR: PPR, PPN: PPN, DEPO: DEPO, INVAMT: INVAMT, absWeek: absWeek, wageSum: wageSum, setPP: setPP, setGoalBonus: setGoalBonus, setIns: setIns, deposit: deposit, breakDep: breakDep, depSum: depSum, investor: investor, winOpen: winOpen, scoutCap: scoutCap, scoutFee: scoutFee, scoutAsk: scoutAsk, scoutTips: scoutTips, posCount: posCount, planInfo: planInfo, setPreset: setPreset, STAFFN: STAFFN, staffLv: staffLv, staffWage: staffWage, staffCost: staffCost, setStaff: setStaff, indMax: indMax, tactInfo: tactInfo, euTie: euTie, startEu: startEu, EUNAME: EUNAME, EUPRIZE: EUPRIZE, jobInfo: jobInfo, adSlots: adSlots, adSign: adSign, MN: MN, MUP: MUP, MCOST: MCOST, merchExpect: merchExpect, merchUpgrade: merchUpgrade, DKD: DKD, dkPreview: dkPreview, dkSell: dkSell, extraCost: extraCost, stadExtra: stadExtra, upkeepOf: upkeepOf, goalText: goalText, takeOver: takeOver, SESS: SESS, planFit: planFit, setPlan: setPlan, setInd: setInd, CAMP: CAMP, campCost: campCost, campGo: campGo, ATN: ATN, ATW: ATW, YCOST: YCOST, YUP: YUP, YMAX: YMAX, youthUpgrade: youthUpgrade, promote: promote, POS: POS, FORMATIONS: FORMATIONS, LEAGUES: LEAGUES, ROUNDS: ROUNDS, CTY: CTY, cfg: cfg, NL: NL, NT: NT, RN: RN, HN: HN, lgName: lgName, newGame: newGame, userTeam: userTeam, team: team, table: table, place: place, nextMatch: nextMatch, playRound: playRound, finishSeason: finishSeason, bestEleven: bestEleven, lineupValid: lineupValid, counts: counts, need: need, eff: eff, findP: findP, dateOf: dateOf, seasonLabel: seasonLabel, topScorers: topScorers, ensure: ensure, value: value, salary: salary, buy: buy, sell: sell, sellPrice: sellPrice, MAXSQUAD: MAXSQUAD, signSponsor: signSponsor, loanMax: loanMax, loanStep: loanStep, borrow: borrow, repay: repay, setPrice: setPrice, calEvents: calEvents, startBuild: startBuild, blocks: blocks, buildPlan: buildPlan, BMAX: BMAX, BUILDS: BUILDS, handgeld: handgeld, extend: extend, PRICE: PRICE, cupTie: cupTie, cupPlay: cupPlay, startRound: startRound, startCup: startCup, baseWage: baseWage, demand: demand, offer: offer, loanFee: loanFee, canLoanIn: canLoanIn, loanIn: loanIn, loanOut: loanOut, toggleList: toggleList, acceptOffer: acceptOffer, rejectOffer: rejectOffer, haggle: haggle, findTarget: findTarget, liveNext: liveNext, liveSub: liveSub, liveBench: liveBench, finishLive: finishLive, liveAuto: liveAuto, avail: avail, CUPNAME: CUPNAME, CUPPRIZE: CUPPRIZE, hallPlay: hallPlay, totoMatches: totoMatches, totoTip: totoTip, totoComplete: totoComplete, TOTOSTAKE: TOTOSTAKE, TOTOWIN: TOTOWIN };
+return { NTN: NTN, TOURST: TOURST, tourDue: tourDue, tourKind: tourKind, tourStart: tourStart, tourTie: tourTie, startTour: startTour, tourRest: tourRest, tourInfo: tourInfo, ntAnswer: ntAnswer, fgnAge: fgnAge, fgnTopX: fgnTop, clubTeam: clubTeam, spFac: spFac, fjobInfo: fjobInfo, moveCountry: moveCountry, fgnJobs: fgnJobs, worldExport: worldExport, flTable: flTable, flInfo: flInfo, flScorers: flScorers, fgnReal: fgnReal, fgnApply: fgnApply, weeklyOffers: weeklyOffers, fgnLgs: fgnLgs, fgnClubs: fgnClubs, fgnOpen: fgnOpen, cupDate: cupDate, euName: euName, euGroups: euGroups, tCty: tCty, EUDRAW: EUDRAW, exportData: exportData, parseData: parseData, applyData: applyData, newGameCustom: newGameCustom, winText: winText, startFriendly: startFriendly, cupGoalR: cupGoalR, friendly: friendly, friendInfo: friendInfo, car: car, liveTalk: liveTalk, talkInfo: talkInfo, talkAnswer: talkAnswer, liveTact: liveTact, liveTactInfo: liveTactInfo, tableX: tableX, teamInfo: teamInfo, leagueStats: leagueStats, totoAuto: totoAuto, totoMult: totoMult, hallSquad: hallSquad, boardAmb: boardAmb, boardAsk: boardAsk, boardTalk: boardTalk, GRANT: GRANT, youthTrial: youthTrial, youthLoan: youthLoan, youthDrop: youthDrop, youthProj: youthProj, sponProj: sponProj, sponReneg: sponReneg, extOffer: extOffer, raise: raise, release: release, releaseCost: releaseCost, EXT: EXT, VIPB: VIPB, setOps: setOps, capEff: capEff, attExpect: attExpect, LGF: LGF, SECC: SECC, PITC: PITC, PPR: PPR, PPN: PPN, DEPO: DEPO, INVAMT: INVAMT, absWeek: absWeek, wageSum: wageSum, setPP: setPP, setGoalBonus: setGoalBonus, setIns: setIns, deposit: deposit, breakDep: breakDep, depSum: depSum, investor: investor, winOpen: winOpen, scoutCap: scoutCap, scoutFee: scoutFee, scoutAsk: scoutAsk, scoutTips: scoutTips, posCount: posCount, planInfo: planInfo, setPreset: setPreset, STAFFN: STAFFN, staffLv: staffLv, staffWage: staffWage, staffCost: staffCost, setStaff: setStaff, indMax: indMax, tactInfo: tactInfo, euTie: euTie, startEu: startEu, EUNAME: EUNAME, EUPRIZE: EUPRIZE, jobInfo: jobInfo, adSlots: adSlots, adSign: adSign, MN: MN, MUP: MUP, MCOST: MCOST, merchExpect: merchExpect, merchUpgrade: merchUpgrade, DKD: DKD, dkPreview: dkPreview, dkSell: dkSell, extraCost: extraCost, stadExtra: stadExtra, upkeepOf: upkeepOf, goalText: goalText, takeOver: takeOver, SESS: SESS, planFit: planFit, setPlan: setPlan, setInd: setInd, CAMP: CAMP, campCost: campCost, campGo: campGo, ATN: ATN, ATW: ATW, YCOST: YCOST, YUP: YUP, YMAX: YMAX, youthUpgrade: youthUpgrade, promote: promote, POS: POS, FORMATIONS: FORMATIONS, LEAGUES: LEAGUES, ROUNDS: ROUNDS, CTY: CTY, cfg: cfg, NL: NL, NT: NT, RN: RN, HN: HN, lgName: lgName, newGame: newGame, userTeam: userTeam, team: team, table: table, place: place, nextMatch: nextMatch, playRound: playRound, finishSeason: finishSeason, bestEleven: bestEleven, lineupValid: lineupValid, counts: counts, need: need, eff: eff, findP: findP, dateOf: dateOf, seasonLabel: seasonLabel, topScorers: topScorers, ensure: ensure, value: value, salary: salary, buy: buy, sell: sell, sellPrice: sellPrice, MAXSQUAD: MAXSQUAD, signSponsor: signSponsor, loanMax: loanMax, loanStep: loanStep, borrow: borrow, repay: repay, setPrice: setPrice, calEvents: calEvents, startBuild: startBuild, blocks: blocks, buildPlan: buildPlan, BMAX: BMAX, BUILDS: BUILDS, handgeld: handgeld, extend: extend, PRICE: PRICE, cupTie: cupTie, cupPlay: cupPlay, startRound: startRound, startCup: startCup, baseWage: baseWage, demand: demand, offer: offer, loanFee: loanFee, canLoanIn: canLoanIn, loanIn: loanIn, loanOut: loanOut, toggleList: toggleList, acceptOffer: acceptOffer, rejectOffer: rejectOffer, haggle: haggle, findTarget: findTarget, liveNext: liveNext, liveSub: liveSub, liveBench: liveBench, finishLive: finishLive, liveAuto: liveAuto, avail: avail, CUPNAME: CUPNAME, CUPPRIZE: CUPPRIZE, hallPlay: hallPlay, totoMatches: totoMatches, totoTip: totoTip, totoComplete: totoComplete, TOTOSTAKE: TOTOSTAKE, TOTOWIN: TOTOWIN };
 })();
 </script>
 
@@ -2824,7 +2854,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '15.11. 18:05';
+var BUILD = '15.11. 17:37';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -2838,13 +2868,19 @@ function toast(msg) {
 }
 
 /* ---------- Speichern ---------- */
+var idbT = null, idbJ = null;
+function idbFlush() { idbT = null; if (!idbJ || typeof CDB === 'undefined' || !CDB) return; var d = idbJ; idbJ = null; try { var tx = CDB.transaction('kv', 'readwrite'); tx.objectStore('kv').put({ ts: d[1], json: d[0] }, 'save'); tx.onerror = tx.onabort = function () { ui.idbFail = true; }; tx.oncomplete = function () { ui.idbFail = false; }; } catch (e) { ui.idbFail = true; } }
+function idbSave(js, ts) { idbJ = [js, ts]; if (idbT) clearTimeout(idbT); idbT = setTimeout(idbFlush, 700); }
 function loadLocal() {
   try { var raw = localStorage.getItem(KEY); if (raw) { var o = JSON.parse(raw); if (o && o.state && o.state.v === 1) saved = o; } } catch (e) { }
 }
 function persist() {
   if (!state) return;
-  var ts = Date.now(); saved = { ts: ts, state: state }; ui.dirty = false;
-  try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) { }
+  var ts = Date.now(), js = null, ok = false; saved = { ts: ts, state: state }; ui.dirty = false;
+  try { js = JSON.stringify(saved); localStorage.setItem(KEY, js); ok = true; } catch (e) { }
+  ui.saveKB = js ? Math.round(js.length / 1024) : 0; ui.lsFail = !ok;
+  if (js) idbSave(js, ts);
+  if (!ok && (typeof CDB === 'undefined' || !CDB) && !ui.saveWarn) { ui.saveWarn = true; pop('Speichern fehlgeschlagen', 'Der Spielstand konnte auf diesem Gerät nicht gespeichert werden – der Speicher für diese Seite ist voll oder gesperrt (zum Beispiel im privaten Modus). Was du jetzt spielst, geht beim Schließen verloren.', null, 'f_ins'); }
   cloudSave();
 }
 function cloudSave() {
@@ -2912,14 +2948,14 @@ function vStart() {
   h += '<img class="heropic" alt="Fußballstadion bei Flutlicht mit vollen Rängen" src="' + PICS.flutlicht + '" width="192" height="144">';
   h += '<p style="text-align:center;margin:0 0 6px"><button class="mini" data-a="prefmus" style="padding:6px 12px">♪ Musik ' + (prefs.snd && prefs.mus !== false ? 'an' : 'aus') + '</button></p>';
   if (saved) {
-    var s = saved.state, u = FM.userTeam(s), tb = FM.table(s, u.lg), pl = 1; tb.forEach(function (t, k) { if (t.id === u.id) pl = k + 1; });
+    var s = saved.state, u = FM.clubTeam(s), tb = FM.table(s, u.lg), pl = 1; tb.forEach(function (t, k) { if (t.id === u.id) pl = k + 1; });
     h += '<div class="panel"><div class="acard">' + (crestImg(u.n, 46) || crestSvg(u.c1 || '#ffd84d', u.c2 || '#12356f', 1, crestL(u.n), 46)) + '<div class="grow"><p class="title">' + esc(u.n) + '</p><p class="hint" style="margin:0">' + FM.lgName(s, u.lg) + ' · Saison ' + FM.seasonLabel(s) + '</p></div></div><div class="rings">' + ring(Math.min(1, s.round / FM.RN(s)), '#ffd84d', s.over ? 'Ende' : (s.round + 1) + '.', 'Spieltag') + ring((tb.length - pl + 1) / tb.length, '#6df09a', pl + '.', 'Tabellenplatz') + ring(1, s.cash < 0 ? '#ff9a8f' : '#6df09a', tk(s.cash), 'Kasse') + '</div><button class="big" style="margin-top:12px" data-a="continue">Weiterspielen</button></div>';
   } else h += '<p class="hint" style="text-align:center;margin:0">Führe deinen Verein aus der Regionalliga in die 1. Liga.</p>';
   h += '<div class="panel"><div class="field" style="margin:0"><label for="coach">Dein Name als Trainer</label><input id="coach" maxlength="24" value="' + esc(ui.coach || '') + '" placeholder="Vor- und Nachname" autocomplete="off"></div></div>';
   var CD = custData();
   if (CD) {
     var LN = FM.CTY[CD.cty || 'de'].lgs.map(function (x, i) { return (CD.lgn && CD.lgn[i]) || x; }), all = [].concat.apply([], CD.C), pk = null;
-    all.forEach(function (c) { if (c.n === (ui.packPick || CD.star || (saved ? FM.userTeam(saved.state).n : ''))) pk = c; });
+    all.forEach(function (c) { if (c.n === (ui.packPick || CD.star || (saved ? FM.clubTeam(saved.state).n : ''))) pk = c; });
     var lgSel = ui.packLg != null ? ui.packLg : (pk ? pk.lg : 0); if (!CD.C[lgSel] || !CD.C[lgSel].length) lgSel = 0;
     h += '<div class="panel" style="display:flex;flex-direction:column;gap:12px">' + acard('m_sign', 'Neue Laufbahn', 'Wähle Liga und Verein · ' + FM.CTY[CD.cty || 'de'].n + ' · ' + CD.n + ' Vereine').replace('class="acard"', 'class="acard" style="margin:0"');
     h += ctyChips();
@@ -3181,6 +3217,8 @@ function saveCrests() {
           var o = g.result, had = Object.keys(CRESTS).length, k;
           if (o && typeof o === 'object') { for (k in CRESTS) if (!o[k]) o[k] = CRESTS[k]; CRESTS = o; }
           CDB = db;
+          try { var g3 = db.transaction('kv').objectStore('kv').get('save'); g3.onsuccess = function () { var o3 = g3.result; if (!o3 || !o3.json || state) return; if (saved && saved.ts >= o3.ts) return; try { var j3 = JSON.parse(o3.json); if (j3 && j3.state && j3.state.v === 1) { saved = j3; if (ui.view === 'start') render(); } } catch (e5) { } }; } catch (e6) { }
+          if (idbJ) idbFlush();
           try { var g2 = db.transaction('kv').objectStore('kv').get('customs'); g2.onsuccess = function () { var o2 = g2.result, ch = false; if (o2 && typeof o2 === 'object' && typeof custAll !== 'undefined') { for (var k2 in o2) if (!custAll[k2]) { custAll[k2] = o2[k2]; ch = true; } if (ch) ui.fsync = false; if (ch && typeof render === 'function' && (ui.view === 'start' || ui.view === 'custom')) render(); } }; } catch (e4) { }
           if (had) cdbPut(function () { try { localStorage.removeItem('ligaboss-crests'); } catch (e) { } });
           if (o && typeof ui !== 'undefined' && typeof render === 'function' && (ui.view === 'start' || ui.view === 'menu' || ui.view === 'custom')) render();
@@ -3188,7 +3226,7 @@ function saveCrests() {
       } catch (e) { }
     };
   } catch (e) { }
-  try { window.addEventListener('pagehide', function () { if (cdbT) { clearTimeout(cdbT); cdbT = null; cdbPut(); } }); } catch (e2) { }
+  try { window.addEventListener('pagehide', function () { if (cdbT) { clearTimeout(cdbT); cdbT = null; cdbPut(); } if (idbT) { clearTimeout(idbT); idbFlush(); } }); document.addEventListener('visibilitychange', function () { if (document.hidden && idbT) { clearTimeout(idbT); idbFlush(); } }); } catch (e2) { }
 })();
 function normName(n) { var x = String(n || '').toLowerCase(); try { x = x.normalize('NFKD').replace(/[\u0300-\u036f]/g, ''); } catch (e) { } return x.replace(/ß/g, 'ss').replace(/[^a-z0-9]/g, ''); }
 var CGEN = { fc: 1, sv: 1, sc: 1, vfl: 1, vfb: 1, tsg: 1, sg: 1, tsv: 1, msv: 1, spvgg: 1, dsc: 1, fsv: 1, rb: 1, logo: 1, footylogos: 1, png: 1, jpg: 1, jpeg: 1, webp: 1, club: 1, sport: 1 };
@@ -3543,7 +3581,7 @@ function vSponsors() {
       var best = 0; (state.spo || []).forEach(function (o) { best = Math.max(best, FM.sponProj(state, o, ui.spy)); });
       (state.spo || []).forEach(function (o, k) {
         var pj = FM.sponProj(state, o, ui.spy);
-        h += '<div class="panel">' + jersey(o.n) + offerPills(o) + '<div style="margin-top:8px">' + meter('Hochrechnung', pj / best, pj >= best ? '#6df09a' : '#5fb7c9', num(pj / 1000) + ' T') + '</div><div class="row" style="margin-top:8px"><button class="big" data-a="sign" data-val="' + k + '">Unterschreiben</button><button class="big sec2" data-a="sprn" data-val="' + k + '"' + (o.rn ? ' disabled' : '') + '>' + (o.rn ? 'Verhandelt' : 'Nachverhandeln') + '</button></div></div>';
+        h += '<div class="panel">' + jersey(o.n) + offerPills(o) + '<div style="margin-top:8px">' + meter('Hochrechnung', pj / best, pj >= best ? '#6df09a' : '#5fb7c9', num(pj / 1000) + ' T') + '</div><div class="row spb" style="margin-top:8px"><button class="big" data-a="sign" data-val="' + k + '">Unterschreiben</button><button class="big sec2" data-a="sprn" data-val="' + k + '"' + (o.rn ? ' disabled' : '') + '>' + (o.rn ? 'Verhandelt' : 'Verhandeln') + '</button></div></div>';
       });
       h += '<p class="hint" style="margin:0">Nachverhandeln geht je Firma einmal: Meist legt sie 12 % drauf oder bleibt hart, manchmal zieht sie das Angebot zurück.</p>';
     }
@@ -4068,6 +4106,7 @@ function vOptions() {
   var h = sub('Optionen');
   h += '<div class="panel"><p class="lbl">SPIELSZENEN</p>' + tiles('pref', [[0, 'Mit Szenen', 'o_scene', sm('Spielfeld mit Figuren')], [1, 'Nur Ticker', 'o_tick', sm('spart Zeit und Akku', 0)]], prefs.fast ? 1 : 0, 'pk2') + '</div>';
   h += '<div class="panel"><p class="lbl">TEMPO BEIM ANPFIFF</p>' + tiles('prefs', [[1, 'Normal', 'o_s1'], [2.5, 'Schneller', 'o_s2']], prefs.speed > 1 ? 2.5 : 1, 'pk2') + '<p class="hint" style="margin:8px 0 0">Im Spiel kannst du jederzeit umschalten.</p></div>';
+  if (state) h += '<div class="panel"><p class="lbl">SPIELSTAND</p>' + kv('Größe', (ui.saveKB || 0) + ' KB') + kv('Gespeichert', ui.lsFail ? (CDB && !ui.idbFail ? 'im großen Gerätespeicher' : '<span style="color:#ff9a8f">fehlgeschlagen</span>') : 'auf diesem Gerät' + (CDB && !ui.idbFail ? ' · mit Sicherung' : '')) + '</div>';
   h += '<div class="panel"><p class="lbl">VERSION</p><p class="hint" style="margin:0 0 8px">Stand ' + BUILD + '</p>' + (NEWV ? '<button class="big" data-a="update">Neue Version laden (Stand ' + esc(NEWV) + ')</button>' : '<button class="big sec2 sm" data-a="updcheck">' + (ui.updw ? 'Prüfe …' : 'Auf Updates prüfen') + '</button>') + '</div>';
   h += '<div class="panel"><p class="lbl">EM UND WM</p>' + tiles('preftour', [[0, 'Kompakt', 'o_tick', sm('alles auf einer Seite')], [1, 'Ausführlich', 'o_scene', sm('Spieltag für Spieltag')]], prefs.tour ? 1 : 0, 'pk2') + '<p class="hint" style="margin:8px 0 0">Alle zwei Jahre im Sommer: EM 2028, WM 2030 und so weiter.</p></div>';
   h += '<div class="panel">' + acard('m_sign', 'Eigene Daten', 'Vereinsnamen, Kader und Wappen importieren') + '<button class="big sec2 sm" data-a="go" data-v="custom">Öffnen</button></div>';
@@ -5311,7 +5350,7 @@ app.addEventListener('click', function (ev) {
   if (a === 'pklg') { ui.packLg = +b.getAttribute('data-val'); ui.packAsk = false; return render(); }
   if (a === 'pkclub') { ui.packPick = b.getAttribute('data-val'); ui.packLg = null; ui.packAsk = false; return render(); }
   if (a === 'packnew') {
-    var ps = document.getElementById('packSel'), CDp = custData(), pick = normName(ps ? ps.value : (ui.packPick || (CDp && CDp.star) || (saved ? FM.userTeam(saved.state).n : '')));
+    var ps = document.getElementById('packSel'), CDp = custData(), pick = normName(ps ? ps.value : (ui.packPick || (CDp && CDp.star) || (saved ? FM.clubTeam(saved.state).n : '')));
     if (!pick) return;
     custTxt = custTxt.split('\n').map(function (ln) { var m = /^(\s*VEREIN)\*?(\s*:\s*)(.*)$/i.exec(ln); if (!m) return ln; return m[1] + (normName(m[3].split('|')[0]) === pick ? '*' : '') + m[2] + m[3]; }).join('\n');
     try { localStorage.setItem('ligaboss-custom', custTxt); } catch (e5) { }

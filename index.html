@@ -1345,7 +1345,8 @@ function merchUpgrade(state) {
 var DKD = [0.1, 0.2, 0.3];
 function dkPreview(state, k) {
   var u = state.teams[state.uid], st = state.stad, d = DKD[k], last = state.hist.length ? state.hist[state.hist.length - 1].pl : 10;
-  var n = Math.round(Math.min(0.5 * st.cap, DEM[u.lg] * (0.06 + 0.5 * d) * (1.3 - 0.7 * Math.min(1, (last - 1) / (NT(state) - 1)))) / 10) * 10;
+  var dpf = clamp(1 - (st.price - PRICE[u.lg]) / PRICE[u.lg] * 0.9, 0.2, 1.3);
+  var n = Math.round(Math.min(0.5 * st.cap, DEM[u.lg] * (0.06 + 0.5 * d) * (1.3 - 0.7 * Math.min(1, (last - 1) / (NT(state) - 1))) * dpf) / 10) * 10;
   return { n: n, cash: Math.round(n * HN(state) * st.price * (1 - d)), price: Math.round(HN(state) * st.price * (1 - d)) };
 }
 function dkSell(state, k) {
@@ -2858,7 +2859,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '15.11. 18:02';
+var BUILD = '15.11. 18:08';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -4768,7 +4769,7 @@ function startMatch() {
   }
   function any(e) { if (e.k === 'tac') note(e); else if (e.k) { note(e); simApply(S, e); } else apply(e); }
   M.note = function (e) { note(e); if (e.k === 'tac') return; if (fast) simApply(S, e); else S.pend.push(e); };
-  function loadSeg() { var r = FM.liveNext(state); M.queue = r.events.slice(); M.segEnd = state.live.seg * 15; }
+  function loadSeg() { var r = FM.liveNext(state); M.queue = r.events.slice(); M.segEnd = state.live.seg * 15; persist(); }
   function finish() {
     M.done = true; M.paused = false; matchPanel();
     var R = FM.finishLive(state), m = R.match; M.res = R; persist();

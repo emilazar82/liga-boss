@@ -1304,7 +1304,7 @@ function depSum(state) { var x = 0; state.fin.dep.forEach(function (d) { x += d.
 function investor(state) {
   if (state.inv) return 'Du hast schon einen Investor im Verein.';
   var u = state.teams[state.uid], a = INVAMT[u.lg];
-  state.cash += a; state.led.spon += a; state.inv = { cut: 0.15, until: state.season + 1, amt: a };
+  state.cash += a; state.led.spon += a; state.inv = { cut: 0.15, until: state.season + (state.round >= HN(state) ? 2 : 1), amt: a };
   state.board.goal = clamp(state.board.goal - 2, u.lg > 0 ? 3 : 1, 15);
   news(state, u.n + ' holt einen Investor ins Boot.'); return '';
 }
@@ -2859,7 +2859,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '15.11. 18:08';
+var BUILD = '15.11. 18:14';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -3794,6 +3794,7 @@ function popScan() {
     var key = 'fj' + x.c + x.n; pk[key] = 1; if (old[key] || first) return; var j = FM.fjobInfo(state, k); if (!j) return;
     pop('Angebot aus dem Ausland', flag(EUFL[j.c]) + ' <b>' + esc(j.n) + '</b> (' + esc(j.cn) + ', ' + esc(j.lgn) + ', Kaderstärke ' + j.str + ') möchte dich als Trainer verpflichten. Das Angebot gilt bis zum 1. Spieltag.', [['Angebot ansehen', function () { go('board'); }], ['Ablehnen', function () { state.fjobs = state.fjobs.filter(function (y) { return y !== x; }); toast('Angebot abgelehnt.'); }], ['Später entscheiden', null, 'unter Vorstand']], 'm_sign');
   });
+  if (state.hall && state.hall.due) { pk['hall' + state.season] = 1; if (!old['hall' + state.season] && !first) pop('Winterpause', 'Die Einladung zum <b>Hallenturnier</b> liegt vor (Preisgeld bis ' + money(60000 * [4, 2, 1][u.lg]) + '), dazu das Angebot für ein <b>Trainingslager</b>. Beides geht nur jetzt: Mit dem nächsten Anpfiff ist die Winterpause vorbei.', [['Zum Hallenturnier', function () { go('hall'); }], ['Zum Trainingslager', function () { ui.trt = 'camp'; go('training'); }], ['Später']], 'pokal'); }
   if (state.nto) { pk.nto = 1; if (!old.nto) { var nc = state.nto; pop('Nationaltrainer', flag(nc) + ' Der Verband von <b>' + esc(natName(nc)) + '</b> bietet dir an, die Nationalmannschaft bei Europa- und Weltmeisterschaften zu betreuen – zusätzlich zu deinem Verein.', [['Annehmen', function () { FM.ntAnswer(state, true); toast('Du bist Nationaltrainer von ' + natName(nc) + '.'); }], ['Ablehnen', function () { FM.ntAnswer(state, false); }]], 'pokal'); } }
   if (R && !R._ps) {
     R._ps = 1;

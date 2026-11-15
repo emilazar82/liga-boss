@@ -581,7 +581,7 @@ function RN(state) { var x = state.sched && state.sched[state.teams[state.uid].l
 function HN(state) { return Math.round(RN(state) / 2); }
 function lgName(state, lg) { return lg === 9 ? 'Ausland' : (state && state.lgn && state.lgn[lg]) || cfg(state).lgs[lg] || ''; }
 var FOREIGN = ['AC Torrealta', 'US Lagomare', 'Atlético Valmora', 'Deportivo Sierra Alta', 'Olympique Rhônemer', 'Sporting Ribeira', 'VV Noordkaap', 'Glenmore Rovers', 'Dinamo Karpaty', 'Sparta Moldava', 'IFK Nordvik', 'Royal Brabantia', 'Bosporus SK'];
-var DEM = [42000, 18000, 7000], PRICE = [25, 18, 12], LOANMAX = [3000000, 1500000, 750000], SPBASE = [60000, 25000, 9000];
+var DEM = [42000, 18000, 7000], PRICE = [19, 16, 12], LOANMAX = [3000000, 1500000, 750000], SPBASE = [60000, 25000, 9000];
 var SPONSORS = ['Brauerei Hopfenquell', 'Autohaus Lechtal', 'Möbel Kranich', 'Bäckerei Sonnenkorn', 'Radio Welle 7', 'Getränke Falkenquell', 'Druckerei Federkiel', 'Baumarkt Ziegelhof', 'Reisebüro Fernblick', 'Molkerei Almwiese'];
 var BUILDS = [{ add: 2000, cost: 400000, weeks: 8 }, { add: 5000, cost: 900000, weeks: 12 }, { add: 10000, cost: 1700000, weeks: 16 }];
 var ROUNDS = 34;
@@ -1529,6 +1529,7 @@ function ensure(state) {
   if (!state.market) { state.market = []; fillMarket(state); }
   var u = state.teams[state.uid];
   if (!state.stad) state.stad = { cap: [30000, 15000, 8000][u.lg] || 8000, price: PRICE[u.lg], build: null };
+  if (state.pv !== 2) { if (true) { var of0 = [25, 18, 12][u.lg]; if (of0 && PRICE[u.lg] !== of0) state.stad.price = Math.max(1, Math.round(state.stad.price * PRICE[u.lg] / of0)); } state.pv = 2; }
   if (state.loan === undefined) state.loan = 0;
   if (!state.led) state.led = newLedger();
   if (state.sp === undefined) state.sp = null;
@@ -2526,7 +2527,7 @@ function buildSchedules(state) {
 function ctyTowns(c) { return c === 'en' ? ENCITY : c === 'it' ? ITCITY : c === 'es' ? ESCITY : c === 'fr' ? FRCITY : CITIES; }
 function ctyClub(c, i) { var T = ctyTowns(c); return c === 'en' ? T[i] + ' ' + ENSUF[(i - 1) % ENSUF.length] : c === 'it' ? ITPRE[(i - 1) % ITPRE.length] + ' ' + T[i] : c === 'es' ? ESPRE[(i - 1) % ESPRE.length] + ' ' + T[i] : c === 'fr' ? FRPRE[(i - 1) % FRPRE.length] + ' ' + T[i] : PREFIX[(i - 1) % PREFIX.length] + ' ' + T[i]; }
 function newGame(clubName, cty) {
-  var state = { v: 1, season: 2026, y0: 2026, wk0: 0, round: 0, uid: 0, cash: 400000, teams: [], sched: [], hist: [], over: false };
+  var state = { v: 1, pv: 2, season: 2026, y0: 2026, wk0: 0, round: 0, uid: 0, cash: 400000, teams: [], sched: [], hist: [], over: false };
   if (cty && cty !== 'de' && CTY[cty]) state.cty = cty;
   useCty(state);
   var C = cfg(state), en = state.cty === 'en', it = state.cty === 'it', es = state.cty === 'es', fr = state.cty === 'fr', TOWN = en ? ENCITY : it ? ITCITY : es ? ESCITY : fr ? FRCITY : CITIES, low = C.size.length - 1; state.cash = [1500000, 600000, 400000][low];
@@ -2857,7 +2858,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '15.11. 17:46';
+var BUILD = '15.11. 17:55';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }

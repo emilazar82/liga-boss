@@ -526,7 +526,7 @@ td.tn{white-space:nowrap}td.tn .rk{display:inline-block;width:24px;text-align:ri
 .calg span{line-height:26px;background:#0b3a36;color:#9fe0d6}.calg span.we{background:#0e443f}.calg span.x{background:none}
 .calg .home{background:#2f9e55;color:#fff;font-weight:700}.calg .away{background:#0b3a36;color:#fff;font-weight:700;box-shadow:0 0 0 2px #2f9e55 inset}.calg .pokal,.calg .eu{background:#b98a1b;color:#fff;font-weight:700}.calg .done{background:#17524b;color:#7fb8ae}
 .calg .now{outline:3px solid #ffd84d;outline-offset:-3px;color:#ffd84d;font-weight:700}.calg .now.home,.calg .now.pokal,.calg .now.eu{color:#fff}
-.call{margin:8px 0 0;font-size:11px;color:#9fe0d6;display:flex;justify-content:center;gap:14px;flex-wrap:wrap}.call span{white-space:nowrap}.call u{display:inline-block;width:10px;height:10px;margin-right:4px;vertical-align:-1px;text-decoration:none}.call u.now{box-shadow:0 0 0 2px #ffd84d inset}.call u.home{background:#2f9e55}.call u.away{box-shadow:0 0 0 2px #2f9e55 inset}.call u.pokal{background:#b98a1b}
+.call{margin:8px 0 0;font-size:11px;color:#9fe0d6;display:flex;justify-content:center;gap:14px;flex-wrap:wrap}.call span{white-space:nowrap}.call u{display:inline-block;width:10px;height:10px;margin-right:4px;vertical-align:-1px;text-decoration:none}.call u.now{box-shadow:0 0 0 2px #ffd84d inset}.call u.home{background:#2f9e55}.call u.away{box-shadow:0 0 0 2px #2f9e55 inset}.call u.pokal{background:#b98a1b}.calg .eu{background:#2f63c4}.call u.eu{background:#2f63c4}.calg span.home{background:#2f9e55}.calg span.away{background:#0b3a36}.calg span.done{background:#17524b}
 .mkr.two{min-height:38px}.mkr .nm small{display:block;font-size:10px;color:#9fe0d6;overflow:hidden;text-overflow:ellipsis}
 .splogo{display:inline-block;max-width:100%;height:auto;vertical-align:middle;border-radius:4px}.slots{flex-wrap:wrap;gap:8px}.slots span.empty{display:inline-flex;align-items:center;justify-content:center;width:132px;height:40px;border:2px dashed #3d7a74;color:#7fb5ae;font-size:12px;border-radius:4px;opacity:1}
 .fl{display:inline-block;width:15px;height:10px;border:1px solid #0b1622;margin-right:5px;vertical-align:-1px;flex:none;border-radius:1px}
@@ -2606,12 +2606,12 @@ function dateOf(state, match) {
   else if (!match && state.round === 0 && state.pre && state.pre.n < 3) { d.setUTCDate(d.getUTCDate() - 7 * (3 - state.pre.n)); kind = 'test'; }
   return { wd: WD[d.getUTCDay()], d: d.getUTCDate(), mon: MON[d.getUTCMonth()], y: d.getUTCFullYear(), m: d.getUTCMonth(), t: d.getTime(), kind: kind };
 }
-function cupDate(state, k, eu) { var A = eu ? EUAFTER : CUPAFTER; if (k < 0 || k >= A.length) return ''; var d = satOf(state, Math.min(A[k], RN(state) - 1)); d.setUTCDate(d.getUTCDate() - (eu ? 2 : 3)); return WD[d.getUTCDay()].slice(0, 2) + '. ' + d.getUTCDate() + '. ' + MON[d.getUTCMonth()] + ' ' + d.getUTCFullYear(); }
+function cupDate(state, k, eu) { var A = eu ? EUAFTER : CUPAFTER; if (k < 0 || k >= A.length) return ''; var c0 = eu ? state.eu : state.cup, d = satOf(state, Math.min(Math.max(A[k] + 1, c0 && k === c0.r ? state.round : 0), RN(state) - 1)); d.setUTCDate(d.getUTCDate() - (eu ? 2 : 3)); return WD[d.getUTCDay()].slice(0, 2) + '. ' + d.getUTCDate() + '. ' + MON[d.getUTCMonth()] + ' ' + d.getUTCFullYear(); }
 function calEvents(state) {
   var ev = [], u = state.teams[state.uid], r, k, d;
   for (r = 0; r < RN(state); r++) { d = satOf(state, r); var mt = null; (state.sched[u.lg] && state.sched[u.lg][r] || []).forEach(function (x) { if (x[0] === u.id || x[1] === u.id) mt = x; }); ev.push({ t: d.getTime(), k: 'liga', r: r, home: mt ? mt[0] === u.id : null, done: r < state.round }); }
-  if (state.cup && !state.cup.out) for (k = state.cup.r; k < CUPAFTER.length; k++) { d = satOf(state, Math.min(CUPAFTER[k], RN(state) - 1)); d.setUTCDate(d.getUTCDate() - 3); ev.push({ t: d.getTime(), k: 'pokal', r: k }); }
-  if (state.eu && !state.eu.out && euTie(state)) for (k = state.eu.r; k < EUAFTER.length; k++) { d = satOf(state, EUAFTER[k]); d.setUTCDate(d.getUTCDate() - 2); ev.push({ t: d.getTime(), k: 'eu', r: k }); }
+  if (state.cup && !state.cup.out) for (k = state.cup.r; k < CUPAFTER.length; k++) { d = satOf(state, Math.min(Math.max(CUPAFTER[k] + 1, k === state.cup.r ? state.round : 0), RN(state) - 1)); d.setUTCDate(d.getUTCDate() - 3); ev.push({ t: d.getTime(), k: 'pokal', r: k }); }
+  if (state.eu && !state.eu.out && euTie(state)) for (k = state.eu.r; k < EUAFTER.length; k++) { d = satOf(state, Math.min(Math.max(EUAFTER[k] + 1, k === state.eu.r ? state.round : 0), RN(state) - 1)); d.setUTCDate(d.getUTCDate() - 2); ev.push({ t: d.getTime(), k: 'eu', r: k }); }
   return ev;
 }
 function seasonLabel(state) { var a = state.season % 100, b = (state.season + 1) % 100; return (a < 10 ? '0' : '') + a + '/' + (b < 10 ? '0' : '') + b; }
@@ -2703,7 +2703,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '15.11. 12:30';
+var BUILD = '15.11. 13:00';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -2848,7 +2848,7 @@ function calCard(d) {
   g += '</div>';
   var nx = EV.filter(function (e) { return e.t > d.t && !e.done; }).sort(function (a, b) { return a.t - b.t; })[0], nxT = '';
   if (nx) { var xd = new Date(nx.t); nxT = (nx.k === 'liga' ? (nx.r + 1) + '. Spieltag' : nx.k === 'pokal' ? 'Pokal' : EUN()) + (nx.k === 'liga' && nx.home !== null ? (nx.home ? ' · Heim' : ' · Auswärts') : '') + ' · ' + WDK[xd.getUTCDay()] + ' ' + xd.getUTCDate() + '. ' + MS[xd.getUTCMonth()]; }
-  return '<div class="calc"><div class="calh"><div class="cals"><b>' + d.wd.slice(0, 2).toUpperCase() + '</b><strong>' + d.d + '</strong><small>' + MS[d.m] + ' ' + d.y + '</small></div><div class="cali"><p class="calw">' + d.wd + ', ' + d.d + '. ' + d.mon + ' ' + d.y + '</p><p class="calp"><span>' + what + '</span>' + (FM.winOpen(state) ? '<span class="g">Transferfenster offen</span>' : '') + '</p>' + (nxT ? '<p class="caln"><small>NÄCHSTER TERMIN</small>' + nxT + '</p>' : '') + '</div></div><p class="calm">' + d.mon.toUpperCase() + ' ' + d.y + '</p>' + g + '<p class="call"><span><u class="now"></u>Heute</span><span><u class="home"></u>Heimspiel</span><span><u class="away"></u>Auswärts</span><span><u class="pokal"></u>Pokal</span></p></div>';
+  return '<div class="calc"><div class="calh"><div class="cals"><b>' + d.wd.slice(0, 2).toUpperCase() + '</b><strong>' + d.d + '</strong><small>' + MS[d.m] + ' ' + d.y + '</small></div><div class="cali"><p class="calw">' + d.wd + ', ' + d.d + '. ' + d.mon + ' ' + d.y + '</p><p class="calp"><span>' + what + '</span>' + (FM.winOpen(state) ? '<span class="g">Transferfenster offen</span>' : '') + '</p>' + (nxT ? '<p class="caln"><small>NÄCHSTER TERMIN</small>' + nxT + '</p>' : '') + '</div></div><p class="calm">' + d.mon.toUpperCase() + ' ' + d.y + '</p>' + g + '<p class="call"><span><u class="now"></u>Heute</span><span><u class="home"></u>Heimspiel</span><span><u class="away"></u>Auswärts</span><span><u class="pokal"></u>Pokal</span><span><u class="eu"></u>' + EUN() + '</span></p></div>';
 }
 function vMenu() {
   var u = FM.userTeam(state), d = FM.dateOf(state), nm = FM.nextMatch(state), pl = FM.place(state, u.id);

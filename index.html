@@ -2823,7 +2823,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '15.11. 16:00';
+var BUILD = '15.11. 16:30';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -2933,7 +2933,7 @@ function vStart() {
     } else h += '<p class="hint" style="margin:0;text-align:center">Tippe einen Verein an.</p>';
     h += '</div>';
   }
-  h += '<div class="panel" style="display:flex;flex-direction:column;gap:12px">' + acard('m_sign', CD ? 'Erfundene Vereine' : 'Neue Laufbahn', 'Start in der ' + FM.CTY[ui.cty || 'de'].lgs.slice(-1)[0] + ' · Saison 26/27').replace('class="acard"', 'class="acard" style="margin:0"') + '<div><p class="lbl" style="margin:0 0 6px">LAND</p><div class="pklg c5">' + Object.keys(FM.CTY).map(function (k) { return '<button class="' + ((ui.cty || 'de') === k ? 'on' : '') + '" data-a="cty" data-val="' + k + '">' + FM.CTY[k].n + '</button>'; }).join('') + '</div><p class="hint" style="margin:6px 0 0">' + FM.CTY[ui.cty || 'de'].size.map(function (n, i) { return FM.CTY[ui.cty || 'de'].lgs[i] + ' (' + n + ')'; }).join(' · ') + '</p></div><div class="field"><label for="club">Vereinsname</label><input id="club" maxlength="24" value="' + esc((CD && [].concat.apply([], CD.L).indexOf(ui.name) >= 0) || !ui.name || Object.keys(FM.CTY).some(function (k) { return FM.CTY[k].club === ui.name; }) ? FM.CTY[ui.cty || 'de'].club : ui.name) + '" autocomplete="off"></div>';
+  h += '<div class="panel" style="display:flex;flex-direction:column;gap:12px">' + acard('m_sign', CD ? 'Erfundene Vereine' : 'Neue Laufbahn', 'Start in der ' + FM.CTY[ui.cty || 'de'].lgs.slice(-1)[0] + ' · Saison 26/27').replace('class="acard"', 'class="acard" style="margin:0"') + '<div><p class="lbl" style="margin:0 0 6px">LAND</p><div class="pklg c5">' + Object.keys(FM.CTY).map(function (k) { return '<button class="' + ((ui.cty || 'de') === k ? 'on' : '') + '" data-a="cty" data-val="' + k + '" aria-label="' + FM.CTY[k].n + '" title="' + FM.CTY[k].n + '">' + ctyLbl(k) + '</button>'; }).join('') + '</div><p class="hint" style="margin:6px 0 0">' + FM.CTY[ui.cty || 'de'].size.map(function (n, i) { return FM.CTY[ui.cty || 'de'].lgs[i] + ' (' + n + ')'; }).join(' · ') + '</p></div><div class="field"><label for="club">Vereinsname</label><input id="club" maxlength="24" value="' + esc((CD && [].concat.apply([], CD.L).indexOf(ui.name) >= 0) || !ui.name || Object.keys(FM.CTY).some(function (k) { return FM.CTY[k].club === ui.name; }) ? FM.CTY[ui.cty || 'de'].club : ui.name) + '" autocomplete="off"></div>';
   if (saved && ui.confirm) h += '<p class="hint" style="margin:0">Der vorhandene Spielstand wird überschrieben.</p><button class="big warn" data-a="new">Ja, neu beginnen</button>';
   else h += '<button class="big sec2" data-a="' + (saved ? 'asknew' : 'new') + '">Neues Spiel</button>';
   h += '</div>';
@@ -3400,7 +3400,7 @@ function vTransfers() {
       h += posBar + splitList(state.market.filter(flt).sort(srt), 'Markt') + inf('Links steht dein eigener Kader, rechts der Markt. Mit den Knöpfen oben siehst du beide Seiten für eine Position. Grün markierte Spieler sind stärker als dein Schnitt auf dieser Position.');
     } else if (tt === 'clubs') {
       if (ui.tclub == null || ui.tclub < 0 || !FM.team(state, ui.tclub)) {
-        var CK = Object.keys(FM.CTY), myC = state.cty || 'de', lgCh = FM.cfg(state).lgs.map(function (n, i) { return [i, FM.lgName(state, i)]; }), fgCh = CK.filter(function (k) { return k !== myC && state.fgn && state.fgn[k]; }).map(function (k) { return [10 + CK.indexOf(k), FM.CTY[k].n]; });
+        var CK = Object.keys(FM.CTY), myC = state.cty || 'de', lgCh = FM.cfg(state).lgs.map(function (n, i) { return [i, FM.lgName(state, i)]; }), fgCh = CK.filter(function (k) { return k !== myC && state.fgn && state.fgn[k]; }).map(function (k) { return [10 + CK.indexOf(k), ctyLbl(k)]; });
         if (!(ui.tlg < FM.NL(state)) && !fgCh.some(function (x) { return x[0] === ui.tlg; })) ui.tlg = 0;
         h += chips('tlg', lgCh, ui.tlg) + (fgCh.length ? '<p class="lbl" style="margin:0">AUSLAND</p>' + chips('tlg', fgCh, ui.tlg) : '') + '<div class="list">';
         if (ui.tlg >= 10) { var fl = ui.tfl ? 1 : 0; h = h.slice(0, -18) + chips('tfl', FM.fgnLgs(state, CK[ui.tlg - 10]).map(function (n, i) { return [i, n]; }), fl) + '<div class="list">'; }
@@ -3752,6 +3752,7 @@ function popScan() {
   }
   state.pk = pk;
 }
+function ctyLbl(k) { return '<span style="display:inline-flex;align-items:center;gap:5px;white-space:nowrap">' + natFlag({ de: 'GER', en: 'ENG', es: 'ESP', fr: 'FRA', it: 'ITA' }[k], 15) + '<span>' + k.toUpperCase() + '</span></span>'; }
 function natFlag(c, sz) { return flag(c).replace('style="', 'style="width:' + Math.round(sz * 1.35) + 'px;height:' + sz + 'px;margin:0 2px 0 0;vertical-align:middle;border-radius:3px;'); }
 function TNM() { var T = state.tour; return T ? T.kind + ' ' + T.y : ''; }
 function tourTab(rows, hl) {
@@ -3961,7 +3962,7 @@ function fgKeys() { var my = state.cty || 'de'; return Object.keys(FM.CTY).filte
 function lgTabs() {
   var fg = fgKeys(); if (ui.fc && fg.indexOf(ui.fc) < 0) ui.fc = '';
   var h = chips('lg', FM.cfg(state).size.map(function (x, i) { return [i, FM.lgName(state, i)]; }), ui.fc ? -1 : ui.lg);
-  if (fg.length) h += '<p class="lbl" style="margin:0">AUSLAND</p>' + chips('fc', fg.map(function (k) { return [k, FM.CTY[k].n]; }), ui.fc || '') + (ui.fc ? chips('fl', FM.fgnLgs(state, ui.fc).map(function (n, i) { return [i, n]; }), ui.fl ? 1 : 0) : '');
+  if (fg.length) h += '<p class="lbl" style="margin:0">AUSLAND</p>' + chips('fc', fg.map(function (k) { return [k, ctyLbl(k)]; }), ui.fc || '') + (ui.fc ? chips('fl', FM.fgnLgs(state, ui.fc).map(function (n, i) { return [i, n]; }), ui.fl ? 1 : 0) : '');
   return h;
 }
 function fCrest(x, k, sz) { return crestImg(x.n, sz) || crestSvg(x.c1 || CRC[(x.ix + 3) % 9], x.c2 || '#f4efe1', x.ix % 4, crestL(x.n), sz); }
@@ -4933,7 +4934,7 @@ function syncForeign(quiet) {
   return r;
 }
 function custCtys() { return Object.keys(FM.CTY).filter(function (k) { return custAll[k]; }); }
-function ctyChips() { var d = custData(), ks = custCtys(), on = d ? (d.cty || 'de') : ''; if (ks.length < 2) return ''; return '<div class="pklg' + (ks.length > 3 ? ' c5' : '') + '">' + ks.map(function (k) { return '<button class="' + (k === on ? 'on' : '') + '" data-a="pkcty" data-val="' + k + '">' + FM.CTY[k].n + '</button>'; }).join('') + '</div>'; }
+function ctyChips() { var d = custData(), ks = custCtys(), on = d ? (d.cty || 'de') : ''; if (ks.length < 2) return ''; return '<div class="pklg' + (ks.length > 3 ? ' c5' : '') + '">' + ks.map(function (k) { return '<button class="' + (k === on ? 'on' : '') + '" data-a="pkcty" data-val="' + k + '" aria-label="' + FM.CTY[k].n + '" title="' + FM.CTY[k].n + '">' + ctyLbl(k) + '</button>'; }).join('') + '</div>'; }
 function custRead() { var ta = document.getElementById('custTa'); if (ta) custTxt = ta.value; try { localStorage.setItem('ligaboss-custom', custTxt); } catch (e) { } return custTxt; }
 function vCustom() {
   var st = state || (saved ? saved.state : null), h = '<div class="hdr"><button class="back" data-a="go" data-v="' + (state ? 'options' : 'start') + '">‹ Zurück</button><div class="title grow">EIGENE DATEN</div></div>';

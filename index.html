@@ -1730,14 +1730,14 @@ function weeklyOffers(state) {
   var cand = u.pl.filter(function (p) { return p.loan === undefined && !(p.inj > 3) && !state.offers.some(function (o) { return o.i === p.i; }); });
   cand.forEach(function (p) {
     if (state.offers.length >= 3) return;
-    var TL = [[0, 0, 0], [0.65, 0.55, 0.25], [0.4, 0.8, 0.25], [0.15, 1.05, 0.25]][p.tl || 0], pr = p.tl ? TL[0] : 0.012 * (p.a <= 25 ? 1.6 : 1) * (p.s >= 60 ? 1.4 : 1) * (p.mo < 3 ? 3 : 1);
+    var TL = [[0, 0, 0], [0.65, 0.55, 0.25], [0.4, 0.8, 0.25], [0.15, 0.95, 0.2]][p.tl || 0], pr = p.tl ? TL[0] : 0.012 * (p.a <= 25 ? 1.6 : 1) * (p.s >= 60 ? 1.4 : 1) * (p.mo < 3 ? 3 : 1);
     if (Math.random() >= pr) return;
     var clubs = state.teams.filter(function (t) { if (t.id === u.id) return false; var a = 0; t.pl.forEach(function (x) { a += x.s; }); a /= t.pl.length; return p.s >= a - 7 && p.s <= a + 14; });
     var fc = []; if (state.fgn) Object.keys(state.fgn).forEach(function (cy) { state.fgn[cy].forEach(function (o, ix) { if (p.s >= o.st - 10 && p.s <= o.st + 11) fc.push([cy, ix]); }); });
     var c = null; if (fc.length && (!clubs.length || Math.random() < 0.35)) { var fq = pick(fc), fid = fgnId(state, fq[0], fq[1]); fgnOpen(state, fid); c = team(state, fid); }
     if (!c && !clubs.length) return;
     if (!c) c = pick(clubs);
-    var fee = r1000(value(p) * (p.tl ? TL[1] + TL[2] * Math.random() : 0.95 + 0.5 * Math.random()) * (c.cty ? 1.1 : c.lg < u.lg ? 1.12 : 1));
+    var fee = r1000(value(p) * (p.tl ? TL[1] + TL[2] * Math.random() : 0.9 + 0.4 * Math.random()) * (c.cty ? 1.08 : c.lg < u.lg ? 1.12 : 1));
     state.offers.push({ i: p.i, c: c.id, fee: fee, exp: r + 4 }); made++;
   });
   return made;
@@ -2858,7 +2858,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '15.11. 17:59';
+var BUILD = '15.11. 18:02';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -2948,7 +2948,7 @@ function render() {
   if (state && v === 'menu' && NEWV && !ui.pops.length) app.insertAdjacentHTML('afterbegin', updHtml());
 }
 function vStart() {
-  var h = '<div class="logo" style="margin-top:14px">LIGA-BOSS</div><p class="hint" style="text-align:center;margin:0 0 4px">Retro-Fußballmanager · Arbeitstitel · Stand ' + BUILD + '</p>' + updHtml() + updBtn();
+  var h = '<div class="logo" style="margin-top:14px">LIGA-BOSS</div><p class="hint" style="text-align:center;margin:0 0 4px">Retro-Fußballmanager · Arbeitstitel · Stand ' + BUILD + '</p>' + updHtml() + updBtn() + (ui.ldp ? '<div class="panel" style="border-color:var(--yellow)"><p style="margin:0 0 8px;font-size:15px">Datei: <b>' + esc(FM.clubTeam(ui.ldp.state).n) + '</b>, Saison ' + ui.ldp.state.season + ', ' + ui.ldp.state.round + '. Spieltag.' + (saved ? ' Der Spielstand auf diesem Gerät wird ersetzt.' : '') + '</p><div class="row"><button class="big" data-a="ldyes">Laden</button><button class="big sec2" data-a="ldno">Abbrechen</button></div></div>' : '<div style="text-align:center;margin-top:8px"><label class="big sec2 sm flab" style="display:inline-flex;width:auto;padding:0 18px;min-height:38px;font-size:13px;align-items:center">Spielstand aus Datei laden<input type="file" accept=".json,.txt,application/json" data-f="svload" hidden></label></div>');
   h += '<img class="heropic" alt="Fußballstadion bei Flutlicht mit vollen Rängen" src="' + PICS.flutlicht + '" width="192" height="144">';
   h += '<p style="text-align:center;margin:0 0 6px"><button class="mini" data-a="prefmus" style="padding:6px 12px">♪ Musik ' + (prefs.snd && prefs.mus !== false ? 'an' : 'aus') + '</button></p>';
   if (saved) {
@@ -4113,7 +4113,7 @@ function vOptions() {
   var h = sub('Optionen');
   h += '<div class="panel"><p class="lbl">SPIELSZENEN</p>' + tiles('pref', [[0, 'Mit Szenen', 'o_scene', sm('Spielfeld mit Figuren')], [1, 'Nur Ticker', 'o_tick', sm('spart Zeit und Akku', 0)]], prefs.fast ? 1 : 0, 'pk2') + '</div>';
   h += '<div class="panel"><p class="lbl">TEMPO BEIM ANPFIFF</p>' + tiles('prefs', [[1, 'Normal', 'o_s1'], [2.5, 'Schneller', 'o_s2']], prefs.speed > 1 ? 2.5 : 1, 'pk2') + '<p class="hint" style="margin:8px 0 0">Im Spiel kannst du jederzeit umschalten.</p></div>';
-  if (state) h += '<div class="panel"><p class="lbl">SPIELSTAND</p>' + kv('Größe', (ui.saveKB || 0) + ' KB') + kv('Gespeichert', ui.lsFail ? (CDB && !ui.idbFail ? 'im großen Gerätespeicher' : '<span style="color:#ff9a8f">fehlgeschlagen</span>') : 'auf diesem Gerät' + (CDB && !ui.idbFail ? ' · mit Sicherung' : '')) + '</div>';
+  h += '<div class="panel"><p class="lbl">SPIELSTAND</p>' + (!state ? '' :  + kv('Größe', (ui.saveKB || 0) + ' KB') + kv('Gespeichert', ui.lsFail ? (CDB && !ui.idbFail ? 'im großen Gerätespeicher' : '<span style="color:#ff9a8f">fehlgeschlagen</span>') : 'auf diesem Gerät' + (CDB && !ui.idbFail ? ' · mit Sicherung' : '')) ) + (ui.ldp ? '<p style="margin:10px 0 8px;font-size:15px">Datei: <b>' + esc(FM.clubTeam(ui.ldp.state).n) + '</b>, Saison ' + ui.ldp.state.season + ', ' + ui.ldp.state.round + '. Spieltag' + (ui.ldp.ts ? ', gesichert am ' + new Date(ui.ldp.ts).toLocaleDateString('de-DE') : '') + '.' + (state || saved ? ' Der Spielstand auf diesem Gerät wird ersetzt.' : '') + '</p><div class="row"><button class="big" data-a="ldyes">Laden</button><button class="big sec2" data-a="ldno">Abbrechen</button></div>' : '<div class="row" style="margin-top:8px">' + (state ? '<button class="big sec2 sm" data-a="svfile">Als Datei sichern</button>' : '') + '<label class="big sec2 sm flab">Aus Datei laden<input type="file" accept=".json,.txt,application/json" data-f="svload" hidden></label></div><p class="hint" style="margin:8px 0 0">Die Datei enthält den kompletten Spielstand. Heb sie auf, falls der Browser seine Daten löscht, oder nimm sie auf ein anderes Gerät mit. Eigene Daten und Wappen stecken nicht darin.</p>') + '</div>';
   h += '<div class="panel"><p class="lbl">VERSION</p><p class="hint" style="margin:0 0 8px">Stand ' + BUILD + '</p>' + (NEWV ? '<button class="big" data-a="update">Neue Version laden (Stand ' + esc(NEWV) + ')</button>' : '<button class="big sec2 sm" data-a="updcheck">' + (ui.updw ? 'Prüfe …' : 'Auf Updates prüfen') + '</button>') + '</div>';
   h += '<div class="panel"><p class="lbl">FENSTER</p>' + tiles('prefpw', [[0, 'Alle Meldungen', 'o_scene', sm('auch Scout, Kabine, Hinweise')], [1, 'Nur Wichtiges', 'o_tick', sm('Entscheidungen und Ausfälle in der Startelf')]], prefs.pw ? 1 : 0, 'pk2') + '<p class="hint" style="margin:8px 0 0">Angebote, Gespräche, Trainerangebote und Warnungen des Vorstands kommen immer als Fenster. Alles andere steht weiter in der Zeitung und an den Kacheln im Büro.</p></div>';
   h += '<div class="panel"><p class="lbl">EM UND WM</p>' + tiles('preftour', [[0, 'Kompakt', 'o_tick', sm('alles auf einer Seite')], [1, 'Ausführlich', 'o_scene', sm('Spieltag für Spieltag')]], prefs.tour ? 1 : 0, 'pk2') + '<p class="hint" style="margin:8px 0 0">Alle zwei Jahre im Sommer: EM 2028, WM 2030 und so weiter.</p></div>';
@@ -5228,6 +5228,9 @@ app.addEventListener('click', function (ev) {
   if (a === 'prefpw') { prefs.pw = +b.getAttribute('data-val') === 1 ? 1 : 0; try { localStorage.setItem('ligaboss-prefs', JSON.stringify(prefs)); } catch (e7) { } return render(); }
   if (a === 'preftour') { prefs.tour = +b.getAttribute('data-val') === 1; try { localStorage.setItem('ligaboss-prefs', JSON.stringify(prefs)); } catch (e7) { } return render(); }
   if (a === 'updcheck') return updManual();
+  if (a === 'svfile') { if (!state) return; persist(); try { var sj = JSON.stringify({ app: 'liga-boss', ts: Date.now(), state: state }), sb = new Blob([sj], { type: 'application/json' }), su = URL.createObjectURL(sb), sa = document.createElement('a'); sa.href = su; sa.download = 'liga-boss-spielstand-' + state.season + '-spieltag-' + state.round + '.json'; document.body.appendChild(sa); sa.click(); setTimeout(function () { sa.remove(); URL.revokeObjectURL(su); }, 2000); toast('Spielstand als Datei gesichert.'); } catch (e8) { toast('Das Sichern als Datei geht hier nicht.'); } return; }
+  if (a === 'ldno') { ui.ldp = null; return render(); }
+  if (a === 'ldyes') { var LD = ui.ldp; ui.ldp = null; if (!LD) return render(); ui.pops = []; ui.match = null; saved = { ts: Date.now(), state: LD.state }; SND.jingle(); enter(LD.state); persist(); return toast('Spielstand geladen.'); }
   if (a === 'update') { persist(); location.replace(location.pathname + '?v=' + Date.now()); return; }
   if (a === 'pop') { var PP = ui.pops.shift(), PB = PP && PP.b[+b.getAttribute('data-val')]; if (PB && PB[1]) PB[1](); persist(); return render(); }
   if (a === 'tourpg') { ui.tpg = +b.getAttribute('data-val'); render(); return window.scrollTo(0, 0); }
@@ -5412,6 +5415,7 @@ app.addEventListener('input', function (ev) { if (ev.target && ev.target.id === 
 app.addEventListener('change', function (ev) {
   var el = ev.target, f = el && el.getAttribute ? el.getAttribute('data-f') : null, file = el && el.files ? el.files[0] : null; if (!f || !file) return;
   if (f === 'custfile') { var fr = new FileReader(); fr.onload = function () { custTxt = String(fr.result || '').slice(0, 400000); try { localStorage.setItem('ligaboss-custom', custTxt); } catch (e) { } ui.custNew = false; ui.custRep = custReport(FM.parseData(custTxt)); render(); }; fr.readAsText(file); return; }
+  if (f === 'svload') { var fr2 = new FileReader(); fr2.onload = function () { var o2 = null; try { o2 = JSON.parse(String(fr2.result || '')); } catch (e) { } if (!o2 || !o2.state || o2.state.v !== 1 || !o2.state.teams || o2.state.uid === undefined) return toast('Das ist kein Liga-Boss-Spielstand.'); ui.ldp = { ts: o2.ts, state: o2.state }; render(); }; fr2.onerror = function () { toast('Die Datei lässt sich nicht lesen.'); }; fr2.readAsText(file); return; }
   if (f === 'crest') { crestAdd(file, el.getAttribute('data-n'), function (ok) { if (!ok) return toast('Das Bild lässt sich nicht verarbeiten oder der Speicher ist voll.'); var y = window.scrollY; render(); window.scrollTo(0, y); }); return; }
   if (f === 'pack') {
     toast('Paket wird gelesen …');

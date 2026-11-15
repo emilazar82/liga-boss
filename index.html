@@ -1210,8 +1210,9 @@ function meWage(state, t) {
 }
 function me(state) {
   if (!state.me) state.me = { cash: 0, own: [], edu: [], wage: 0, until: 0, log: [] };
+  if (state.me.c0 === undefined) state.me.c0 = state.cash;
   var M = state.me, un = state.tour && state.tour.on && state.tour.cu !== undefined ? M.club : state.teams[state.uid].n;
-  if (!M.wage || M.club !== un || (M.fresh && state.round === 0 && !state.live)) { var keepF = M.club === un && M.fresh; M.club = un; M.wage = meWage(state); if (!keepF) { M.until = state.season + 1; M.ask = -1; M.fresh = 1; } }
+  if (!M.wage || M.club !== un || (M.fresh && state.round === 0 && !state.live)) { var keepF = M.club === un && M.fresh; M.club = un; if (M.sh && M.sh.club !== un) meShareOut(state); M.wage = meWage(state); if (!keepF) { M.until = state.season + 1; M.ask = -1; M.fresh = 1; } }
   if (M.fresh && state.round > 0) delete M.fresh;
   return M;
 }
@@ -1240,7 +1241,7 @@ function meSack(state) {
   var weeks = Math.max(0, (M.until - state.season) * RN(state) + RN(state) - state.round), a = Math.round(weeks * M.wage * 0.5);
   M.sev = state.season + '_' + state.round; M.cash += a; if (a) meLog(state, 'Abfindung', a); M.lastSev = a; return a;
 }
-function meNewClub(state) { var M = me(state); M.club = state.teams[state.uid].n; M.wage = meWage(state); M.until = state.season + 1; M.ask = -1; M.fresh = 1; }
+function meNewClub(state) { if (state.me && state.me.sh && state.me.sh.club !== state.teams[state.uid].n) meShareOut(state); var M = me(state); M.club = state.teams[state.uid].n; M.wage = meWage(state); M.until = state.season + 1; M.ask = -1; M.fresh = 1; }
 function meAsk(state) {
   var M = me(state); if (M.ask === state.season) return 'In dieser Saison hast du schon verhandelt.';
   if (state.round < 6) return 'Der Vorstand will erst ein paar Spieltage sehen (ab dem 7. Spieltag).';
@@ -1263,6 +1264,65 @@ function meLearn(state, k) {
   if (M.edu.indexOf(k) >= 0) return 'Den Abschluss hast du schon.';
   if (M.cash < o[2]) return 'Dafür reicht dein Privatvermögen nicht.';
   M.cash -= o[2]; M.edu.push(k); if (k === 'lic') repAdd(state, 5); meLog(state, o[1], -o[2]); return '';
+}
+function clubVal(state, t) {
+  var u = state.teams[state.uid]; t = t || u; var lg = Math.min(2, t.lg), kk = clamp((tStr(t) - [74, 62, 50][lg]) / [16, 10, 10][lg], 0, 1);
+  var cap = t.id === u.id ? state.stad.cap : Math.round([30000, 15000, 8000][lg] * (1 + 1.5 * kk));
+  return Math.round(([25000000, 6000000, 1200000][lg] * (0.6 + 0.9 * kk) + cap * 150 + (t.id === u.id ? Math.max(0, state.cash) * 0.5 : 0)) / 10000) * 10000;
+}
+function mePct(state) { var M = state.me, u = state.teams[state.uid]; return M && M.sh && M.sh.club === u.n ? M.sh.pct : 0; }
+function meOwner(state) { return mePct(state) >= 100; }
+function meShareBuy(state, all) {
+  var M = me(state), u = state.teams[state.uid], pct = mePct(state), V = clubVal(state);
+  if (state.tour && state.tour.on) return 'Während des Turniers geht das nicht.';
+  if (pct >= 100) return 'Der Verein gehört dir schon ganz.';
+  var step = all ? 100 - pct : pct >= 45 ? 100 - pct : 5, cost = Math.round(V * step / 100);
+  if (M.cash < cost) return 'Dafür reicht dein Privatvermögen nicht (' + Math.round(cost / 1000) + ' T nötig).';
+  M.cash -= cost; M.sh = { club: u.n, pct: pct + step, paid: ((M.sh && M.sh.club === u.n && M.sh.paid) || 0) + cost }; meLog(state, step + ' % Anteile an ' + u.n, -cost);
+  if (M.sh.pct >= 100) { state.board.conf = Math.max(state.board.conf, 60); news(state, (state.coach || 'Der Trainer') + ' übernimmt ' + u.n + ' komplett und ist jetzt Besitzer und Trainer in einer Person.'); }
+  return '';
+}
+function meShareSell(state) {
+  var M = me(state), pct = mePct(state); if (!pct) return 'Du hältst keine Anteile.';
+  var step = pct >= 100 ? 100 : 5, got = Math.round(clubVal(state) * step / 100 * 0.9);
+  M.cash += got; M.sh.pct = pct - step; if (M.sh.pct <= 0) delete M.sh; meLog(state, step + ' % Anteile verkauft', got); return '';
+}
+function meShareOut(state) {
+  var M = state.me; if (!M || !M.sh) return 0; var t = null; state.teams.forEach(function (x) { if (x.n === M.sh.club) t = x; });
+  var got = Math.round((t ? clubVal(state, t) : M.sh.paid || 0) * M.sh.pct / 100 * 0.9); var cn0 = M.sh.club; delete M.sh; M.cash += got; meLog(state, 'Anteile an ' + cn0 + ' verkauft', got); return got;
+}
+function meStep(state) { return Math.max(50000, Math.round(Math.abs(state.cash) * 0.1 / 50000) * 50000); }
+function meDraw(state) {
+  if (!meOwner(state)) return 'Geld entnehmen kann nur der Besitzer.';
+  var M = me(state), a = meStep(state); if (state.cash - a < 0) return 'So viel ist nicht in der Vereinskasse.';
+  if (M.dr === state.season + '_' + state.round) return 'Pro Spieltag ist nur eine Entnahme möglich.';
+  M.dr = state.season + '_' + state.round; state.cash -= a; state.led.inv += a; var net = Math.round(a * 0.75); M.cash += net; meLog(state, 'Entnahme aus dem Verein', net);
+  state.teams[state.uid].pl.forEach(function (p) { moAdd(p, -0.1); }); return '';
+}
+function mePut(state) {
+  var M = me(state); if (!mePct(state)) return 'Geld einlegen können nur Anteilseigner.';
+  var a = Math.min(meStep(state), Math.floor(M.cash / 10000) * 10000); if (a < 10000) return 'Dafür reicht dein Privatvermögen nicht.';
+  M.cash -= a; state.cash += a; state.led.spon += a; meLog(state, 'Einlage in den Verein', -a); state.board.conf = clamp(state.board.conf + 2, 1, 100); return '';
+}
+function meBuyList(state) {
+  var u = state.teams[state.uid], low = NL(state) - 1;
+  return state.teams.filter(function (t) { return t.lg === low && t.id !== u.id; }).map(function (t) { return { id: t.id, n: t.n, lg: t.lg, str: Math.round(tStr(t)), price: Math.round(clubVal(state, t) * 1.1 / 10000) * 10000 }; }).sort(function (a, b) { return a.price - b.price; }).slice(0, 4);
+}
+function meBuyClub(state, id) {
+  var M = me(state), L = meBuyList(state).filter(function (x) { return x.id === id; })[0]; if (!L) return 'Der Verein steht nicht zum Verkauf.';
+  if (state.live || (state.tour && state.tour.on)) return 'Im Moment geht das nicht.';
+  var extra = M.sh ? Math.round(clubVal(state) * mePct(state) / 100 * 0.9) : 0;
+  if (M.cash + extra < L.price) return 'Dafür reicht dein Privatvermögen nicht.';
+  state.quit = 1; state.jobs = [id]; var n = takeOver(state, id); if (!n) return 'Die Übernahme ist gescheitert.';
+  M = me(state); M.cash -= L.price; M.sh = { club: n, pct: 100, paid: L.price }; meLog(state, n + ' gekauft', -L.price); state.board.conf = 70;
+  news(state, (state.coach || 'Der Trainer') + ' kauft ' + n + ' und setzt sich selbst auf die Bank.'); return '';
+}
+function meSeason(state, sum) {
+  var M = me(state), pct = mePct(state); if (!pct) { M.c0 = state.cash; return; }
+  var profit = state.cash - (M.c0 === undefined ? state.cash : M.c0);
+  if (profit > 0) { var dv = Math.round(profit * pct / 100 * 0.3); state.cash -= dv; M.cash += dv; meLog(state, 'Gewinnanteil (' + pct + ' %)', dv); sum.meDiv = dv; }
+  if (pct >= 100 && state.cash < 0) { var cov = Math.min(Math.max(0, M.cash), -state.cash); if (cov > 0) { M.cash -= cov; state.cash += cov; meLog(state, 'Verlust des Vereins gedeckt', -cov); sum.meCov = cov; } }
+  M.c0 = state.cash;
 }
 function dlLast(state) { var r = state.round, H = HN(state); return r === 5 || r === H + 2; }
 function deadline(state) {
@@ -1554,7 +1614,8 @@ function boardWeek(state, r, pl, gf, ga) {
   if (r >= 5) d += pl <= B.goal ? 1 : -(0.5 + (pl - B.goal) / 6);
   d += gf > ga ? 1 : gf < ga ? -1 : 0;
   if (state.cash < 0) d -= 2;
-  B.conf = Math.round(clamp(B.conf + d, 0, 100) * 10) / 10;
+  var sp = mePct(state); if (d < 0 && sp) d *= Math.max(0.3, 1 - sp / 60);
+  B.conf = Math.round(clamp(B.conf + d, sp >= 100 ? 30 : 0, 100) * 10) / 10;
   if (B.conf <= 0) state.sacked = true;
 }
 function clubMeans(state, u) {
@@ -1562,6 +1623,7 @@ function clubMeans(state, u) {
   var kk = clamp((av - [74, 62, 50][u.lg]) / [16, 10, 10][u.lg], 0, 1);
   state.cash = Math.round([1500000, 600000, 250000][u.lg] * (1 + 3 * kk) / 50000) * 50000;
   state.stad.cap = Math.round([30000, 15000, 8000][u.lg] * (1 + 1.5 * kk) / 1000) * 1000;
+  state.stad.fans = Math.round((1 + [0, 0.15, 0.5][Math.min(2, u.lg)] * kk) * 1000) / 1000;
   state.big = kk; return kk;
 }
 function takeOver(state, tid) {
@@ -2913,6 +2975,7 @@ function finishSeason(state) {
   state.fin.goal = 0; if (state.inv && state.inv.until <= state.season) state.inv = null;
   state.stad.fans = Math.round(clamp((state.stad.fans || 1) + (sum.move === 'auf' ? 0.05 : sum.move === 'ab' ? -0.08 : 0), 0.6, 1.5) * 1000) / 1000;
   B.conf = Math.round(clamp(B.conf + (okGoal ? 10 : -(8 + 2 * (sum.place - B.goal))) + (sum.move === 'auf' ? 20 : sum.move === 'ab' ? -25 : 0), 0, 100));
+  if (meOwner(state)) B.conf = Math.max(B.conf, 30);
   if (B.conf <= 0) state.sacked = true;
   sum.boardBonus = 0; if (okGoal && !state.sacked) { sum.boardBonus = Math.round(GRANT[sum.lg] * (B.amb === 2 ? 0.3 : B.amb === 1 ? 0.05 : 0.15)); state.cash += sum.boardBonus; }
   repAdd(state, (okGoal ? 5 : -4) + (sum.move === 'auf' ? 10 : sum.move === 'ab' ? -8 : 0) + (sum.lg === 0 && sum.place === 1 ? 15 : 0) + (state.cup && state.cup.won ? 8 : 0) + (state.eu && state.eu.won ? 20 : 0) + (state.sacked ? -10 : 0));
@@ -2922,7 +2985,7 @@ function finishSeason(state) {
   ntOffer(state, tabs[0][0].id === state.uid || (state.cup && state.cup.won) || (state.eu && state.eu.won));
   state.fx = []; state.fgq = fgnTop(state, true); fgnAge(state); sum.fgr = Object.keys(state.fgr || {}).map(function (c) { var r = state.fgr[c]; return [CTY[c].n, r.ch, r.up, r.dn]; }); sum.euqF = Object.keys(state.fgq).map(function (c) { return [CTY[c].n, state.fgq[c].map(function (ix) { return state.fgn[c][ix].n; })]; });
   sum.board = { goal: goalText(sum.lg, B.goal, state), ok: okGoal, conf: B.conf, sacked: !!state.sacked };
-  carSeason(state, sum, okGoal); meBonus(state, sum, okGoal, !!(state.cup && state.cup.won), !!(state.eu && state.eu.won));
+  carSeason(state, sum, okGoal); meBonus(state, sum, okGoal, !!(state.cup && state.cup.won), !!(state.eu && state.eu.won)); meSeason(state, sum);
   if (!state.sacked) B.conf = Math.round((B.conf + 60) / 2);
   state.hist.push({ s: state.season, lg: sum.lg, pl: sum.place });
   var mv3 = moves.map(function (m) { return [m[0], m[0].lg, m[1]]; });
@@ -2980,7 +3043,7 @@ function topScorers(state, lg, n) {
   all.sort(function (a, b) { return b.g - a.g; });
   return all.slice(0, n);
 }
-return { NTN: NTN, TOURST: TOURST, tourDue: tourDue, tourKind: tourKind, tourStart: tourStart, tourTie: tourTie, startTour: startTour, tourRest: tourRest, tourInfo: tourInfo, ntAnswer: ntAnswer, ACH: ACH, achState: achState, achNew: achNew, MEOWN: MEOWN, MEEDU: MEEDU, me: me, meWage: meWage, meUpkeep: meUpkeep, meAsk: meAsk, meBuy: meBuy, meSell: meSell, meLearn: meLearn, deadline: deadline, dlList: dlList, pressDue: pressDue, pressAnswer: pressAnswer, rival: rival, setRival: setRival, isDerby: isDerby, resign: resign, fgnAge: fgnAge, fgnTopX: fgnTop, clubTeam: clubTeam, spFac: spFac, fjobInfo: fjobInfo, moveCountry: moveCountry, fgnJobs: fgnJobs, worldExport: worldExport, flTable: flTable, flInfo: flInfo, flScorers: flScorers, fgnReal: fgnReal, fgnApply: fgnApply, weeklyOffers: weeklyOffers, fgnLgs: fgnLgs, fgnClubs: fgnClubs, fgnOpen: fgnOpen, cupDate: cupDate, euName: euName, euGroups: euGroups, tCty: tCty, EUDRAW: EUDRAW, exportData: exportData, parseData: parseData, applyData: applyData, newGameCustom: newGameCustom, winText: winText, startFriendly: startFriendly, cupGoalR: cupGoalR, friendly: friendly, friendInfo: friendInfo, car: car, liveTalk: liveTalk, talkInfo: talkInfo, talkAnswer: talkAnswer, liveTact: liveTact, liveTactInfo: liveTactInfo, tableX: tableX, teamInfo: teamInfo, leagueStats: leagueStats, totoAuto: totoAuto, totoMult: totoMult, hallSquad: hallSquad, boardAmb: boardAmb, boardAsk: boardAsk, boardTalk: boardTalk, GRANT: GRANT, youthTrial: youthTrial, youthLoan: youthLoan, youthDrop: youthDrop, youthProj: youthProj, sponProj: sponProj, sponReneg: sponReneg, extOffer: extOffer, raise: raise, release: release, releaseCost: releaseCost, EXT: EXT, VIPB: VIPB, setOps: setOps, capEff: capEff, attExpect: attExpect, LGF: LGF, SECC: SECC, PITC: PITC, PPR: PPR, PPN: PPN, DEPO: DEPO, INVAMT: INVAMT, absWeek: absWeek, wageSum: wageSum, setPP: setPP, setGoalBonus: setGoalBonus, setIns: setIns, deposit: deposit, breakDep: breakDep, depSum: depSum, investor: investor, winOpen: winOpen, scoutCap: scoutCap, scoutFee: scoutFee, scoutAsk: scoutAsk, scoutTips: scoutTips, posCount: posCount, planInfo: planInfo, setPreset: setPreset, STAFFN: STAFFN, staffLv: staffLv, staffWage: staffWage, staffCost: staffCost, setStaff: setStaff, indMax: indMax, tactInfo: tactInfo, euTie: euTie, startEu: startEu, EUNAME: EUNAME, EUPRIZE: EUPRIZE, jobInfo: jobInfo, adSlots: adSlots, adSign: adSign, MN: MN, MUP: MUP, MCOST: MCOST, merchExpect: merchExpect, merchUpgrade: merchUpgrade, DKD: DKD, dkPreview: dkPreview, dkSell: dkSell, extraCost: extraCost, stadExtra: stadExtra, upkeepOf: upkeepOf, goalText: goalText, takeOver: takeOver, SESS: SESS, planFit: planFit, setPlan: setPlan, setInd: setInd, CAMP: CAMP, campCost: campCost, campGo: campGo, ATN: ATN, ATW: ATW, YCOST: YCOST, YUP: YUP, YMAX: YMAX, youthUpgrade: youthUpgrade, promote: promote, POS: POS, FORMATIONS: FORMATIONS, LEAGUES: LEAGUES, ROUNDS: ROUNDS, CTY: CTY, cfg: cfg, NL: NL, NT: NT, RN: RN, HN: HN, lgName: lgName, newGame: newGame, userTeam: userTeam, team: team, table: table, place: place, nextMatch: nextMatch, playRound: playRound, finishSeason: finishSeason, bestEleven: bestEleven, lineupValid: lineupValid, counts: counts, need: need, eff: eff, findP: findP, dateOf: dateOf, seasonLabel: seasonLabel, topScorers: topScorers, ensure: ensure, value: value, salary: salary, buy: buy, sell: sell, sellPrice: sellPrice, MAXSQUAD: MAXSQUAD, signSponsor: signSponsor, loanMax: loanMax, loanStep: loanStep, borrow: borrow, repay: repay, setPrice: setPrice, calEvents: calEvents, startBuild: startBuild, blocks: blocks, buildPlan: buildPlan, BMAX: BMAX, BUILDS: BUILDS, handgeld: handgeld, extend: extend, PRICE: PRICE, cupTie: cupTie, cupPlay: cupPlay, startRound: startRound, startCup: startCup, baseWage: baseWage, demand: demand, offer: offer, loanFee: loanFee, canLoanIn: canLoanIn, loanIn: loanIn, loanOut: loanOut, toggleList: toggleList, acceptOffer: acceptOffer, rejectOffer: rejectOffer, haggle: haggle, findTarget: findTarget, liveNext: liveNext, liveSub: liveSub, liveBench: liveBench, finishLive: finishLive, liveAuto: liveAuto, avail: avail, CUPNAME: CUPNAME, CUPPRIZE: CUPPRIZE, hallPlay: hallPlay, totoMatches: totoMatches, totoTip: totoTip, totoComplete: totoComplete, TOTOSTAKE: TOTOSTAKE, TOTOWIN: TOTOWIN };
+return { NTN: NTN, TOURST: TOURST, tourDue: tourDue, tourKind: tourKind, tourStart: tourStart, tourTie: tourTie, startTour: startTour, tourRest: tourRest, tourInfo: tourInfo, ntAnswer: ntAnswer, ACH: ACH, achState: achState, achNew: achNew, clubVal: clubVal, mePct: mePct, meOwner: meOwner, meShareBuy: meShareBuy, meShareSell: meShareSell, meDraw: meDraw, mePut: mePut, meStep: meStep, meBuyList: meBuyList, meBuyClub: meBuyClub, MEOWN: MEOWN, MEEDU: MEEDU, me: me, meWage: meWage, meUpkeep: meUpkeep, meAsk: meAsk, meBuy: meBuy, meSell: meSell, meLearn: meLearn, deadline: deadline, dlList: dlList, pressDue: pressDue, pressAnswer: pressAnswer, rival: rival, setRival: setRival, isDerby: isDerby, resign: resign, fgnAge: fgnAge, fgnTopX: fgnTop, clubTeam: clubTeam, spFac: spFac, fjobInfo: fjobInfo, moveCountry: moveCountry, fgnJobs: fgnJobs, worldExport: worldExport, flTable: flTable, flInfo: flInfo, flScorers: flScorers, fgnReal: fgnReal, fgnApply: fgnApply, weeklyOffers: weeklyOffers, fgnLgs: fgnLgs, fgnClubs: fgnClubs, fgnOpen: fgnOpen, cupDate: cupDate, euName: euName, euGroups: euGroups, tCty: tCty, EUDRAW: EUDRAW, exportData: exportData, parseData: parseData, applyData: applyData, newGameCustom: newGameCustom, winText: winText, startFriendly: startFriendly, cupGoalR: cupGoalR, friendly: friendly, friendInfo: friendInfo, car: car, liveTalk: liveTalk, talkInfo: talkInfo, talkAnswer: talkAnswer, liveTact: liveTact, liveTactInfo: liveTactInfo, tableX: tableX, teamInfo: teamInfo, leagueStats: leagueStats, totoAuto: totoAuto, totoMult: totoMult, hallSquad: hallSquad, boardAmb: boardAmb, boardAsk: boardAsk, boardTalk: boardTalk, GRANT: GRANT, youthTrial: youthTrial, youthLoan: youthLoan, youthDrop: youthDrop, youthProj: youthProj, sponProj: sponProj, sponReneg: sponReneg, extOffer: extOffer, raise: raise, release: release, releaseCost: releaseCost, EXT: EXT, VIPB: VIPB, setOps: setOps, capEff: capEff, attExpect: attExpect, LGF: LGF, SECC: SECC, PITC: PITC, PPR: PPR, PPN: PPN, DEPO: DEPO, INVAMT: INVAMT, absWeek: absWeek, wageSum: wageSum, setPP: setPP, setGoalBonus: setGoalBonus, setIns: setIns, deposit: deposit, breakDep: breakDep, depSum: depSum, investor: investor, winOpen: winOpen, scoutCap: scoutCap, scoutFee: scoutFee, scoutAsk: scoutAsk, scoutTips: scoutTips, posCount: posCount, planInfo: planInfo, setPreset: setPreset, STAFFN: STAFFN, staffLv: staffLv, staffWage: staffWage, staffCost: staffCost, setStaff: setStaff, indMax: indMax, tactInfo: tactInfo, euTie: euTie, startEu: startEu, EUNAME: EUNAME, EUPRIZE: EUPRIZE, jobInfo: jobInfo, adSlots: adSlots, adSign: adSign, MN: MN, MUP: MUP, MCOST: MCOST, merchExpect: merchExpect, merchUpgrade: merchUpgrade, DKD: DKD, dkPreview: dkPreview, dkSell: dkSell, extraCost: extraCost, stadExtra: stadExtra, upkeepOf: upkeepOf, goalText: goalText, takeOver: takeOver, SESS: SESS, planFit: planFit, setPlan: setPlan, setInd: setInd, CAMP: CAMP, campCost: campCost, campGo: campGo, ATN: ATN, ATW: ATW, YCOST: YCOST, YUP: YUP, YMAX: YMAX, youthUpgrade: youthUpgrade, promote: promote, POS: POS, FORMATIONS: FORMATIONS, LEAGUES: LEAGUES, ROUNDS: ROUNDS, CTY: CTY, cfg: cfg, NL: NL, NT: NT, RN: RN, HN: HN, lgName: lgName, newGame: newGame, userTeam: userTeam, team: team, table: table, place: place, nextMatch: nextMatch, playRound: playRound, finishSeason: finishSeason, bestEleven: bestEleven, lineupValid: lineupValid, counts: counts, need: need, eff: eff, findP: findP, dateOf: dateOf, seasonLabel: seasonLabel, topScorers: topScorers, ensure: ensure, value: value, salary: salary, buy: buy, sell: sell, sellPrice: sellPrice, MAXSQUAD: MAXSQUAD, signSponsor: signSponsor, loanMax: loanMax, loanStep: loanStep, borrow: borrow, repay: repay, setPrice: setPrice, calEvents: calEvents, startBuild: startBuild, blocks: blocks, buildPlan: buildPlan, BMAX: BMAX, BUILDS: BUILDS, handgeld: handgeld, extend: extend, PRICE: PRICE, cupTie: cupTie, cupPlay: cupPlay, startRound: startRound, startCup: startCup, baseWage: baseWage, demand: demand, offer: offer, loanFee: loanFee, canLoanIn: canLoanIn, loanIn: loanIn, loanOut: loanOut, toggleList: toggleList, acceptOffer: acceptOffer, rejectOffer: rejectOffer, haggle: haggle, findTarget: findTarget, liveNext: liveNext, liveSub: liveSub, liveBench: liveBench, finishLive: finishLive, liveAuto: liveAuto, avail: avail, CUPNAME: CUPNAME, CUPPRIZE: CUPPRIZE, hallPlay: hallPlay, totoMatches: totoMatches, totoTip: totoTip, totoComplete: totoComplete, TOTOSTAKE: TOTOSTAKE, TOTOWIN: TOTOWIN };
 })();
 </script>
 
@@ -3062,7 +3125,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '15.11. 20:10';
+var BUILD = '15.11. 20:13';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -4000,7 +4063,7 @@ function popScan() {
     var key = 'fj' + x.c + x.n; pk[key] = 1; if (old[key] || first) return; var j = FM.fjobInfo(state, k); if (!j) return;
     pop('Angebot aus dem Ausland', flag(EUFL[j.c]) + ' <b>' + esc(j.n) + '</b> (' + esc(j.cn) + ', ' + esc(j.lgn) + ', Kaderstärke ' + j.str + ') möchte dich als Trainer verpflichten. Das Angebot gilt bis zum 1. Spieltag.', [['Angebot ansehen', function () { go('board'); }], ['Ablehnen', function () { state.fjobs = state.fjobs.filter(function (y) { return y !== x; }); toast('Angebot abgelehnt.'); }], ['Später entscheiden', null, 'unter Vorstand']], 'm_sign');
   });
-  if (ui.sum && (ui.sum.meBon || ui.sum.meNew) && !ui.sum._mp) { ui.sum._mp = 1; var mb = ui.sum.meBon || [], mn = ui.sum.meNew; if (mb.length || mn) pop('Dein Konto', (mb.length ? mb.map(function (x) { return esc(x[0]) + ': <b>+' + money(x[1]) + '</b>'; }).join('<br>') : '') + (mn ? (mb.length ? '<br>' : '') + 'Dein Vertrag wurde bis Ende Saison ' + seasonLabel(mn.until) + ' verlängert' + (mn.wage > mn.old ? ', das Gehalt steigt auf <b>' + money(mn.wage) + '</b> pro Woche.' : '.') : ''), [['OK'], ['Zu Privat', function () { go('private'); }]], 'm_bag'); }
+  if (ui.sum && (ui.sum.meBon || ui.sum.meNew || ui.sum.meDiv || ui.sum.meCov) && !ui.sum._mp) { ui.sum._mp = 1; var mb = (ui.sum.meBon || []).slice(), mn = ui.sum.meNew; if (ui.sum.meDiv) mb.push(['Gewinnanteil aus dem Verein', ui.sum.meDiv]); if (ui.sum.meCov) mb.push(['Verlust des Vereins gedeckt', -ui.sum.meCov]); if (mb.length || mn) pop('Dein Konto', (mb.length ? mb.map(function (x) { return esc(x[0]) + ': <b>' + (x[1] > 0 ? '+' : '') + money(x[1]) + '</b>'; }).join('<br>') : '') + (mn ? (mb.length ? '<br>' : '') + 'Dein Vertrag wurde bis Ende Saison ' + seasonLabel(mn.until) + ' verlängert' + (mn.wage > mn.old ? ', das Gehalt steigt auf <b>' + money(mn.wage) + '</b> pro Woche.' : '.') : ''), [['OK'], ['Zu Privat', function () { go('private'); }]], 'm_bag'); }
   if (R && R.meSold && !R._ms) { R._ms = 1; pop('Privat', 'Dein Konto war im Minus. <b>' + esc(R.meSold) + '</b> wurde mit Verlust verkauft.', [['OK'], ['Zu Privat', function () { go('private'); }]], 'm_bag'); }
   if (state.board && state.board.conf < 30) pk.bw = 1;
   var DLp = FM.deadline(state);
@@ -4203,6 +4266,7 @@ function vBoard() {
   if (state.jobs.length || (state.fjobs || []).length) h += '<p class="lbl" style="margin:0">ANGEBOTE ANDERER VEREINE · ' + (state.jobx !== undefined ? 'NOCH ' + Math.max(1, state.jobx - state.round) + ' WOCHEN' : 'BIS ZUM 1. SPIELTAG') + '</p>' + jobsHtml() + '<p class="hint" style="margin:0">Bei einem Wechsel übernimmst du Kader, Kasse und Stadion des neuen Vereins. Dein alter Verein spielt ohne dich weiter.</p>';
   var rv = FM.rival(state);
   if (rv) h += '<div class="panel"><p class="lbl">RIVALE</p><div class="row" style="align-items:center;gap:10px">' + crest(rv.id, 38) + '<b class="grow" style="font-size:16px">' + esc(rv.n) + '</b></div><select data-f="rival" aria-label="Rivalen wählen" style="width:100%;margin-top:10px;min-height:44px;font-size:16px">' + FM.table(state, u.lg).filter(function (t) { return t.id !== u.id; }).sort(function (a, b) { return a.n < b.n ? -1 : 1; }).map(function (t) { return '<option value="' + t.id + '"' + (t.id === rv.id ? ' selected' : '') + '>' + esc(t.n) + '</option>'; }).join('') + '</select><p class="hint" style="margin:8px 0 0">Im Derby ist das Stadion voller. Ein Sieg hebt Moral, Fans und Vertrauen des Vorstands, eine Niederlage drückt alle drei. Spielt der Rivale in einer anderen Liga, gilt für die Saison ein Ersatzrivale.</p></div>';
+  if (FM.meOwner(state)) h += '<div class="panel" style="border-color:#c9a227"><p style="margin:0;font-size:15px"><b>Du bist Besitzer dieses Vereins.</b> Der Vorstand berät dich, entlassen kann er dich nicht.</p></div>';
   h += '<div class="panel">' + acard('m_sign', 'Um Vertragsauflösung bitten', 'Du verlässt den Verein sofort.') + fx([['Neue Angebote je nach Ruf', 1], ['Ruf −4', 0], ['Kader, Kasse und Stadion bleiben hier', 0]]);
   h += ui.rsg ? '<p style="margin:10px 0 8px;font-size:15px">Wirklich gehen? Das lässt sich nicht zurücknehmen. Du wählst danach einen der Vereine, die dir ein Angebot machen.</p><div class="row"><button class="big" data-a="rsgyes">Ja, Vertrag auflösen</button><button class="big sec2" data-a="rsgno">Bleiben</button></div>' : '<button class="big sec2 sm" style="margin-top:10px" data-a="rsg">Um Vertragsauflösung bitten</button>';
   h += '</div>';
@@ -5140,7 +5204,7 @@ Object.keys(PICS_ME).forEach(function (k) { PICS[k] = PICS_ME[k]; });
 function vPrivate() {
   var M = FM.me(state), u = FM.userTeam(state), tab = ui.pvt || 'con', h = sub('Privat'), up = FM.meUpkeep(state), RNn = FM.RN(state);
   h += '<div class="tbar"><div><span>Vermögen</span><b>' + tk(M.cash) + '</b></div><div><span>Gehalt / Wo.</span><b>' + num(M.wage) + '</b></div><div><span>Unterhalt / Wo.</span><b>' + (up ? num(up) : '–') + '</b></div></div>';
-  h += chips('pvt', [['con', 'Vertrag'], ['own', 'Besitz'], ['edu', 'Fortbildung']], tab);
+  h += chips('pvt', [['con', 'Vertrag'], ['own', 'Besitz'], ['edu', 'Kurse'], ['club', 'Verein']], tab);
   if (tab === 'con') {
     var left = Math.max(0, (M.until - state.season) * RNn + RNn - state.round);
     h += '<div class="panel"><p class="lbl">TRAINERVERTRAG · ' + esc(u.n.toUpperCase()) + '</p>' + kv('Gehalt pro Woche', money(M.wage)) + kv('Pro Saison', money(M.wage * RNn)) + kv('Läuft bis', 'Ende Saison ' + seasonLabel(M.until)) + kv('Abfindung bei Entlassung', money(Math.round(left * M.wage * 0.5))) + '<p class="hint" style="margin:8px 0 0">Das Gehalt zahlt der Verein aus seiner Kasse. Wirst du entlassen, bekommst du die Hälfte des Restvertrags. Bittest du selbst um Auflösung, gibt es nichts.</p></div>';
@@ -5155,6 +5219,17 @@ function vPrivate() {
       if (o[5] !== grp) { grp = o[5]; h += '<p class="lbl" style="margin:0">' + grp.toUpperCase() + '</p>'; }
       h += '<div class="panel"' + (has ? ' style="border-color:#c9a227"' : '') + '><div class="row" style="align-items:center;gap:10px">' + (PICS['me_' + o[0]] ? '<img class="pc" alt="" aria-hidden="true" src="' + PICS['me_' + o[0]] + '" width="96" height="72" style="width:96px;height:72px;image-rendering:pixelated;border:2px solid #052826;flex:none' + (has ? '' : ';filter:saturate(.55) brightness(.85)') + '">' : '') + '<div class="grow"><b style="font-size:16px;display:block">' + (has ? '★ ' : '') + o[1] + '</b><b>' + tk(o[2]) + '</b></div></div>' + fx([['Ruf +' + o[4], 1]].concat(o[3] ? [['Unterhalt ' + num(o[3]) + ' pro Woche', 0]] : [])) + (has ? '<button class="big sec2 sm" style="margin-top:10px" data-a="mesell" data-val="' + o[0] + '">Verkaufen · ' + tk(Math.round(o[2] * 0.7)) + '</button>' : '<button class="big sec2 sm" style="margin-top:10px" data-a="mebuy" data-val="' + o[0] + '"' + (M.cash < o[2] ? ' disabled' : '') + '>' + (M.cash < o[2] ? 'Noch ' + tk(o[2] - M.cash) + ' sparen' : 'Kaufen') + '</button>') + '</div>';
     });
+  } else if (tab === 'club') {
+    var pct = FM.mePct(state), V = FM.clubVal(state), own = pct >= 100, stp = pct >= 45 ? 100 - pct : 5, st2 = FM.meStep(state);
+    h += '<div class="panel"' + (own ? ' style="border-color:#c9a227"' : '') + '><p class="lbl">' + esc(u.n.toUpperCase()) + '</p>' + kv('Wert des Vereins', tk(V)) + kv('Dein Anteil', pct ? '<b style="color:#ffd84d">' + pct + ' %</b> · ' + tk(Math.round(V * pct / 100)) : 'keiner') + '<div style="height:14px;background:#052826;border:2px solid #0a3d39;margin-top:8px"><div style="height:100%;width:' + pct + '%;background:#c9a227"></div></div>';
+    h += own ? '<p style="margin:10px 0 0;font-size:15px"><b>Der Verein gehört dir.</b> Niemand kann dich entlassen. Am Saisonende fließen 30 % des Gewinns auf dein Konto; ein Minus in der Vereinskasse musst du aus eigener Tasche ausgleichen.</p>' : '<p class="hint" style="margin:10px 0 0">Mit Anteilen verzeiht dir der Vorstand mehr, und am Saisonende bekommst du deinen Teil von 30 % des Gewinns. Ab 50 % übernimmst du den Verein ganz. Verlässt du den Verein, werden die Anteile zu 90 % des Werts verkauft.</p>';
+    if (!own) h += '<div class="row" style="margin-top:10px"><button class="big sec2 sm" data-a="meshb"' + (M.cash < V * stp / 100 ? ' disabled' : '') + '>' + stp + ' % kaufen · ' + tk(Math.round(V * stp / 100)) + '</button>' + (pct ? '<button class="big sec2 sm" data-a="meshs">5 % verkaufen · ' + tk(Math.round(V * 0.05 * 0.9)) + '</button>' : '') + '</div>';
+    if (!own && pct < 45) h += '<button class="big sec2 sm" style="margin-top:8px" data-a="mesha"' + (M.cash < V * (100 - pct) / 100 ? ' disabled' : '') + '>Ganz übernehmen · ' + tk(Math.round(V * (100 - pct) / 100)) + '</button>';
+    h += '</div>';
+    if (pct) h += '<div class="panel"><p class="lbl">GELD BEWEGEN</p>' + kv('Vereinskasse', tk(state.cash)) + kv('Dein Vermögen', tk(M.cash)) + '<div class="row" style="margin-top:10px"><button class="big sec2 sm" data-a="meput">' + tk(st2) + ' einlegen</button>' + (own ? '<button class="big sec2 sm" data-a="medraw">' + tk(st2) + ' entnehmen</button>' : '') + '</div><p class="hint" style="margin:8px 0 0">Eine Einlage geht ohne Abzug in die Vereinskasse und hebt das Vertrauen.' + (own ? ' Von einer Entnahme bleiben dir nach Steuern 75 %; die Mannschaft sieht es nicht gern (Moral −0,1). Höchstens eine pro Spieltag.' : ' Entnehmen kann nur der Besitzer.') + '</p></div>';
+    if (own) h += '<div class="panel">' + acard('m_sign', 'Verein verkaufen', 'Du bleibst Trainer, bist aber wieder Angestellter.') + '<button class="big sec2 sm" style="margin-top:10px" data-a="' + (ui.shq ? 'meshs' : 'meshq') + '">' + (ui.shq ? 'Wirklich verkaufen · ' + tk(Math.round(V * 0.9)) : 'Verein verkaufen') + '</button></div>';
+    var BL = FM.meBuyList(state);
+    if (BL.length && !own) { h += '<p class="lbl" style="margin:0">VEREIN KAUFEN UND SELBST TRAINIEREN</p><p class="hint" style="margin:0">Diese Vereine der untersten Liga stehen zum Verkauf. Du verlässt ' + esc(u.n) + ' sofort' + (pct ? ', deine Anteile werden verkauft' : '') + ', und fängst dort als Besitzer und Trainer an.</p>'; BL.forEach(function (x) { var can = M.cash + (pct ? Math.round(V * pct / 100 * 0.9) : 0) >= x.price; h += '<div class="panel"><div class="row" style="align-items:center;gap:10px">' + crest(x.id, 38) + '<div class="grow"><b style="font-size:16px;display:block">' + esc(x.n) + '</b><span class="hint">' + FM.lgName(state, x.lg) + ' · Kaderstärke ' + x.str + '</span></div><b>' + tk(x.price) + '</b></div><button class="big sec2 sm" style="margin-top:10px" data-a="' + (ui.bcq === x.id ? 'mebc' : 'mebcq') + '" data-val="' + x.id + '"' + (can ? '' : ' disabled') + '>' + (!can ? 'Noch ' + tk(x.price - M.cash) + ' sparen' : ui.bcq === x.id ? 'Wirklich kaufen und wechseln' : 'Kaufen') + '</button></div>'; }); }
   } else {
     h += '<p class="hint" style="margin:0">Ein Abschluss bleibt für die ganze Laufbahn, auch nach einem Vereinswechsel.</p>';
     FM.MEEDU.forEach(function (o) {
@@ -5486,7 +5561,11 @@ app.addEventListener('click', function (ev) {
   if (a === 'prefpw') { prefs.pw = +b.getAttribute('data-val') === 1 ? 1 : 0; try { localStorage.setItem('ligaboss-prefs', JSON.stringify(prefs)); } catch (e7) { } return render(); }
   if (a === 'preftour') { prefs.tour = +b.getAttribute('data-val') === 1; try { localStorage.setItem('ligaboss-prefs', JSON.stringify(prefs)); } catch (e7) { } return render(); }
   if (a === 'updcheck') return updManual();
-  if (a === 'pvt') { ui.pvt = b.getAttribute('data-val'); return render(); }
+  if (a === 'pvt') { ui.pvt = b.getAttribute('data-val'); ui.shq = false; ui.bcq = -1; return render(); }
+  if (a === 'meshb' || a === 'mesha' || a === 'meshs' || a === 'meput' || a === 'medraw') { var sr = a === 'meshb' ? FM.meShareBuy(state) : a === 'mesha' ? FM.meShareBuy(state, true) : a === 'meshs' ? FM.meShareSell(state) : a === 'meput' ? FM.mePut(state) : FM.meDraw(state); ui.shq = false; persist(); var sy = window.scrollY; render(); window.scrollTo(0, sy); return toast(sr || (a === 'meshb' || a === 'mesha' ? (FM.meOwner(state) ? 'Der Verein gehört jetzt dir.' : 'Anteile gekauft.') : a === 'meshs' ? 'Verkauft.' : a === 'meput' ? 'Einlage gebucht.' : 'Entnahme gebucht.')); }
+  if (a === 'meshq') { ui.shq = true; return render(); }
+  if (a === 'mebcq') { ui.bcq = +b.getAttribute('data-val'); return render(); }
+  if (a === 'mebc') { var br = FM.meBuyClub(state, +b.getAttribute('data-val')); ui.bcq = -1; if (br) return toast(br); var ub = FM.userTeam(state); ui.match = null; ui.sum = null; ui.pops = []; ui.lg = ub.lg; ui.tlg = ub.lg; persist(); go('menu'); return toast('Willkommen bei ' + ub.n + '. Der Verein gehört dir.'); }
   if (a === 'measkw') { var mq = FM.meAsk(state); persist(); render(); return toast(mq === 'ok' ? 'Der Vorstand stimmt zu: 12 % mehr Gehalt.' : mq); }
   if (a === 'mebuy' || a === 'mesell' || a === 'melearn') { var mv = b.getAttribute('data-val'), mr = a === 'mebuy' ? FM.meBuy(state, mv) : a === 'mesell' ? FM.meSell(state, mv) : FM.meLearn(state, mv); persist(); var my = window.scrollY; render(); window.scrollTo(0, my); return toast(mr || (a === 'mebuy' ? 'Gekauft. Dein Ruf steigt.' : a === 'mesell' ? 'Verkauft.' : 'Abschluss in der Tasche.')); }
   if (a === 'rsg') { ui.rsg = true; return render(); }

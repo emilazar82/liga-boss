@@ -1595,7 +1595,7 @@ function scoutAsk(state, id) {
 }
 function scoutWeek(state) {
   var n = scoutCap(state), out = [];
-  while (n-- > 0 && state.scq.length) { var T = findTarget(state, state.scq.shift()); if (T) { T.p.kn = 1; out.push(T.p.n); } else n++; }
+  while (n-- > 0 && state.scq.length) { var T = findTarget(state, state.scq.shift()); if (T) { T.p.kn = 1; out.push(T.p.n); state.scl = [T.p.i].concat((state.scl || []).filter(function (x) { return x !== T.p.i; })).slice(0, 40); } else n++; }
   return out;
 }
 function scoutTips(state) {
@@ -2824,7 +2824,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '15.11. 17:45';
+var BUILD = '15.11. 18:00';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -3396,7 +3396,7 @@ function vTransfers() {
   h += '<div class="tbar"><div><span>Kasse</span><b style="color:' + (state.cash < 0 ? '#ff9a8f' : '#6df09a') + '">' + tk(state.cash) + '</b></div><div><span>Kader</span><b>' + u.pl.length + '/' + FM.MAXSQUAD + '</b></div><div><span>Fenster</span><b style="color:' + (open ? '#6df09a' : '#ff9a8f') + '">' + (open ? 'offen' : 'zu') + '</b></div></div>';
   h += '<div class="pick pk3">' + [['markt', 'Kaufen', 'transfers', 'buy'], ['kader', 'Verkaufen', 'm_tag', 'sell'], ['offers', 'Angebote' + (state.offers.length ? ' (' + state.offers.length + ')' : ''), 'm_sign', 'off']].map(function (o) { return '<button class="' + (grp === o[3] ? 'on' : '') + '" data-a="tt" data-val="' + o[0] + '">' + icon(o[2], 30) + '<span>' + o[1] + '</span></button>'; }).join('') + '</div>';
   if (grp === 'buy') {
-    h += chips('tt', [['markt', 'Vereinslos'], ['clubs', 'Vereine'], ['scout', 'Scout-Tipps']], tt);
+    h += chips('tt', [['markt', 'Vereinslos'], ['clubs', 'Vereine'], ['scout', 'Scout' + ((state.scl || []).length || state.scq.length ? ' (' + ((state.scl || []).length + state.scq.length) + ')' : '')]], tt);
     if (!open && tt !== 'markt') h += '<p class="tnote bad" style="margin:0">Transferfenster geschlossen: Nur vereinslose Spieler sind zu haben. Nächstes Fenster: ' + (state.round < FM.HN(state) ? 'Winter, ' + (FM.HN(state) + 1) + '. bis ' + (FM.HN(state) + 3) + '. Spieltag.' : 'Sommer.') + '</p>';
     if (tt === 'markt') {
       h += posBar + splitList(state.market.filter(flt).sort(srt), 'Markt') + inf('Links steht dein eigener Kader, rechts der Markt. Mit den Knöpfen oben siehst du beide Seiten für eine Position. Grün markierte Spieler sind stärker als dein Schnitt auf dieser Position.');
@@ -3418,6 +3418,10 @@ function vTransfers() {
     } else {
       var lv = FM.staffLv(state, 'sc'), tips = FM.scoutTips(state);
       h += '<div class="tbar"><div><span>Scout</span><b>' + (lv ? 'Stufe ' + lv : 'keiner') + '</b></div><div><span>In Arbeit</span><b>' + state.scq.length + '/' + FM.scoutCap(state) + '</b></div><div><span>Je Bericht</span><b>' + (FM.scoutFee(state) ? tk(FM.scoutFee(state)) : 'frei') + '</b></div></div>';
+      var wsub = {}, wl = [];
+      (state.scl || []).forEach(function (id) { var T = FM.findTarget(state, id); if (!T || !T.p.kn) return; wsub[id] = '★★★★★'.slice(0, T.p.ta) + '☆☆☆☆☆'.slice(0, 5 - T.p.ta) + ' · Verl. ' + T.p.vp + '/5 · ' + (T.club ? T.club.n : 'vereinslos'); wl.push(T.p); });
+      state.scq.forEach(function (id) { var T = FM.findTarget(state, id); if (!T) return; wsub[id] = 'in Arbeit · ' + (T.club ? T.club.n : 'vereinslos'); wl.push(T.p); });
+      h += '<p class="lbl" style="margin:0">BEOBACHTETE SPIELER</p>' + (wl.length ? splitList(wl, 'Berichte', wsub) + '<p class="hint" style="margin:0">Sterne: Talent · Verl.: Verletzungsanfälligkeit von 1 (robust) bis 5. Antippen zeigt die Karte mit den genauen Werten und das Angebot. Spieler, die den Verein gewechselt haben oder nicht mehr zu haben sind, fallen aus der Liste.</p>' : '<p class="hint" style="margin:0">Noch niemand beobachtet. Tippe unter Markt oder Vereine einen Spieler an und wähle „Beobachten lassen“.</p>') + '<p class="lbl" style="margin:0">TIPPS DES SCOUTS</p>';
       if (!lv) h += '<p class="hint" style="margin:0">Ohne eigenen Scout gibt es keine Empfehlungen. Einstellen kannst du ihn unter Training › Trainerstab.</p>';
       else if (!tips.length) h += '<p class="hint" style="margin:0">Der Scout hat im Moment kein bezahlbares Talent für dich.</p>';
       else { var tsub = {}; tips.forEach(function (x) { tsub[x.p.i] = FM.team(state, x.c).n; }); h += posBar + splitList(tips.map(function (x) { return x.p; }).filter(flt).sort(srt), 'Tipps', tsub); }
@@ -3748,7 +3752,7 @@ function popScan() {
   if (R && !R._ps) {
     R._ps = 1;
     (R.broken || []).forEach(function (n) { pop('Kabine', '<b>' + esc(n) + '</b> ist sauer: Die versprochene Einsatzzeit blieb aus.', null, 'm_talk'); });
-    if (R.scouted && R.scouted.length) pop('Scouting', 'Der Scoutbericht liegt vor: ' + R.scouted.map(esc).join(', ') + '.', [['OK'], ['Zu den Transfers', function () { go('transfers'); }]], 'm_sign');
+    if (R.scouted && R.scouted.length) pop('Scouting', 'Der Scoutbericht liegt vor: ' + R.scouted.map(esc).join(', ') + '.', [['OK'], ['Zu den Berichten', function () { ui.tt = 'scout'; ui.sel = -1; go('transfers'); }]], 'm_sign');
     if (R.boardNote) pop('Vorstand', esc(R.boardNote), null, 'm_sign'); else if (R.conf !== undefined && R.conf < 25) pop('Vorstand', 'In der Führungsetage wächst die Unruhe. Dein Stuhl wackelt.', [['OK'], ['Zum Vorstand', function () { go('board'); }]], 'm_sign');
     if (R.boardCup) pop('Vorstand', esc(R.boardCup), null, 'm_sign');
   }

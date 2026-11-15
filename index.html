@@ -536,8 +536,8 @@ td.tn{white-space:nowrap}td.tn .rk{display:inline-block;width:24px;text-align:ri
 .held{font-style:normal;font-size:13px;color:#ffd84d;margin-right:4px;flex:none}
 .res.tot span{white-space:normal;overflow:visible;text-overflow:clip;font-size:13px;line-height:1.2}.res.tot i{white-space:nowrap}
 .pl .nm.two{white-space:normal;padding:4px 0;line-height:1.25}.pl .nm.two .nn{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pl .nm.two .tg{display:block;white-space:nowrap;margin-top:2px}.pl .nm.two .tg .st{margin-left:0;margin-right:3px}
-.toast{left:5%!important;right:5%!important;transform:none!important;max-width:none!important;width:auto;line-height:1.35}
-@media (max-width:350px){#app{padding:6px!important;gap:8px}.tsplit{grid-template-columns:minmax(0,1fr)!important}.tsplit .col:first-child{display:none}.pl{grid-template-columns:30px minmax(0,1fr) 22px 28px 20px 34px!important;font-size:13px!important;padding:0 5px!important}.pl .pos{font-size:10px}table{font-size:12px!important}td,th{padding-left:2px!important;padding-right:2px!important}.fmd i{width:5px!important;height:6px}.panel{padding-left:8px!important;padding-right:8px!important}.tabs button,.tbar2 button,.chips button,.chip{font-size:12px!important;padding-left:5px!important;padding-right:5px!important}.trr{grid-template-columns:32px minmax(0,1fr) 22px 26px 56px!important;font-size:13px!important}.mkr{font-size:13px!important}.big{font-size:11px}}
+.toast{left:5%!important;right:5%!important;transform:none!important;max-width:none!important;width:auto;line-height:1.35;pointer-events:none;opacity:.96}
+@media (max-width:350px){.plh{display:grid;grid-template-columns:30px minmax(0,1fr) 22px 28px 20px 34px!important;gap:4px;padding:0 5px!important;font-size:10px!important}.tfx{margin-left:0!important;margin-right:0!important}#app{padding:6px!important;gap:8px}.tsplit{grid-template-columns:minmax(0,1fr)!important}.tsplit .col:first-child{display:none}.pl{grid-template-columns:30px minmax(0,1fr) 22px 28px 20px 34px!important;font-size:13px!important;padding:0 5px!important}.pl .pos{font-size:10px}table{font-size:12px!important}td,th{padding-left:2px!important;padding-right:2px!important}.fmd i{width:5px!important;height:6px}.panel{padding-left:8px!important;padding-right:8px!important}.tabs button,.tbar2 button,.chips button,.chip{font-size:12px!important;padding-left:5px!important;padding-right:5px!important}.trr{grid-template-columns:32px minmax(0,1fr) 22px 26px 56px!important;font-size:13px!important}.mkr{font-size:13px!important}.big{font-size:11px}}
 </style>
 </head>
 <body>
@@ -709,7 +709,7 @@ function moraleWeek(state, played, gf, ga) {
     p.mo = Math.round(clamp(mo, 1, 10) * 10) / 10;
   });
 }
-function baseWage(p) { var x = Math.max(0, p.s - 58) / 18; return Math.round(p.s * p.s * 0.45 * (1 + x * x) * (1 + Math.max(0, p.s - 80) / 8)); }
+function baseWage(p) { var x = Math.max(0, p.s - 58) / 18; return Math.round(p.s * p.s * 0.45 * (1 + x * x) * (1 + Math.max(0, p.s - 80) / 12)); }
 function salary(p) { return p.w || baseWage(p); }
 var MINPOS = [1, 4, 4, 2], MAXSQUAD = 24, MARKET = 24;
 function fillMarket(state) {
@@ -940,15 +940,15 @@ function moveCountry(state, k) {
   var j = (state.fjobs || [])[k]; if (!j) return 'Das Angebot gilt nicht mehr.';
   if (state.round !== 0 || state.live || (state.tour && state.tour.on)) return 'Ein Wechsel ins Ausland ist nur in der Sommerpause möglich.';
   if (state.mvs === state.season) return 'In diesem Sommer hast du das Land schon gewechselt.';
-  leaveDebt(state); csSave(state);
   var W = worldExport(state), D = W[j.c], found = false, oldC = state.cty || 'de';
   D.lg.forEach(function (L, lg) { L.forEach(function (c) { if (c.n === j.n && !found) { c.star = true; D.star = { n: c.n, lg: lg }; found = true; } }); });
   if (!found) return 'Der Verein ist nicht mehr zu haben.';
+  leaveDebt(state); csSave(state);
   var names = {}; names[oldC] = (state.euq || []).map(function (id) { return state.teams[id] ? state.teams[id].n : ''; });
   Object.keys(state.fgq || {}).forEach(function (c) { names[c] = state.fgq[c].map(function (ix) { return state.fgn[c][ix] ? state.fgn[c][ix].n : ''; }); });
   delete W[j.c];
-  var ns = newGameCustom(D, j.n, W, true).state; if (state.cs) { ns.cs = state.cs; csRestore(ns); }
-  ns.season = state.season; ns.y0 = state.y0; ns.wk0 = state.wk0; ns.fg0 = state.season;
+  var ns = newGameCustom(D, j.n, W, true).state;
+  ns.season = state.season; ns.y0 = state.y0; ns.wk0 = state.wk0; ns.fg0 = state.season; if (state.cs) { ns.cs = state.cs; csRestore(ns); }
   ['coach', 'rep', 'hist', 'car', 'ntj', 'tourH', 'tdone', 'eun'].forEach(function (f) { if (state[f] !== undefined) ns[f] = state[f]; });
   if (state.tour && !state.tour.on) ns.tour = state.tour;
   if (state.me) { ns.me = state.me; meNewClub(ns); ns.me.c0 = meNet(ns); ns.me.put = 0; }
@@ -1230,8 +1230,8 @@ function isDerby(state, oppId) { var r = rival(state); return !!r && r.id === op
 var MEOWN = [['car1', 'Gebrauchtwagen', 8000, 30, 1, 'Auto'], ['car2', 'Sportcoupé', 60000, 150, 2, 'Auto'], ['car3', 'Luxuslimousine', 180000, 400, 3, 'Auto'], ['home1', 'Eigentumswohnung', 150000, 200, 2, 'Wohnen'], ['home2', 'Haus mit Garten', 450000, 500, 3, 'Wohnen'], ['home3', 'Villa am See', 1500000, 1500, 5, 'Wohnen'], ['home4', 'Ferienhaus am Meer', 900000, 800, 4, 'Wohnen'], ['home5', 'Penthouse in der Stadt', 2500000, 2000, 5, 'Wohnen'], ['moto', 'Motorrad', 20000, 40, 1, 'Auto'], ['car4', 'Oldtimer', 350000, 300, 3, 'Auto'], ['suit', 'Maßanzüge', 12000, 0, 1, 'Luxus'], ['watch', 'Schweizer Uhr', 25000, 0, 1, 'Luxus'], ['golf', 'Golfclub-Mitgliedschaft', 40000, 150, 2, 'Luxus'], ['wine', 'Weinkeller', 80000, 50, 2, 'Luxus'], ['piano', 'Konzertflügel', 90000, 0, 2, 'Luxus'], ['horse', 'Rennpferd', 250000, 600, 3, 'Luxus'], ['art', 'Kunstsammlung', 400000, 100, 3, 'Luxus'], ['boat', 'Segelyacht', 600000, 900, 4, 'Luxus'], ['jet', 'Privatjet', 6000000, 8000, 6, 'Luxus'], ['isle', 'Privatinsel', 15000000, 5000, 8, 'Luxus']];
 MEOWN.sort(function (a, b) { var g = ['Auto', 'Wohnen', 'Luxus']; return g.indexOf(a[5]) - g.indexOf(b[5]) || a[2] - b[2]; });
 var MEEDU = [['rhet', 'Rhetorikkurs', 15000, 'Gespräche in der Kabine gelingen öfter: Schlichten, Vertrösten und Überreden.'], ['nego', 'Verhandlungsseminar', 30000, 'Nachfordern bei Transfers und Nachverhandeln mit Sponsoren gelingen öfter.'], ['lic', 'Fußballlehrer-Lizenz', 60000, 'Ruf +5 sofort, dazu 10 % mehr Gehalt in jedem künftigen Vertrag.']];
-function meWage(state, t) {
-  t = t || state.teams[state.uid]; var lg = Math.min(2, t.lg), M = state.me;
+function meWage(state, t, lgo) {
+  t = t || state.teams[state.uid]; var lg = clamp(lgo === undefined ? t.lg : lgo, 0, 2), M = state.me;
   var w = [9000, 3500, 1200][lg] * (0.7 + 0.8 * (state.rep || 0) / 100) * (1 + 0.6 * clamp((tStr(t) - [74, 62, 50][lg]) / [16, 10, 10][lg], 0, 1)) * (M && M.edu.indexOf('lic') >= 0 ? 1.1 : 1);
   return Math.round(w / 50) * 50;
 }
@@ -1261,7 +1261,7 @@ function meBonus(state, sum, okGoal, cw, ew) {
   if (okGoal) list.push(['Saisonziel erreicht', 6 * w]);
   var tot = 0; list.forEach(function (x) { tot += x[1]; M.cash += x[1]; meLog(state, x[0], x[1]); });
   state.cash -= tot; sum.meBon = list; sum.meTot = tot;
-  var mk = meWage(state); if (!state.sacked && M.wage > mk * 1.5) { sum.meCut = { old: M.wage, wage: Math.round(mk * 1.5 / 50) * 50 }; M.wage = sum.meCut.wage; }
+  var ut = state.teams[state.uid], mk = meWage(state, ut, ut.lg + (sum.move === 'auf' ? -1 : sum.move === 'ab' ? 1 : 0)); if (!state.sacked && M.wage > mk * 1.5) { sum.meCut = { old: M.wage, wage: Math.round(mk * 1.5 / 50) * 50 }; M.wage = sum.meCut.wage; }
   if (!state.sacked && (M.until <= state.season || mk > M.wage)) { var nw = Math.max(mk, M.wage); sum.meNew = { old: M.wage, wage: nw, until: Math.max(M.until, state.season + 2) }; M.wage = nw; M.until = sum.meNew.until; }
 }
 function meSack(state) {
@@ -1345,7 +1345,8 @@ function meShareOut(state) {
   var k = M.shk || state.cty || 'de', sh = M.sh, t = null, got = 0; delete M.sh; delete M.shk;
   state.teams.forEach(function (x) { if (x.n === sh.club && x.lg < 7) t = x; });
   var val = t ? clubVal(state, t) : (sh.paid || 0) / Math.max(1, sh.pct) * 100, p0 = sh.pct;
-  if (sh.debt > 0) { var cut = Math.min(sh.pct, Math.ceil(sh.debt / Math.max(1, val) * 10) * 10); if (cut > 0) { sh.pct -= cut; meLog(state, cut + ' % an ' + sh.club + ' gehen an die Gläubiger', 0); } if (sh.pct <= 0) return 0; }
+  if (sh.debt > 0) { var pay = Math.min(Math.max(0, M.cash), sh.debt); if (pay > 0) { M.cash -= pay; sh.debt -= pay; meLog(state, 'Schulden von ' + sh.club + ' beglichen', -Math.round(pay)); }
+    var cut = Math.min(sh.pct, Math.round(sh.debt / Math.max(1, val) * 20) * 5); if (cut > 0) { sh.pct -= cut; meLog(state, cut + ' % an ' + sh.club + ' gehen an die Gläubiger', 0); } if (sh.pct <= 0) return 0; }
   var pct = Math.floor(sh.pct / 10) * 10, rest = sh.pct - pct, paid = Math.round((sh.paid || 0) * sh.pct / Math.max(1, p0));
   if (pct > 0 && M.inv.length < 6 && !M.inv.some(function (x) { return x.k === k && x.n === sh.club; })) { M.inv.push({ k: k, n: sh.club, pct: pct, paid: Math.round(paid * pct / sh.pct), hist: [], s0: state.season }); meLog(state, pct + ' % an ' + sh.club + ' bleiben als Beteiligung', 0); }
   else rest = sh.pct;
@@ -1355,7 +1356,9 @@ function meShareOut(state) {
 function meStep(state) { return Math.max(50000, Math.round(Math.abs(state.cash) * 0.1 / 50000) * 50000); }
 function meDraw(state) {
   if (!meOwner(state)) return 'Geld entnehmen kann nur der Besitzer.';
-  var M = me(state), a = meStep(state); if (state.cash - a < 0) return 'So viel ist nicht in der Vereinskasse.';
+  var M = me(state), a = meStep(state); if (M.drs !== state.season) { M.drs = state.season; M.drn = 0; }
+  a = Math.min(a, Math.floor((Math.max(500000, clubVal(state) * 0.15) - (M.drn || 0)) / 50000) * 50000); if (a < 50000) return 'Mehr als 15 % des Vereinswerts kannst du pro Saison nicht entnehmen.';
+  if (state.cash - a < 0) return 'So viel ist nicht in der Vereinskasse.';
   if (state.live) return 'Während eines Spiels geht das nicht.';
   if ((state.loan || 0) > 0 || (state.debts || []).length) return 'Solange der Verein Kredit oder offene Raten hat, kannst du nichts entnehmen.';
   if (state.sacked) return 'Du bist ohne Verein.';
@@ -1378,7 +1381,7 @@ function meBuyList(state) {
 function meBuyClub(state, id) {
   var M = me(state), L = meBuyList(state).filter(function (x) { return x.id === id; })[0]; if (!L) return 'Der Verein steht nicht zum Verkauf.';
   if (state.live || state.over || (state.tour && state.tour.on)) return 'Im Moment geht das nicht.';
-  if (M.sh && !shareWin(state)) return SHAREWIN;
+  if (!shareWin(state)) return SHAREWIN;
   if ((state.loan || 0) > 0 || meNet(state) < 0) return 'Erst müssen Kredit und Schulden deines Vereins beglichen sein.';
   var hk = state.cty || 'de', hold = null; (M.inv || []).forEach(function (e) { if (e.k === hk && e.n === L.n) hold = e; }); if (hold) L.price = Math.round(L.price * (100 - hold.pct) / 100 / 10000) * 10000;
   var extra = M.sh ? Math.round(clubVal(state) * mePct(state) / 100 * 0.9) : 0;
@@ -1389,12 +1392,16 @@ function meBuyClub(state, id) {
   news(state, (state.coach || 'Der Trainer') + ' kauft ' + n + ' und setzt sich selbst auf die Bank.'); return '';
 }
 function meSeason(state, sum) {
-  var M = me(state), pct = mePct(state), net = meNet(state); if (!pct) { M.c0 = net; M.put = 0; return; }
+  var M = me(state), pct = mePct(state), net = meNet(state); if (!pct) { M.c0 = net; M.put = 0; delete M.red; return; }
   var profit = Math.min(net - (M.c0 === undefined ? net : M.c0) - (M.put || 0), Math.max(0, state.cash));
   var effP = Math.min(pct, M.sh && M.sh.bs === state.season ? (M.sh.bw || 0) / RN(state) : pct);
   if (profit > 0 && effP > 0) { var dv = Math.round(profit * effP / 100 * 0.3); state.cash -= dv; M.cash += dv; meLog(state, 'Gewinnanteil (' + pct + ' %)', dv); sum.meDiv = dv; }
-  if (pct >= 100 && state.cash < 0) { var cov = Math.min(Math.max(0, M.cash), -state.cash); if (cov > 0) { M.cash -= cov; state.cash += cov; meLog(state, 'Verlust des Vereins gedeckt', -cov); sum.meCov = cov; }
-    if (state.cash < -0.5 * clubVal(state)) { M.red = (M.red || 0) + 1; if (M.red >= 2) { sum.meBust = M.sh.club; meLog(state, M.sh.club + ' ist insolvent – Verein verloren', 0); delete M.sh; delete M.shk; M.red = 0; state.sacked = true; state.board.conf = 0; } else sum.meWarn = 1; } else M.red = 0; }
+  if (pct >= 100 && state.cash < 0) { var cov = Math.min(Math.max(0, M.cash), -state.cash); if (cov > 0) { M.cash -= cov; state.cash += cov; meLog(state, 'Verlust des Vereins gedeckt', -cov); sum.meCov = cov; } }
+  if (pct >= 50 && state.cash - (state.loan || 0) < -0.5 * clubVal(state)) {
+    var R = typeof M.red === 'number' ? { c: M.sh.club, n: M.red } : M.red && M.red.c === M.sh.club ? M.red : { c: M.sh.club, n: 0 }; R.n++; M.red = R;
+    if (R.n >= 2) { sum.meBust = M.sh.club; state.bust = M.sh.club; meLog(state, M.sh.club + ' ist insolvent – Verein verloren', 0); delete M.sh; delete M.shk; delete M.red; M.lastSev = 0; state.sacked = true; state.board.conf = 0; repAdd(state, -12); if (sum.board) sum.board.sacked = true; }
+    else sum.meWarn = 1;
+  } else delete M.red;
   M.c0 = meNet(state); M.put = 0;
 }
 function valGen(lg, str, pl, nn, prog, lowest, rk) { lg = Math.min(2, lg); var kk = clamp((str - [74, 62, 50][lg]) / [16, 10, 10][lg], 0, 1); return Math.round((lgShift(lg, kk, pl || 0, nn || 0, prog || 0, lowest === undefined ? 2 : lowest, rk || 0) + [30000, 15000, 8000][lg] * (1 + 1.5 * kk) * 150) / 10000) * 10000; }
@@ -1508,7 +1515,12 @@ function resign(state) {
   news(state, (state.coach || 'Der Trainer') + ' bittet um Vertragsauflösung und verlässt ' + u.n + '.');
   return '';
 }
-function jobInfo(state, id) { var t = state.teams[id]; return { id: id, n: t.n, lg: t.lg, str: Math.round(tStr(t)), cash: [1500000, 600000, 250000][t.lg], cap: [30000, 15000, 8000][t.lg] }; }
+function jobInfo(state, id) {
+  var t = state.teams[id], lg = Math.min(2, t.lg), t14 = t.pl.map(function (p) { return p.s; }).sort(function (a, b) { return b - a; }).slice(0, 14), av = 0; t14.forEach(function (v) { av += v; }); av = t14.length ? av / t14.length : [74, 62, 50][lg];
+  var kk = clamp((av - [74, 62, 50][lg]) / [16, 10, 10][lg], 0, 1), J = { id: id, n: t.n, lg: t.lg, str: Math.round(tStr(t)), cash: Math.round([1500000, 600000, 250000][lg] * (1 + 3 * kk) / 50000) * 50000, cap: Math.round([30000, 15000, 8000][lg] * (1 + 1.5 * kk) / 1000) * 1000, loan: 0 };
+  var C = state.cs && state.cs[csKey(state, t.n)]; if (C) { var yrs = Math.max(0, state.season - C.s), dec = Math.pow(0.75, yrs); if (yrs === 0 && C.cash < J.cash) J.cash = C.cash; J.loan = Math.round(C.loan * dec / 1000) * 1000; J.cash -= Math.round(C.hole * dec / 1000) * 1000; if (C.stad.cap >= J.cap) J.cap = C.stad.cap; J.back = 1; }
+  return J;
+}
 function hallStr(t) {
   var tw = t.pl.filter(function (p) { return p.p === 0; }).map(eff).sort(function (a, b) { return b - a; })[0] || 30;
   var f = t.pl.filter(function (p) { return p.p > 0; }).map(eff).sort(function (a, b) { return b - a; }).slice(0, 4);
@@ -1743,13 +1755,14 @@ function boardTalk(state) {
   if (Math.random() < 0.5) { B.conf = clamp(B.conf + 15, 0, 100); return 'ok'; }
   B.conf = clamp(B.conf - 10, 1, 100); return 'Die Aussprache ging nach hinten los: Der Vorstand zweifelt jetzt noch mehr.';
 }
+function recentTitle(state) { var n = state.teams[state.uid].n; return car(state).ti.some(function (x) { return x.k !== 'a' && x.c === n && x.s >= state.season - 2; }); }
 function boardWeek(state, r, pl, gf, ga) {
   var B = state.board, d = 0;
   if (r >= 5) d += pl <= B.goal ? 1 : -(0.5 + (pl - B.goal) / 6);
   d += gf > ga ? 1 : gf < ga ? -1 : 0;
-  if (state.cash < 0) d -= 2;
+  if (state.cash < 0) d -= pl <= B.goal ? 1 : 2;
   var sp = mePct(state); if (d < 0 && sp) d *= Math.max(0.3, 1 - sp / 60);
-  B.conf = Math.round(clamp(B.conf + d, sp >= 100 ? 30 : 0, 100) * 10) / 10;
+  B.conf = Math.round(clamp(B.conf + d, sp >= 100 ? 30 : d < 0 && B.conf + d <= 5 && recentTitle(state) ? Math.min(5, B.conf) : 0, 100) * 10) / 10;
   if (B.conf <= 0) state.sacked = true;
 }
 function clubMeans(state, u) {
@@ -1763,14 +1776,14 @@ function clubMeans(state, u) {
 function csKey(state, n) { return (state.cty || 'de') + '|' + n; }
 function csSave(state) {
   var u = state.teams[state.uid]; if (!u || u.lg >= 7 || !state.stad) return; if (!state.cs) state.cs = {};
-  var st = JSON.parse(JSON.stringify(state.stad)); st.build = null;
-  state.cs[csKey(state, u.n)] = { s: state.season, stad: st, yl: state.youth ? state.youth.lvl : 1, staff: state.staff ? JSON.parse(JSON.stringify(state.staff)) : null, loan: state.loan || 0, hole: Math.max(0, -(meNet(state) + (state.loan || 0))), cash: Math.max(0, state.cash) };
+  var st = JSON.parse(JSON.stringify(state.stad)); st.build = null; var kp = 1 - mePct(state) / 100;
+  state.cs[csKey(state, u.n)] = { s: state.season, lg: u.lg, stad: st, yl: state.youth ? state.youth.lvl : 1, staff: state.staff ? JSON.parse(JSON.stringify(state.staff)) : null, loan: Math.round((state.loan || 0) * kp), hole: Math.round(Math.max(0, -(meNet(state) + (state.loan || 0))) * kp), cash: Math.max(0, state.cash) };
   var ks = Object.keys(state.cs); if (ks.length > 24) { ks.sort(function (a, b) { return state.cs[a].s - state.cs[b].s; }); delete state.cs[ks[0]]; }
 }
 function csRestore(state) {
   var u = state.teams[state.uid], C = state.cs && state.cs[csKey(state, u.n)]; if (!C) return false;
   var yrs = Math.max(0, state.season - C.s), dec = Math.pow(0.75, yrs), cap0 = state.stad.cap, fans0 = state.stad.fans, price0 = state.stad.price;
-  state.stad = JSON.parse(JSON.stringify(C.stad)); state.stad.cap = Math.max(state.stad.cap, yrs >= 2 ? Math.min(cap0, state.stad.cap) : 0); state.stad.build = null; if (!state.stad.price) state.stad.price = price0; if (yrs >= 3) state.stad.fans = fans0;
+  if (C.stad.cap >= cap0) { state.stad = JSON.parse(JSON.stringify(C.stad)); state.stad.build = null; if (!state.stad.price || (C.lg !== undefined && C.lg !== u.lg)) state.stad.price = price0; if (yrs >= 3 || (C.lg !== undefined && C.lg !== u.lg)) state.stad.fans = fans0; }
   if (state.youth && C.yl) state.youth.lvl = Math.max(state.youth.lvl || 1, Math.max(1, C.yl - Math.floor(yrs / 3)));
   if (C.staff && yrs < 2) state.staff = JSON.parse(JSON.stringify(C.staff));
   if (yrs === 0 && C.cash < state.cash) state.cash = C.cash;
@@ -1780,7 +1793,7 @@ function csRestore(state) {
 function csDebt(state, t) { var C = state.cs && state.cs[csKey(state, t.n)]; if (!C) return 0; return (C.loan + C.hole) * Math.pow(0.75, Math.max(0, state.season - C.s)); }
 function leaveDebt(state) {
   var old = state.teams[state.uid], hole = Math.max(0, -meNet(state)), sh = state.me && state.me.sh && state.me.sh.club === old.n ? state.me.sh : null;
-  if (sh) { if (hole > 0) sh.debt = hole * (sh.pct >= 50 ? 1 : sh.pct / 100 * 2); else delete sh.debt; }
+  if (sh) { if (hole > 0) sh.debt = hole * sh.pct / 100; else delete sh.debt; }
   if (hole > [1500000, 600000, 250000][Math.min(2, old.lg)] && !(sh && sh.pct >= 50)) { repAdd(state, -8); news(state, (state.coach || 'Der Trainer') + ' hinterlässt bei ' + old.n + ' einen Schuldenberg. Das spricht sich herum.'); }
 }
 function takeOver(state, tid) {
@@ -1801,7 +1814,7 @@ function takeOver(state, tid) {
   state.sp = null; state.spo = makeOffers(u.lg); state.offers = []; state.neg = {}; state.led = newLedger();
   clubMeans(state, u); state.talks = []; if (state.me) { meNewClub(state); state.me.c0 = state.cash; state.me.put = 0; }
   state.youth = null; state.ads = null; state.merch = null; state.dk = { n: 0, set: state.round > 0 }; state.board = null; state.market = null; state.camp = null; state.toto = null; state.sacked = false; delete state.quit; state.jobs = []; state.fjobs = []; state.staff = null; state.scq = []; state.debts = []; state.fin = null; state.inv = null; state.fh = null; state.ph = null; delete old.coh; delete old.std;
-  ensure(state); csRestore(state); if (state.me) state.me.c0 = meNet(state); carJoin(state); state.board.conf = 55; if (state.round === 0) state.nj = 1;
+  ensure(state); delete state.bust; csRestore(state); if (state.me) state.me.c0 = meNet(state); carJoin(state); state.board.conf = 55; if (state.round === 0) state.nj = 1;
   if (state.round >= RN(state)) state.over = true;
   state.spf = spFac(state); state.spo = makeOffers(u.lg, state.spf);
   if (state.cup) { state.cup.won = false; state.cup.out = !cupTie(state); if (state.cup.due && !cupTie(state)) cupPlay(state); }
@@ -1962,8 +1975,8 @@ function demand(state, id) {
   if (!T.club) { d.fee = r1000(value(p) * (0.95 + 0.20 * h01(id, se))); d.wage = Math.round(baseWage(p) * (0.9 + 0.3 * h01(id, se + 7)) / 10) * 10; }
   else {
     var diff = u.lg - (T.club.lg >= 8 ? T.club.fl || 0 : T.club.lg), key = bestEleven(T.club).indexOf(id) >= 0;
-    var rivalS = key && T.club.lg < 7 && tStr(T.club) >= tStr(u) - 2;
-    d.fee = r1000(value(p) * (1.1 + 0.4 * h01(id, se) + (key ? 0.25 : 0)) * (rivalS ? 1.5 : 1)); if (rivalS) d.rv = 1;
+    var top11 = T.club.pl.slice().sort(function (a, b) { return b.s - a.s; }).slice(0, 11).indexOf(p) >= 0, rivalS = (key || top11) && tStr(T.club) >= tStr(u) - 2;
+    d.fee = r1000(value(p) * (1.1 + 0.4 * h01(id, se) + (key || top11 ? 0.25 : 0)) * (rivalS ? 1.25 : 1)); if (rivalS) d.rv = 1;
     d.wage = Math.round(baseWage(p) * (0.95 + 0.3 * h01(id, se + 7)) * (diff > 0 ? 1 + 0.25 * diff : 1 + 0.08 * diff) / 10) * 10;
     if (diff >= 2) d.no = 'Er will nicht zwei Klassen tiefer spielen.';
     else if (posCount(T.club, p.p) <= MINPOS[p.p]) d.no = 'Sein Verein gibt ihn nicht ab, weil sonst auf der Position zu wenige Spieler bleiben.';
@@ -2034,7 +2047,7 @@ function offer(state, id, fee, wage, years, opt) {
     return { ok: true };
   }
   N.n++;
-  var msg = [];
+  var msg = []; if (d.rv && fee < feeD) msg.push('Er ist Stammspieler bei einem Verein auf eurem Niveau – dafür verlangt ' + from + ' einen Aufschlag.');
   if (fee < feeD) msg.push(T.club ? (N.n === 1 ? (fee < feeD * 0.8 ? from + ' lehnt ab: viel zu wenig.' : from + ' lehnt ab, aber es fehlt nicht mehr viel.') : from + ' fordert mindestens ' + Math.round(feeD / 1000) + ' T Ablöse.')
     : (N.n === 1 ? (fee < feeD * 0.8 ? 'Sein Berater lehnt ab: viel zu wenig Ablöse.' : 'Bei der Ablöse fehlt nicht mehr viel.') : 'Die Ablöse muss mindestens ' + Math.round(feeD / 1000) + ' T betragen.'));
   if (wage < w) msg.push(N.n === 1 ? (wage < w * 0.85 ? 'Der Spieler will deutlich mehr Gehalt.' : 'Beim Gehalt liegt ihr knapp auseinander.') : 'Der Spieler verlangt mindestens ' + w + ' DM pro Woche bei diesen Bedingungen.');
@@ -2071,6 +2084,7 @@ function loanOut(state, id) {
   if (p.loan !== undefined) return 'Ein geliehener Spieler kann nicht weiterverliehen werden.';
   if (!winOpen(state)) return 'Das Transferfenster ist geschlossen.';
   if (p.c < 2) return 'Sein Vertrag läuft zum Saisonende aus. Erst verlängern, dann verleihen.';
+  if (u.pl.length <= 15) return 'Mindestens 15 Spieler müssen im Kader bleiben.';
   if (posCount(u, p.p) <= MINPOS[p.p]) return 'Mindestens ' + MINPOS[p.p] + ' ' + POS[p.p] + '-Spieler müssen im Kader bleiben.';
   var others = state.teams.filter(function (t) { return t.id !== u.id && t.lg >= u.lg - 0; }), club = pick(others.length ? others : state.teams.filter(function (t) { return t.id !== u.id; }));
   var fee = Math.max(1000, Math.round(value(p) * 0.05 / 1000) * 1000);
@@ -2573,26 +2587,27 @@ function carMatch(state, gU, gO, oppN) {
   if (d < 0 && (!C.bad || d < C.bad.d)) C.bad = { d: d, g: gU, t: gU + ':' + gO + ' gegen ' + oppN, s: state.season };
 }
 function carLeave(state) {
-  var u = state.teams[state.uid], st = u.st; if (!st || u.lg >= 7 || state.round <= 0 || state.over) return;
+  var u = state.teams[state.uid], st = u.st; if (!st || u.lg >= 7 || state.round <= 0) return;
   var C = car(state), b = C.base && C.base.s === state.season && C.base.c === u.n ? C.base : { w: 0, d: 0, l: 0, gf: 0, ga: 0 }, n = st.s + st.u + st.n - b.w - b.d - b.l; if (n <= 0) return;
   C.w += st.s - b.w; C.d += st.u - b.d; C.l += st.n - b.l; C.gf += st.tf - b.gf; C.ga += st.ta - b.ga;
   C.se.push({ s: state.season, c: u.n, lg: u.lg, pl: place(state, u.id), pk: (st.s - b.w) * 3 + st.u - b.d, tf: st.tf - b.gf, ta: st.ta - b.ga, ok: 0, mv: '', part: n });
   u.pl.forEach(function (p) { if (p.loan !== undefined || !(p.g || p.m)) return; var key = p.i + '|' + p.n, e = C.leg[key] || (C.leg[key] = { n: p.n, p: p.p, g: 0, m: 0, c: u.n }); e.g += p.g || 0; e.m += p.m || 0; });
+  if (state.over && u.lg === 0 && place(state, u.id) === 1 && !(b.r > RN(state) / 2)) C.ti.push({ s: state.season, k: 'm', c: u.n });
   delete C.base;
 }
 function carJoin(state) {
-  var u = state.teams[state.uid], st = u.st, C = car(state); if (!st || state.round <= 0 || state.over) { delete C.base; return; }
-  C.base = { s: state.season, c: u.n, r: state.round, w: st.s, d: st.u, l: st.n, gf: st.tf, ga: st.ta };
+  var u = state.teams[state.uid], st = u.st, C = car(state); if (!st || state.round <= 0) { delete C.base; return; }
+  C.base = { s: state.season, c: u.n, r: state.over ? RN(state) + 1 : state.round, w: st.s, d: st.u, l: st.n, gf: st.tf, ga: st.ta };
 }
 function carSeason(state, sum, okGoal) {
   var C = car(state), u = state.teams[state.uid], st = u.st, cw = !!(state.cup && state.cup.won), ew = !!(state.eu && state.eu.won);
-  var b = C.base && C.base.s === state.season && C.base.c === u.n ? C.base : null, late = !!b && b.r > RN(state) / 2;
+  var b = C.base && C.base.s === state.season && C.base.c === u.n ? C.base : null, late = !!b && b.r > RN(state) / 2, skip = !!b && b.r > RN(state);
   C.w += st.s - (b ? b.w : 0); C.d += st.u - (b ? b.d : 0); C.l += st.n - (b ? b.l : 0); C.gf += st.tf - (b ? b.gf : 0); C.ga += st.ta - (b ? b.ga : 0);
   if (sum.lg === 0 && sum.place === 1 && !late) C.ti.push({ s: state.season, k: 'm', c: u.n });
-  if (cw) C.ti.push({ s: state.season, k: 'p', c: u.n });
-  if (ew) C.ti.push({ s: state.season, k: 'e', c: u.n });
+  if (cw && !skip) C.ti.push({ s: state.season, k: 'p', c: u.n });
+  if (ew && !skip) C.ti.push({ s: state.season, k: 'e', c: u.n });
   if (sum.move === 'auf' && !late) C.ti.push({ s: state.season, k: 'a', c: u.n });
-  C.se.push({ s: state.season, c: u.n, lg: sum.lg, pl: sum.place, pk: b ? (st.s - b.w) * 3 + st.u - b.d : st.pk, tf: st.tf - (b ? b.gf : 0), ta: st.ta - (b ? b.ga : 0), ok: okGoal ? 1 : 0, mv: sum.move || '', part: b ? st.s + st.u + st.n - b.w - b.d - b.l : 0 });
+  if (!skip) C.se.push({ s: state.season, c: u.n, lg: sum.lg, pl: sum.place, pk: b ? (st.s - b.w) * 3 + st.u - b.d : st.pk, tf: st.tf - (b ? b.gf : 0), ta: st.ta - (b ? b.ga : 0), ok: okGoal ? 1 : 0, mv: sum.move || '', part: b ? st.s + st.u + st.n - b.w - b.d - b.l : 0 });
   delete C.base;
   u.pl.forEach(function (p) { if (late || p.loan !== undefined || !(p.g || p.m)) return; var key = p.i + '|' + p.n, e = C.leg[key] || (C.leg[key] = { n: p.n, p: p.p, g: 0, m: 0, c: u.n }); e.g += p.g || 0; e.m += p.m || 0; });
   var ks = Object.keys(C.leg); if (ks.length > 40) { ks.sort(function (a, b) { return (C.leg[b].g * 10 + C.leg[b].m) - (C.leg[a].g * 10 + C.leg[a].m); }); ks.slice(40).forEach(function (k) { delete C.leg[k]; }); }
@@ -3158,6 +3173,7 @@ function finishSeason(state) {
   state.stad.fans = Math.round(clamp((state.stad.fans || 1) + (sum.move === 'auf' ? 0.05 : sum.move === 'ab' ? -0.08 : 0), 0.6, 1.5) * 1000) / 1000;
   B.conf = Math.round(clamp(B.conf + (okGoal ? 10 : -(8 + 2 * (sum.place - B.goal))) + (sum.move === 'auf' ? 20 : sum.move === 'ab' ? (B.goal >= NT(state) - 2 ? -12 : -25) : 0) + (state.eu && state.eu.won ? 25 : 0) + (state.cup && state.cup.won ? 12 : 0), 0, 100));
   if (meOwner(state)) B.conf = Math.max(B.conf, 30);
+  if ((sum.lg === 0 && sum.place === 1) || (state.cup && state.cup.won) || (state.eu && state.eu.won) || recentTitle(state)) B.conf = Math.max(B.conf, 15); else if (sum.place <= B.goal + 3 && sum.move !== 'ab') B.conf = Math.max(B.conf, 8);
   if (B.conf <= 0) state.sacked = true;
   sum.boardBonus = 0; if (okGoal && !state.sacked) { sum.boardBonus = Math.round(GRANT[sum.lg] * (B.amb === 2 ? 0.3 : B.amb === 1 ? 0.05 : 0.15)); state.cash += sum.boardBonus; }
   repAdd(state, (okGoal ? 5 : -4) + (sum.move === 'auf' ? 10 : sum.move === 'ab' ? -8 : 0) + (sum.lg === 0 && sum.place === 1 ? 15 : 0) + (state.cup && state.cup.won ? 8 : 0) + (state.eu && state.eu.won ? 20 : 0) + (state.sacked ? -10 : 0));
@@ -3188,7 +3204,7 @@ function finishSeason(state) {
   state.market = null; if (!(state.sp && state.sp.until >= state.season)) { if (state.sp) sum.spEnd = state.sp.n; state.sp = null; } state.spo = null; state.led = newLedger(); state.cup = null; state.hall = null; state.camp = null; state.toto = null; state.ads = null; state.dk = null; state.eu = null; state.fh = null; state.ph = null; ensure(state);
   state.pre = { n: 0, log: [] }; state.camp = { due: true }; state.open = !state.sacked;
   u.coh = Math.max(30, (u.coh === undefined ? 50 : u.coh) - 20);
-  state.jobs = state.sacked ? sackJobs(state) : seasonJobs(state, lastPl); if (state.sacked) sum.sev = meSack(state);
+  state.jobs = state.sacked ? sackJobs(state) : seasonJobs(state, lastPl); if (state.sacked) sum.sev = sum.meBust ? 0 : meSack(state);
   state.fjobs = !state.sacked && Math.random() < 0.5 ? fgnJobs(state) : [];
   sum.rep = state.rep;
   sum.newLg = u.lg;
@@ -3308,7 +3324,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '15.11. 22:07';
+var BUILD = '15.11. 22:53';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -4246,7 +4262,7 @@ function popScan() {
     var key = 'fj' + x.c + x.n; pk[key] = 1; if (old[key] || first) return; var j = FM.fjobInfo(state, k); if (!j) return;
     pop('Angebot aus dem Ausland', flag(EUFL[j.c]) + ' <b>' + esc(j.n) + '</b> (' + esc(j.cn) + ', ' + esc(j.lgn) + ', Kaderstärke ' + j.str + ') möchte dich als Trainer verpflichten. Das Angebot gilt bis zum 1. Spieltag.', [['Angebot ansehen', function () { go('board'); }], ['Ablehnen', function () { state.fjobs = state.fjobs.filter(function (y) { return y !== x; }); toast('Angebot abgelehnt.'); }], ['Später entscheiden', null, 'unter Vorstand']], 'm_sign');
   });
-  if (ui.sum && (ui.sum.meBon || ui.sum.meNew || ui.sum.meDiv || ui.sum.meCov || ui.sum.meInv || ui.sum.meWarn || ui.sum.meBust) && !ui.sum._mp) { ui.sum._mp = 1; var mb = (ui.sum.meBon || []).slice(), mn = ui.sum.meNew; if (ui.sum.meDiv) mb.push(['Gewinnanteil aus dem Verein', ui.sum.meDiv]); (ui.sum.meInv || []).forEach(function (x) { mb.push([x.n + ' (' + x.lgn + ', Platz ' + x.pl + ')', x.dv]); }); if (ui.sum.meCov) mb.push(['Verlust des Vereins gedeckt', -ui.sum.meCov]); if (ui.sum.meWarn) mb.push(['Warnung der Bank: Dein Verein ist überschuldet. Noch eine solche Saison, und er ist verloren', 0]); if (ui.sum.meBust) mb.push([ui.sum.meBust + ' ist insolvent. Der Verein gehört dir nicht mehr', 0]); if (mb.length || mn) pop('Dein Konto', (mb.length ? mb.map(function (x) { return x[1] === 0 ? '<b>' + esc(x[0]) + '.</b>' : esc(x[0]) + ': <b>' + (x[1] > 0 ? '+' : '') + money(x[1]) + '</b>'; }).join('<br>') : '') + (mn ? (mb.length ? '<br>' : '') + 'Dein Vertrag wurde bis Ende Saison ' + seasonLabel(mn.until) + ' verlängert' + (mn.wage > mn.old ? ', das Gehalt steigt auf <b>' + money(mn.wage) + '</b> pro Woche.' : '.') : ''), [['OK'], ['Zu Privat', function () { go('private'); }]], 'm_bag'); }
+  if (ui.sum && (ui.sum.meBon || ui.sum.meNew || ui.sum.meDiv || ui.sum.meCov || ui.sum.meInv || ui.sum.meWarn || ui.sum.meBust || ui.sum.meCut) && !ui.sum._mp) { ui.sum._mp = 1; var mb = (ui.sum.meBon || []).slice(), mn = ui.sum.meNew; if (ui.sum.meDiv) mb.push(['Gewinnanteil aus dem Verein', ui.sum.meDiv]); (ui.sum.meInv || []).forEach(function (x) { mb.push([x.n + ' (' + x.lgn + ', Platz ' + x.pl + ')', x.dv]); }); if (ui.sum.meCov) mb.push(['Verlust des Vereins gedeckt', -ui.sum.meCov]); if (ui.sum.meCut) mb.push(['Dein Gehalt wurde an die neue Liga angepasst: ' + money(ui.sum.meCut.old) + ' → ' + money(ui.sum.meCut.wage) + ' pro Woche', 0]); if (ui.sum.meWarn) mb.push(['Warnung der Bank: Dein Verein ist überschuldet. Noch eine solche Saison, und er ist verloren', 0]); if (ui.sum.meBust) mb.push([ui.sum.meBust + ' ist insolvent. Der Verein gehört dir nicht mehr', 0]); if (mb.length || mn) pop('Dein Konto', (mb.length ? mb.map(function (x) { return x[1] === 0 ? '<b>' + esc(x[0]) + '.</b>' : esc(x[0]) + ': <b>' + (x[1] > 0 ? '+' : '') + money(x[1]) + '</b>'; }).join('<br>') : '') + (mn ? (mb.length ? '<br>' : '') + 'Dein Vertrag wurde bis Ende Saison ' + seasonLabel(mn.until) + ' verlängert' + (mn.wage > mn.old ? ', das Gehalt steigt auf <b>' + money(mn.wage) + '</b> pro Woche.' : '.') : ''), [['OK'], ['Zu Privat', function () { go('private'); }]], 'm_bag'); }
   if (R && R.meSold && !R._ms) { R._ms = 1; pop('Privat', 'Dein Konto war im Minus. <b>' + esc(R.meSold) + '</b> wurde mit Verlust verkauft.', [['OK'], ['Zu Privat', function () { go('private'); }]], 'm_bag'); }
   if (state.board && state.board.conf < 30) pk.bw = 1;
   var DLp = FM.deadline(state);
@@ -4410,7 +4426,7 @@ function jobsHtml() {
   var h = '';
   state.jobs.forEach(function (id) {
     var j = FM.jobInfo(state, id);
-    h += '<div class="panel"><div class="acard">' + crest(id, 42) + '<div class="grow"><p class="title">' + esc(j.n) + '</p><p class="hint" style="margin:0">' + FM.lgName(state, j.lg) + '</p></div></div><div class="rings">' + ring(j.str / 100, '#ffd84d', j.str, 'Kaderstärke') + ring(1, j.cash < 0 ? '#ff9a8f' : '#6df09a', tk(j.cash), 'Kasse') + ring(Math.min(1, j.cap / 60000), '#5fb7c9', tk(j.cap), 'Stadionplätze') + '</div><button class="big sec2" style="margin-top:10px" data-a="job" data-val="' + id + '">Zu ' + esc(j.n) + ' wechseln</button></div>';
+    h += '<div class="panel"><div class="acard">' + crest(id, 42) + '<div class="grow"><p class="title">' + esc(j.n) + '</p><p class="hint" style="margin:0">' + FM.lgName(state, j.lg) + '</p></div></div><div class="rings">' + ring(j.str / 100, '#ffd84d', j.str, 'Kaderstärke') + ring(1, j.cash < 0 ? '#ff9a8f' : '#6df09a', tk(j.cash), 'Kasse') + ring(Math.min(1, j.cap / 60000), '#5fb7c9', tk(j.cap), 'Stadionplätze') + '</div>' + (j.back ? '<p class="hint" style="margin:10px 0 0">Dein früherer Verein. Stadion und Jugend sind wie bei deinem Abschied' + (j.loan ? ', der Kredit von ' + money(j.loan) + ' läuft noch' : '') + '.</p>' : '') + '<button class="big sec2" style="margin-top:10px" data-a="job" data-val="' + id + '">Zu ' + esc(j.n) + ' wechseln</button></div>';
   });
   (state.fjobs || []).forEach(function (x, k) {
     var j = FM.fjobInfo(state, k); if (!j) return;
@@ -4458,7 +4474,7 @@ function vBoard() {
 }
 function vSacked() {
   var u = FM.userTeam(state);
-  return '<div class="logo" style="font-size:16px">' + (state.quit ? 'VERTRAG AUFGELÖST' : 'ENTLASSEN') + '</div><div class="panel"><p class="title" style="margin:0 0 6px">' + (state.quit ? 'Du hast ' + esc(u.n) + ' verlassen.' : esc(u.n) + ' trennt sich von ' + (coachN() ? esc(coachN()) : 'dir') + '.') + '</p><p class="hint" style="margin:0">' + (state.quit ? 'Der Vorstand hat deiner Bitte entsprochen. Eine Abfindung gibt es nicht. ' : 'Der Vorstand hat das Vertrauen verloren.' + (state.me && state.me.lastSev ? ' Du bekommst <b>' + money(state.me.lastSev) + '</b> Abfindung auf dein Privatkonto.' : '') + ' Deine Laufbahn geht trotzdem weiter: ') + '' + (state.jobs.length > 1 ? 'Diese Vereine suchen einen Trainer.' : 'Ein Verein sucht einen Trainer.') + ' Du übernimmst dort Kader, Kasse und Stadion.</p></div>' + jobsHtml();
+  return '<div class="logo" style="font-size:16px">' + (state.quit ? 'VERTRAG AUFGELÖST' : 'ENTLASSEN') + '</div><div class="panel"><p class="title" style="margin:0 0 6px">' + (state.quit ? 'Du hast ' + esc(u.n) + ' verlassen.' : esc(u.n) + ' trennt sich von ' + (coachN() ? esc(coachN()) : 'dir') + '.') + '</p><p class="hint" style="margin:0">' + (state.quit ? 'Der Vorstand hat deiner Bitte entsprochen. Eine Abfindung gibt es nicht. ' : (state.bust ? 'Dein Verein ist insolvent. Die Bank hat ihn übernommen, deine Anteile sind verloren. Eine Abfindung gibt es nicht.' : 'Der Vorstand hat das Vertrauen verloren.') + (state.me && state.me.lastSev ? ' Du bekommst <b>' + money(state.me.lastSev) + '</b> Abfindung auf dein Privatkonto.' : '') + ' Deine Laufbahn geht trotzdem weiter: ') + '' + (state.jobs.length > 1 ? 'Diese Vereine suchen einen Trainer.' : 'Ein Verein sucht einen Trainer.') + ' Du übernimmst dort Kader, Kasse und Stadion.</p></div>' + jobsHtml();
 }
 function vYouth() {
   var Y = state.youth, u = FM.userTeam(state), h = sub('Jugend'), fo = Y.fo || 0;
@@ -5457,9 +5473,10 @@ function vPrivate() {
 }
 function vFame() {
   var C = FM.car(state), u = FM.userTeam(state), h = sub('Ruhmeshalle') + heroPic('hero_ruhmhalle', 'Vitrine mit goldenen Pokalen, Medaillen und Mannschaftsfotos', 107), st = u.st;
-  var W = C.w + st.s, D = C.d + st.u, L = C.l + st.n, GF = C.gf + st.tf, GA = C.ga + st.ta, N = W + D + L, TN = { m: 'Meister', p: 'Pokalsieger', e: EUN() + '-Sieger', a: 'Aufstieg' };
+  var cb = C.base && C.base.s === state.season && C.base.c === u.n ? C.base : { w: 0, d: 0, l: 0, gf: 0, ga: 0 };
+  var W = C.w + st.s - cb.w, D = C.d + st.u - cb.d, L = C.l + st.n - cb.l, GF = C.gf + st.tf - cb.gf, GA = C.ga + st.ta - cb.ga, N = W + D + L, TN = { m: 'Meister', p: 'Pokalsieger', e: EUN() + '-Sieger', a: 'Aufstieg' };
   var big = C.ti.filter(function (t) { return t.k !== 'a'; }).length;
-  h += '<div class="panel"><div class="row" style="align-items:center;gap:10px"><img class="pc" alt="" aria-hidden="true" src="' + PICS.ruhm + '" width="96" height="72" style="width:96px;height:72px;image-rendering:pixelated;border:2px solid #052826"><div class="grow"><p class="lbl" style="margin:0 0 4px">TRAINERKARRIERE' + (coachN() ? ' · ' + esc(coachN().toUpperCase()) : '') + '</p><p class="hint" style="margin:0">Im Amt seit ' + C.from + ' · ' + (C.se.length + 1) + '. Saison<br>Aktuell: ' + esc(u.n) + '</p></div></div>';
+  h += '<div class="panel"><div class="row" style="align-items:center;gap:10px"><img class="pc" alt="" aria-hidden="true" src="' + PICS.ruhm + '" width="96" height="72" style="width:96px;height:72px;image-rendering:pixelated;border:2px solid #052826"><div class="grow"><p class="lbl" style="margin:0 0 4px">TRAINERKARRIERE' + (coachN() ? ' · ' + esc(coachN().toUpperCase()) : '') + '</p><p class="hint" style="margin:0">Im Amt seit ' + C.from + ' · ' + (C.se.filter(function (x, i) { return !i || C.se[i - 1].s !== x.s; }).length + (C.se.length && C.se[C.se.length - 1].s === state.season ? 0 : 1)) + '. Saison<br>Aktuell: ' + esc(u.n) + '</p></div></div>';
   h += '<div class="rings" style="grid-template-columns:repeat(3,minmax(0,1fr));margin-top:10px">' + ring(Math.min(1, big / 5), '#ffd84d', big, 'Titel', 54) + ring((state.rep || 0) / 100, '#5fb7c9', state.rep || 0, 'Ruf', 54) + ring(N ? W / N : 0, '#6df09a', N ? Math.round(W / N * 100) + '%' : '–', 'Siegquote', 54) + '</div></div>';
   var AD = FM.achState(state), an = FM.ACH.filter(function (a) { return AD[a[0]]; }).length;
   h += '<div class="panel"><p class="lbl">ERFOLGE · ' + an + ' VON ' + FM.ACH.length + '</p><div class="achl">' + FM.ACH.map(function (a) { return '<div class="' + (AD[a[0]] ? 'on' : '') + '"><i>' + (AD[a[0]] ? '★' : '☆') + '</i><b>' + a[1] + '</b><small>' + a[2] + '</small></div>'; }).join('') + '</div></div>';
@@ -5470,7 +5487,7 @@ function vFame() {
   h += '<div class="panel"><p class="lbl">BILANZ ALLER PFLICHTSPIELE IN DER LIGA</p>' + (N ? wdl(W, D, L) : '') + kv('Spiele', N) + kv('Tore', GF + ':' + GA) + (C.big ? kv('Höchster Sieg', esc(C.big.t) + ' <span class="hint">(' + seasonLabel(C.big.s) + ')</span>') : '') + (C.bad ? kv('Höchste Niederlage', esc(C.bad.t) + ' <span class="hint">(' + seasonLabel(C.bad.s) + ')</span>') : '') + '</div>';
   h += '<div class="panel"><p class="lbl">SAISONS</p>';
   if (!C.se.length) h += '<p class="hint" style="margin:0">Die erste Saison läuft noch.</p>';
-  else { h += '<div class="setab"><div class="hd"><span>Saison</span><span>Verein</span><span>Liga</span><span>Pl.</span><span>Pkt.</span><span>Ziel</span></div>'; C.se.slice().reverse().forEach(function (x) { h += '<div><span>' + seasonLabel(x.s) + '</span><span>' + esc(x.c) + '</span><span>' + (x.lg + 1) + '.' + (x.mv === 'auf' ? ' <i class="up">▲</i>' : x.mv === 'ab' ? ' <i class="dn">▼</i>' : '') + '</span><span><b>' + x.pl + '.</b></span><span>' + x.pk + '</span><span>' + (x.ok ? '<i class="up">✓</i>' : '<i class="dn">✗</i>') + '</span></div>'; }); h += '</div>'; }
+  else { h += '<div class="setab"><div class="hd"><span>Saison</span><span>Verein</span><span>Liga</span><span>Pl.</span><span>Pkt.</span><span>Ziel</span></div>'; C.se.slice().reverse().forEach(function (x) { h += '<div><span>' + seasonLabel(x.s) + '</span><span>' + esc(x.c) + '</span><span>' + (x.lg + 1) + '.' + (x.mv === 'auf' ? ' <i class="up">▲</i>' : x.mv === 'ab' ? ' <i class="dn">▼</i>' : '') + '</span><span><b>' + (x.part ? '–' : x.pl + '.') + '</b></span><span>' + x.pk + '</span><span>' + (x.part ? '<i class="hint">' + x.part + ' Sp.</i>' : x.ok ? '<i class="up">✓</i>' : '<i class="dn">✗</i>') + '</span></div>'; }); h += '</div>'; }
   h += '</div>';
   var LG = Object.keys(C.leg).map(function (k) { return C.leg[k]; }), cur = {};
   u.pl.forEach(function (p) { if (p.g || p.m) cur[p.i + '|' + p.n] = p; });

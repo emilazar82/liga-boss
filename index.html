@@ -199,7 +199,7 @@ details.inf[open] summary{background:var(--tile);color:#fff}
 .stars{color:var(--yellow);letter-spacing:1px;white-space:nowrap}
 .stars i{font-style:normal;color:#4d7a80}
 .st{font-size:11px;font-weight:700;border-radius:4px;padding:1px 4px;margin-left:2px}
-.st.inj,.st.ban{background:#7a2019;color:#fff}
+.st.inj,.st.bnn{background:#7a2019;color:#fff}
 .st.yel{background:var(--yellow);color:#10222b}
 .tk.info{background:var(--panel2);color:var(--mint)}
 .logo{font-family:var(--px);font-size:22px;color:var(--yellow);text-align:center;margin:28px 0 4px;line-height:1.4}
@@ -534,6 +534,7 @@ td.tn{white-space:nowrap}td.tn .rk{display:inline-block;width:24px;text-align:ri
 .row.spb>.big{flex:1 1 0;min-width:0;padding-left:4px;padding-right:4px;font-size:10.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .achl{display:grid;grid-template-columns:1fr 1fr;gap:6px}.achl>div{background:#07302d;border:2px solid #0a3d39;padding:7px 8px 7px 30px;position:relative;opacity:.55;min-width:0}.achl>div.on{opacity:1;border-color:#c9a227;background:#0b3b36}.achl i{position:absolute;left:8px;top:6px;font-style:normal;font-size:16px;color:#8fb5ae}.achl .on i{color:#ffd84d}.achl b{display:block;font-size:13.5px;line-height:1.2}.achl small{display:block;font-size:11.5px;line-height:1.25;color:#9fc9c1;margin-top:2px}
 .held{font-style:normal;font-size:13px;color:#ffd84d;margin-right:4px;flex:none}
+.res.tot span{white-space:normal;overflow:visible;text-overflow:clip;font-size:13px;line-height:1.2}.res.tot i{white-space:nowrap}
 </style>
 </head>
 <body>
@@ -797,7 +798,7 @@ function cupPlay(state) {
   cupAdvance(state, W);
   return { cup: true };
 }
-var EUAFTER = [2, 5, 7, 10, 12, 15, 21, 27, 32], EUNAME = ['Gruppe · 1. Spieltag', 'Gruppe · 2. Spieltag', 'Gruppe · 3. Spieltag', 'Gruppe · 4. Spieltag', 'Gruppe · 5. Spieltag', 'Gruppe · 6. Spieltag', 'Viertelfinale', 'Halbfinale', 'Finale'], EUPRIZE = [100000, 100000, 100000, 100000, 100000, 100000, 400000, 700000, 1500000], EUDRAW = 40000, EUDEF = 'Königsklasse';
+var EUAFTER = [2, 5, 7, 10, 12, 15, 21, 27, 32], EUNAME = ['Gruppe · 1. Spieltag', 'Gruppe · 2. Spieltag', 'Gruppe · 3. Spieltag', 'Gruppe · 4. Spieltag', 'Gruppe · 5. Spieltag', 'Gruppe · 6. Spieltag', 'Viertelfinale', 'Halbfinale', 'Finale'], EUPRIZE = [600000, 600000, 600000, 600000, 600000, 600000, 2500000, 4000000, 8000000], EUDRAW = 250000, EUDEF = 'Königsklasse';
 function euName(state) { return (state && state.eun) || EUDEF; }
 function euGm(c) { return (c && c.gm) || 6; }
 function euGrp(c) { return !!(c && c.g && c.g.length && c.r < euGm(c)); }
@@ -1793,7 +1794,7 @@ function extOffer(state, id, years) {
   years = years || 2; var mo = p.mo === undefined ? 6 : p.mo;
   var w = Math.round(baseWage(p) * (1.1 - 0.03 * (mo - 6)) * (years === 1 ? 1.05 : years === 3 ? 0.97 : 1) * (p.a >= 31 ? 0.9 : 1) / 10) * 10;
   var no = p.loan !== undefined ? 'Der Vertrag eines geliehenen Spielers kann nicht verlängert werden.' : p.c >= 3 ? 'Der Vertrag läuft noch lange genug.' : mo < 3 ? p.n + ' ist unzufrieden und will nicht verlängern. Mehr Einsätze und Siege heben die Moral.' : p.a >= 33 && years > 1 ? 'In seinem Alter unterschreibt er nur noch für ein Jahr.' : '';
-  return { wage: w, fee: Math.max(1000, Math.round(value(p) * 0.04 * years / 1000) * 1000), no: no };
+  return { wage: w, fee: Math.max(1000, Math.round(value(p) * 0.015 * years / 1000) * 1000), no: no };
 }
 function extend(state, id, years) {
   var p = findP(state.teams[state.uid], id);
@@ -2039,7 +2040,7 @@ function weeklyOffers(state) {
   if (!winOpen(state)) { state.offers = []; return 0; }
   state.offers = state.offers.filter(function (o) { return o.exp > r + 1 && findP(u, o.i) && team(state, o.c); });
   if (state.offers.length >= 3) return 0;
-  var cand = u.pl.filter(function (p) { return p.loan === undefined && !(p.inj > 3) && p.dlb !== state.season && !state.offers.some(function (o) { return o.i === p.i; }); });
+  var cand = u.pl.filter(function (p) { return p.loan === undefined && !(p.inj > 3) && p.dlb !== state.season && !(p.no > absWeek(state) && !p.tl) && !state.offers.some(function (o) { return o.i === p.i; }); });
   cand.forEach(function (p) {
     if (state.offers.length >= 3) return;
     var TL = [[0, 0, 0], [0.65, 0.55, 0.25], [0.4, 0.8, 0.25], [0.15, 0.95, 0.2]][p.tl || 0], pr = p.tl ? TL[0] : 0.012 * (p.a <= 25 ? 1.6 : 1) * (p.s >= 60 ? 1.4 : 1) * (p.mo < 3 ? 3 : 1);
@@ -2074,7 +2075,7 @@ function acceptOffer(state, k) {
   news(state, c.n + ' holt ' + p.n + ' (' + POS[p.p] + ', ' + p.s + ') von ' + u.n + ' für ' + Math.round(o.fee / 1000) + ' T.');
   return '';
 }
-function rejectOffer(state, k) { state.offers.splice(k, 1); }
+function rejectOffer(state, k) { var o = state.offers[k], p = o && findP(state.teams[state.uid], o.i); if (p) p.no = absWeek(state) + 8; state.offers.splice(k, 1); }
 function haggle(state, k) {
   var o = state.offers[k]; if (!o || o.h) return 'Hier lässt sich nichts mehr herausholen.';
   if (Math.random() < 0.5 + (meHas(state, 'nego') ? 0.15 : 0)) { o.fee = r1000(o.fee * 1.15); o.h = 1; return 'ok'; }
@@ -2415,7 +2416,7 @@ function talkWeek(state, played, r) {
     var p = cand[k], on = played.indexOf(p.i) >= 0, ty = '';
     if (p.mo < 3 && !p.tl && Math.random() < 0.3) ty = 'move';
     else if ((p.np || 0) >= 4 && p.s >= avg - 2 && p.prm === undefined && !p.tl && Math.random() < 0.3) ty = 'time';
-    else if (on && p.f <= 3 && Math.random() < 0.2) ty = 'form';
+    else if (on && p.f <= 3 && Math.random() < 0.1) ty = 'form';
     else if (on && p.f >= 8 && p.m >= 6 && p.s >= avg && p.rz !== state.season && Math.random() < 0.03) ty = 'wage';
     if (ty) { state.talks.push({ i: p.i, k: ty, r: r }); p.tq = r; out.n++; }
   }
@@ -3247,7 +3248,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '15.11. 21:29';
+var BUILD = '15.11. 21:33';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -3436,8 +3437,8 @@ function countsHtml(u) {
   return h + '<span>Vorlage ' + u.fo + '</span></div>';
 }
 function statusTag(p) {
-  if (p.inj > 0) return ' <span class="st inj">verletzt · ' + p.inj + ' Wo.</span>';
-  if (p.ban > 0) return ' <span class="st ban">gesperrt · ' + p.ban + '</span>';
+  if (p.inj > 0) return ' <span class="st inj">verl. ' + p.inj + ' Wo.</span>';
+  if (p.ban > 0) return ' <span class="st bnn">gesperrt · ' + p.ban + '</span>';
   return p.y ? ' <span class="st yel">' + p.y + '</span>' : '';
 }
 function stars(n) { var h = '<span class="stars" title="Talent ' + n + ' von 5">'; for (var k = 1; k <= 5; k++) h += k <= n ? '★' : '<i>★</i>'; return h + '</span>'; }
@@ -3476,7 +3477,7 @@ function vLineup() {
   h += '<div class="plh"><span>Pos</span><span>Name</span><span>Alt</span><span>Stä</span><span>Form</span><span>Frische</span></div><div class="list">';
   pls.forEach(function (p) {
     var on = u.lu.indexOf(p.i) >= 0, out = !FM.avail(p);
-    h += '<button class="pl' + (on ? ' on' : '') + (out ? ' out' : '') + '" data-a="' + (info ? 'sel' : 'toggle') + '" data-id="' + p.i + '" ' + (info ? 'aria-expanded="' + (ui.sel === p.i) : 'aria-pressed="' + on) + '"><span><span class="pos p' + p.p + '">' + FM.POS[p.p] + '</span></span><span class="nm">' + pn(p) + statusTag(p) + (p.mo < 3.5 ? ' <span class="st ban">Moral</span>' : '') + '</span><span>' + p.a + '</span><span><b>' + p.s + '</b></span><span>' + p.f + '</span><span>' + fitBar(p.t) + '</span></button>';
+    h += '<button class="pl' + (on ? ' on' : '') + (out ? ' out' : '') + '" data-a="' + (info ? 'sel' : 'toggle') + '" data-id="' + p.i + '" ' + (info ? 'aria-expanded="' + (ui.sel === p.i) : 'aria-pressed="' + on) + '"><span><span class="pos p' + p.p + '">' + FM.POS[p.p] + '</span></span><span class="nm">' + pn(p) + statusTag(p) + (p.mo < 3.5 ? ' <span class="st bnn">Moral</span>' : '') + '</span><span>' + p.a + '</span><span><b>' + p.s + '</b></span><span>' + p.f + '</span><span>' + fitBar(p.t) + '</span></button>';
     if (info && ui.sel === p.i) h += '<div class="panel">' + pCard(p, true) + kv('Vertrag bis', state.season + p.c) + kv('Gehalt pro Woche', money(FM.salary(p))) + kv('Marktwert', money(FM.value(p))) + '</div>';
   });
   h += inf(lhint, 'So geht’s');
@@ -3754,7 +3755,7 @@ function vTraining() {
   } else {
     var C = state.camp;
     if (C.due) {
-      h += '<p class="hint" style="margin:0">Winterpause: nur bis zum nächsten Spieltag buchbar.</p>';
+      h += '<p class="hint" style="margin:0">Nur bis zum nächsten Spieltag buchbar.</p>';
       FM.CAMP.forEach(function (c, k) {
         var cost = FM.campCost(state, k), ar = ''; for (var q2 = 0; q2 < c.rolls; q2++) ar += '<span style="color:#6df09a">▲</span>';
         h += '<div class="panel"><div class="row" style="align-items:center">' + icon('c' + k, 46) + '<div class="grow"><p class="title" style="margin:0;font-size:16px">' + c.n + '</p><p class="hint" style="margin:0">' + c.d + '</p></div></div><div class="rings" style="margin:10px 0">' + ring(1, '#6df09a', '100', 'Frische', 56) + ring(c.mo, '#6df09a', '+' + c.mo.toLocaleString('de-DE'), 'Moral', 56) + '<div><div style="height:56px;display:flex;align-items:center;justify-content:center;font-size:18px">' + ar + '</div><div class="rl">Lernchancen</div></div></div><button class="big' + (k ? '' : ' sec2') + '" data-a="camp" data-val="' + k + '"' + (state.cash < cost ? ' disabled' : '') + '>' + (state.cash < cost ? 'Zu teuer · ' : 'Buchen · ') + money(cost) + '</button></div>';
@@ -4154,13 +4155,13 @@ function popScan() {
     hurt.forEach(function (r) { pk['i' + r.i] = 1; old['i' + r.i] = 1; });
     if (TR.coach) pop('Verband', flag(TR.coach.code) + ' ' + esc(natName(TR.coach.code)) + ': ' + FM.TOURST[TR.coach.st] + '. ' + (TR.coach.fired ? 'Nach dem frühen Aus trennt sich der Verband von dir.' : TR.coach.st === 4 ? 'Das ganze Land feiert dich.' : 'Der Verband setzt weiter auf dich.'), null, 'pokal');
   }
-  var few = prefs.pw === 1, outs = [], nInj = 0, inXI = false;
+  var few = prefs.pw === 1, outs = [], nInj = 0, inXI = false, inSq = false, rank = u.pl.slice().sort(function (a, b) { return b.s - a.s; }).map(function (p) { return p.i; });
   u.pl.forEach(function (p) {
-    var st = u.lu && u.lu.indexOf(p.i) >= 0 && u.lu.indexOf(p.i) < 11;
+    var st = rank.indexOf(p.i) < 11; if (rank.indexOf(p.i) < 15 && ((p.inj > 0 && !old['i' + p.i]) || (p.ban > 0 && !old['b' + p.i]))) inSq = true;
     if (p.inj > 0) { pk['i' + p.i] = 1; if (!old['i' + p.i] && !first) { nInj++; if (st) inXI = true; outs.push('<b>' + esc(p.n) + '</b> (' + FM.POS[p.p] + ', Stärke ' + p.s + ') ist verletzt und fällt ' + p.inj + (p.inj === 1 ? ' Woche' : ' Wochen') + ' aus.'); } }
     if (p.ban > 0) { pk['b' + p.i] = 1; if (!old['b' + p.i] && !first) { if (st) inXI = true; outs.push('<b>' + esc(p.n) + '</b> (' + FM.POS[p.p] + ', Stärke ' + p.s + ') ist für ' + p.ban + (p.ban === 1 ? ' Spiel' : ' Spiele') + ' gesperrt.'); } }
   });
-  if (outs.length && (!few || inXI)) pop(outs.length > 1 ? 'Ausfälle' : nInj ? 'Verletzung' : 'Sperre', outs.join('<br>'), [['OK'], ['Zur Aufstellung', function () { go('lineup'); }]], 'f_ins');
+  if (outs.length && (few ? inXI : inSq)) pop(outs.length > 1 ? 'Ausfälle' : nInj ? 'Verletzung' : 'Sperre', outs.join('<br>'), [['OK'], ['Zur Aufstellung', function () { go('lineup'); }]], 'f_ins');
   state.offers.forEach(function (o) {
     var key = 'o' + o.i + '_' + o.c; pk[key] = 1; if (old[key] || first) return;
     var p = FM.findP(u, o.i), c = FM.team(state, o.c); if (!p || !c) return;
@@ -4248,7 +4249,7 @@ function vTour() {
     R.md.slice(3).reverse().forEach(function (d) { h += tourMd(d, hl); });
     R.g.forEach(function (g, i) { h += '<p class="lbl" style="margin:6px 0 0">GRUPPE ' + 'ABCD'.charAt(i) + '</p>' + tourTab(g, hl); });
     h += '<details class="inf" style="margin:0"><summary>Alle Gruppenspiele</summary>' + R.md.slice(0, 3).map(function (d) { return tourMd(d, hl); }).join('') + '</details>';
-    return h + '<p class="hint" style="margin:0">* nach Elfmeterschießen · gelb umrandet: Nationen mit Spielern deines Vereins</p>' + done;
+    return h + '<p class="hint" style="margin:0">* nach Elfmeterschießen · farbig hervorgehoben: Nationen mit Spielern deines Vereins</p>' + done;
   }
   var pg = Math.min(ui.tpg || 0, 7), ttl = ['Die Nominierungen', '1. Gruppenspieltag', '2. Gruppenspieltag', '3. Gruppenspieltag', 'Viertelfinale', 'Halbfinale', 'Finale', 'Bilanz'][pg];
   h += '<div class="panel" style="text-align:center"><p class="lbl" style="margin:0">' + (pg + 1) + ' / 8 · ' + ttl.toUpperCase() + '</p></div>';
@@ -5379,7 +5380,7 @@ function vPrivate() {
       if (e.pct >= 50 && f) h += '<button class="big sec2 sm" style="margin-top:8px" data-a="ivboost" data-val="' + x.idx + '"' + (e.bo === state.season || M.cash < x.val * 0.1 ? ' disabled' : '') + '>' + (e.bo === state.season ? 'In dieser Saison schon verstärkt' : 'Kader verstärken · ' + tk(Math.round(x.val * 0.1))) + '</button><p class="hint" style="margin:6px 0 0">Als Mehrheitseigner kannst du einmal pro Saison Geld zuschießen: Die Stammelf wird um einen Punkt stärker.</p>';
       h += '</div>';
     });
-    h += '<div class="panel"><p class="lbl">ANTEILE KAUFEN</p><div class="pbar" style="margin-bottom:8px">' + ctys.map(function (c) { return '<button class="' + (c === ik ? 'on' : '') + '" data-a="ivk" data-val="' + c + '">' + ctyLbl(c) + '</button>'; }).join('') + '</div><div class="pbar" style="margin-bottom:8px">' + tiers.map(function (l) { return '<button class="' + (l === il ? 'on' : '') + '" data-a="ivl" data-val="' + l + '">' + esc(ik === home ? FM.lgName(state, l) : FM.fgnLgsX(state, ik)[l]) + '</button>'; }).join('') + '</div>';
+    h += '<div class="panel"><p class="lbl">ANTEILE KAUFEN</p><div class="pbar" style="margin-bottom:8px">' + ctys.map(function (c) { return '<button class="' + (c === ik ? 'on' : '') + '" data-a="ivk" data-val="' + c + '">' + ctyLbl(c) + '</button>'; }).join('') + '</div><div class="pbar" style="margin-bottom:8px;grid-template-columns:repeat(3,minmax(0,1fr))">' + tiers.map(function (l) { return '<button class="' + (l === il ? 'on' : '') + '" data-a="ivl" data-val="' + l + '">' + esc(ik === home ? FM.lgName(state, l) : FM.fgnLgsX(state, ik)[l]) + '</button>'; }).join('') + '</div>';
     FM.invList(state, ik, il).forEach(function (c) { var c10 = Math.round(c.val * 0.105); h += '<div class="row" style="align-items:center;gap:8px;padding:6px 0;border-top:1px solid #0a3d39"><span style="width:24px;text-align:right" class="hint">' + (c.pl || '–') + '.</span><div class="grow" style="min-width:0"><b style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(c.n) + '</b><span class="hint">Stärke ' + c.str + ' · Wert ' + tk(c.val) + '</span></div><button class="big sec2 sm" style="width:auto;flex:none;padding:0 10px;min-height:40px;font-size:11px" data-a="ivbuy" data-k="' + ik + '" data-n="' + esc(c.n) + '"' + (M.cash < c10 ? ' disabled' : '') + '>10 % · ' + tk(c10) + '</button></div>'; });
     h += '<p class="hint" style="margin:8px 0 0">Kauf mit 5 % Aufschlag, Verkauf mit 8 % Abschlag auf den Wert.</p></div>';
     var BL = FM.meBuyList(state);
@@ -5736,7 +5737,7 @@ app.addEventListener('click', function (ev) {
   if (a === 'tourdone') { ui.tpg = 0; ui.match = null; persist(); return go(state.open ? 'opening' : state.pre ? 'summer' : 'menu'); }
   if (a === 'tournext') { FM.tourRest(state); ui.match = null; ui.tpg = 7; persist(); return go('tour'); }
   if (a === 'tourkick') {
-    if (!FM.lineupValid(u)) { toast('Die Startelf ist nicht vollständig.'); return go('lineup'); }
+    if (!FM.lineupValid(u)) { toast('Die Startelf ist nicht vollständig.'); ui.lm = 'set'; return go('lineup'); }
     var LT = FM.startTour(state);
     ui.match = { h: LT.h, a: LT.a, home: LT.home, cup: true, eu: true, name: state.tour.c.nm[LT.r], res: null }; ui.subOut = -1; persist(); go('match'); return startMatch();
   }
@@ -5841,8 +5842,8 @@ app.addEventListener('click', function (ev) {
   if (a === 'fl') { ui.fl = +b.getAttribute('data-val'); return render(); }
   if (a === 'kickoff') {
     if (state.sacked) return go('sacked');
-    if (!FM.lineupValid(u)) { toast('Die Startelf ist nicht vollständig. Verletzte und gesperrte Spieler müssen ersetzt werden.'); return go('lineup'); }
-    if (!state.sp && state.spo) { toast('Vor dem Spiel fehlt noch ein Trikotsponsor.'); return go('sponsors'); }
+    if (!FM.lineupValid(u)) { toast('Die Startelf ist nicht vollständig. Verletzte und gesperrte Spieler müssen ersetzt werden.'); ui.lm = 'set'; return go('lineup'); }
+    if (!state.sp && state.spo) { toast('Vor dem Spiel fehlt noch ein Trikotsponsor.'); ui.spt = 'trikot'; return go('sponsors'); }
     var LV = state.cup.due && FM.cupTie(state) ? FM.startCup(state) : state.eu.due && FM.euTie(state) ? FM.startEu(state) : FM.startRound(state);
     ui.match = { h: LV.h, a: LV.a, home: LV.home, cup: LV.type === 'cup', eu: !!LV.eu, name: LV.type === 'cup' ? (LV.eu ? FM.EUNAME : FM.CUPNAME)[LV.r] : '', res: null }; ui.subOut = -1; persist(); go('match'); return startMatch();
   }

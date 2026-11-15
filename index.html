@@ -2111,8 +2111,8 @@ function liveTalk(state, k) {
   L.talk = { k: k, f: 1 + f, t: t, g: f > 0 ? 1 : f < 0 ? -1 : 0 };
   return L.talk;
 }
-var TALKQ = { time: 'Trainer, ich sitze seit Wochen nur draußen. Ich will spielen.', move: 'Ich fühle mich hier nicht mehr wohl. Lassen Sie mich gehen.', wage: 'Ich bringe meine Leistung. Das sollte sich auch auf dem Konto zeigen.', form: 'Im Moment gelingt mir gar nichts. Ich weiß nicht, woran es liegt.' };
-var TALKT = { time: 'will mehr Einsatzzeit', move: 'will den Verein verlassen', wage: 'will mehr Gehalt', form: 'steckt in einer Formkrise' };
+var TALKQ = { time: 'Trainer, ich sitze seit Wochen nur draußen. Ich will spielen.', move: 'Ich fühle mich hier nicht mehr wohl. Lassen Sie mich gehen.', wage: 'Ich bringe meine Leistung. Das sollte sich auch auf dem Konto zeigen.', form: 'Im Moment gelingt mir gar nichts. Ich weiß nicht, woran es liegt.', star: 'Ich will um Titel spielen. Größere Vereine fragen bei meinem Berater an – ich möchte wissen, woran ich bin.', feud: '', bye: 'Trainer, mein Körper sagt mir, dass es Zeit wird. Nach dieser Saison ist Schluss.' };
+var TALKT = { time: 'will mehr Einsatzzeit', move: 'will den Verein verlassen', wage: 'will mehr Gehalt', form: 'steckt in einer Formkrise', star: 'liebäugelt mit einem größeren Verein', feud: 'hat Streit in der Kabine', bye: 'denkt ans Karriereende' };
 function talkWeek(state, played, r) {
   var u = state.teams[state.uid], avg = 0, out = { n: 0, broken: [] }; if (!state.talks) state.talks = [];
   u.pl.forEach(function (p) { avg += p.s; }); avg /= u.pl.length;
@@ -2121,7 +2121,7 @@ function talkWeek(state, played, r) {
     if (on) p.np = 0; else if (avail(p)) p.np = (p.np || 0) + 1;
     if (p.prm !== undefined) { if (on) { delete p.prm; moAdd(p, 0.4); } else if (r >= p.prm) { delete p.prm; moAdd(p, -2); out.broken.push(p.n); } }
   });
-  state.talks = state.talks.filter(function (t) { var p = findP(u, t.i); if (!p) return false; if (r - t.r >= 3) { moAdd(p, -0.6); p.tq = r; return false; } return true; });
+  state.talks = state.talks.filter(function (t) { var p = findP(u, t.i); if (!p) return false; if (t.k === 'feud' && !findP(u, t.j)) return false; if (r - t.r >= 3) { if (t.k === 'bye') { p.ret = 1; return false; } moAdd(p, t.k === 'star' ? -1.2 : -0.6); if (t.k === 'feud') { moAdd(findP(u, t.j), -0.6); u.coh = clamp((u.coh === undefined ? 50 : u.coh) - 5, 0, 100); } p.tq = r; return false; } return true; });
   if (state.talks.length >= 2) return out;
   var cand = shuffle(u.pl.filter(function (p) { return p.loan === undefined && !(p.inj > 0) && !(p.tq !== undefined && r - p.tq < 8) && !state.talks.some(function (t) { return t.i === p.i; }); }));
   for (var k = 0; k < cand.length && !out.n; k++) {
@@ -2132,9 +2132,18 @@ function talkWeek(state, played, r) {
     else if (on && p.f >= 8 && p.m >= 6 && p.s >= avg && p.rz !== state.season && Math.random() < 0.03) ty = 'wage';
     if (ty) { state.talks.push({ i: p.i, k: ty, r: r }); p.tq = r; out.n++; }
   }
+  if (!out.n && cand.length) {
+    var srt = u.pl.slice().sort(function (a, b) { return b.s - a.s; }), top3 = srt.slice(0, 3), RNn = RN(state), q0;
+    var old = cand.filter(function (p) { return p.a >= 33 && !p.by && played.indexOf(p.i) >= 0; })[0];
+    var star = cand.filter(function (p) { return top3.indexOf(p) >= 0 && p.s >= avg + 5 && p.a <= 30 && !p.tl && p.sq !== state.season && p.rel === undefined; })[0];
+    if (old && r >= RNn - 9 && r < RNn - 2 && Math.random() < 0.35) { old.by = 1; state.talks.push({ i: old.i, k: 'bye', r: r }); old.tq = r; out.n++; }
+    else if (star && r >= 4 && r < RNn - 4 && Math.random() < (place(state, u.id) > NT(state) / 2 ? 0.06 : 0.03)) { star.sq = state.season; state.talks.push({ i: star.i, k: 'star', r: r }); star.tq = r; out.n++; }
+    else if (cand.length >= 2 && r >= 3 && Math.random() < ((u.coh === undefined ? 50 : u.coh) < 40 ? 0.04 : 0.02)) { q0 = cand.filter(function (p) { return p !== cand[0] && p.p !== 0; })[0]; if (q0 && cand[0].p !== 0) { state.talks.push({ i: cand[0].i, k: 'feud', r: r, j: q0.i }); cand[0].tq = r; q0.tq = r; out.n++; } }
+  }
   return out;
 }
 function winText(state) { var r = state.round, H = HN(state); return r <= 5 ? 'Das Transferfenster ist offen, Angebote sind bis zum 6. Spieltag möglich.' : r >= H && r <= H + 2 ? 'Das Transferfenster ist offen, Angebote sind bis zum ' + (H + 3) + '. Spieltag möglich.' : r < H ? 'Angebote kommen erst im Winter (' + (H + 1) + '. bis ' + (H + 3) + '. Spieltag).' : 'Angebote kommen erst im Sommer, bis zum 6. Spieltag der neuen Saison.'; }
+function shortN(n) { var w = String(n || '').split(' '); return w[w.length - 1]; }
 function talkInfo(state) {
   var u = state.teams[state.uid];
   return (state.talks || []).map(function (t, idx) {
@@ -2142,8 +2151,12 @@ function talkInfo(state) {
     if (t.k === 'time') o = [['Einsatz versprechen', 'Moral +1 · er muss in den nächsten 3 Spielen auflaufen, sonst Moral −2'], ['Um Geduld bitten', 'Mit Glück Moral +0,4, mit Pech −0,6'], ['Auf die Transferliste', 'Er geht erst, wenn ein Verein bietet und du annimmst. ' + winText(state)]];
     else if (t.k === 'move') o = [['Zum Bleiben überreden', 'Gelingt eher bei hohem Vertrauen des Vorstands · sonst Moral −0,5'], ['Gehen lassen', 'Moral +1 · Er geht erst, wenn ein Verein bietet und du annimmst. ' + winText(state)], ['Machtwort sprechen', 'Er bleibt, Moral −0,3 · Ruhe für den Rest der Saison']];
     else if (t.k === 'wage') o = [['Gehalt um 10 % erhöhen', 'Moral +1,2 · ' + (w * 0.1 >= 1000 ? Math.round(w * 0.1 / 1000) + ' T' : Math.round(w * 0.1) + ' DM') + ' mehr pro Woche'], ['Einmalprämie zahlen', 'Kostet ' + Math.round(w * 4 / 1000) + ' T · Moral +0,8'], ['Ablehnen', 'Moral −1']];
+    else if (t.k === 'star') o = [['Mit mehr Gehalt halten', 'Gehalt +15 % (' + Math.round(w * 0.15 / 100) / 10 + ' T mehr pro Woche) · Moral +1 · Ruhe bis Saisonende'], ['Freigabe im Sommer zusagen', 'Moral +0,6 · Er steht im Sommer zum hohen Preis auf der Transferliste'], ['Abblocken', 'Moral −1,2 · mit Pech bricht seine Form ein']];
+    else if (t.k === 'feud') o = [['Schlichten', 'Gelingt meist: beide Moral +0,3 · sonst beide −0,4'], ['Für ' + shortN(p.n) + ' Partei ergreifen', shortN(p.n) + ' Moral +0,8 · ' + shortN((findP(u, t.j) || p).n) + ' Moral −1'], ['Beiden eine Geldstrafe geben', 'Beide Moral −0,3 · Zusammenhalt der Mannschaft steigt']];
+    else if (t.k === 'bye') o = [['Abschiedsspiel zusagen', 'Ganze Mannschaft Moral +0,3 · Fans kommen lieber · er hört zum Saisonende auf'], ['Zu einem weiteren Jahr überreden', p.s >= 0 ? 'Gelingt eher, wenn er noch Stammspieler ist · Vertrag bis Ende nächster Saison' : ''], ['Seine Entscheidung respektieren', 'Er hört zum Saisonende auf']];
     else o = [['Aufbauen', 'Moral +0,6 · Form +1'], ['Sondertraining', 'Form +2 · Frische −12'], ['Mit der Bank drohen', 'Mit Glück Form +2, mit Pech Moral −0,8']];
-    return { idx: idx, p: p, k: t.k, q: TALKQ[t.k], t: TALKT[t.k], opts: o, left: 3 - (state.round - 1 - t.r) };
+    var qq = t.k === 'feud' ? 'Zwischen mir und ' + (findP(u, t.j) || p).n + ' hat es in der Kabine gekracht. So kann das nicht weitergehen.' : TALKQ[t.k];
+    return { idx: idx, p: p, k: t.k, q: qq, t: TALKT[t.k], opts: o, left: 3 - (state.round - 1 - t.r) };
   });
 }
 function talkAnswer(state, idx, o) {
@@ -2161,6 +2174,20 @@ function talkAnswer(state, idx, o) {
     if (o === 0) { var e = raise(state, p.i); x = e || n + ' unterschreibt den verbesserten Vertrag.'; g = e ? 0 : 1; }
     else if (o === 1) { var c = Math.round(salary(p) * 4); state.cash -= c; state.led.prem += c; moAdd(p, 0.8); x = n + ' freut sich über die Prämie.'; }
     else { moAdd(p, -1); g = 0; x = n + ' ist verärgert.'; }
+  } else if (t.k === 'star') {
+    if (o === 0) { p.w = Math.round(salary(p) * 1.15 / 10) * 10; moAdd(p, 1); p.tq = state.round + 30; x = n + ' unterschreibt zu besseren Bezügen und bekennt sich zum Verein.'; }
+    else if (o === 1) { p.rel = state.season; moAdd(p, 0.6); x = n + ' gibt bis zum Sommer alles. Dann will er wechseln dürfen.'; }
+    else { moAdd(p, -1.2); g = 0; if (Math.random() < 0.5) { p.f = clamp(p.f - 2, 1, 10); x = n + ' ist tief enttäuscht. Das sieht man ihm auf dem Platz an.'; } else x = n + ' nimmt es hin, aber das Thema ist nicht vom Tisch.'; }
+  } else if (t.k === 'feud') {
+    var q = findP(u, t.j) || p;
+    if (o === 0) { if (Math.random() < 0.6) { moAdd(p, 0.3); moAdd(q, 0.3); x = n + ' und ' + q.n + ' geben sich die Hand.'; } else { moAdd(p, -0.4); moAdd(q, -0.4); g = 0; x = 'Die Aussprache bringt nichts. ' + n + ' und ' + q.n + ' gehen sich aus dem Weg.'; } }
+    else if (o === 1) { moAdd(p, 0.8); moAdd(q, -1); x = n + ' fühlt sich bestätigt. ' + q.n + ' ist sauer auf dich.'; }
+    else { moAdd(p, -0.3); moAdd(q, -0.3); u.coh = clamp((u.coh === undefined ? 50 : u.coh) + 4, 0, 100); var fn = Math.round((salary(p) + salary(q)) / 2 / 100) * 100; state.cash += fn; state.led.prem -= fn; x = 'Beide zahlen in die Mannschaftskasse (' + fn + '). Die Kabine weiß jetzt, wo die Grenze ist.'; }
+    q.tq = state.round;
+  } else if (t.k === 'bye') {
+    if (o === 0) { p.ret = 1; u.pl.forEach(function (y) { moAdd(y, 0.3); }); state.stad.fans = Math.round(clamp((state.stad.fans || 1) + 0.015, 0.6, 1.5) * 1000) / 1000; x = n + ' ist gerührt. Die Fans freuen sich auf seinen letzten großen Auftritt.'; news(state, n + ' beendet nach der Saison seine Karriere. ' + u.n + ' plant ein Abschiedsspiel.'); }
+    else if (o === 1) { var av2 = 0; u.pl.forEach(function (y) { av2 += y.s; }); av2 /= u.pl.length; if (Math.random() < (p.s >= av2 ? 0.65 : 0.3)) { p.keep = 1; p.c = Math.max(p.c || 1, 2); moAdd(p, 0.5); x = n + ' lässt sich überreden und hängt ein Jahr dran.'; } else { p.ret = 1; g = 0; x = n + ' bleibt dabei: Nach der Saison ist Schluss.'; } }
+    else { p.ret = 1; x = n + ' bedankt sich für die gemeinsame Zeit.'; }
   } else {
     if (o === 0) { moAdd(p, 0.6); p.f = clamp(p.f + 1, 1, 10); x = n + ' geht mit neuem Mut ins Training.'; }
     else if (o === 1) { p.f = clamp(p.f + 2, 1, 10); p.t = Math.max(30, p.t - 12); x = n + ' schuftet in Sonderschichten. Das kostet Kraft.'; }
@@ -2720,7 +2747,9 @@ function develop(t) {
     p.a++; p.g = 0; p.m = 0; p.t = rnd(90, 100); p.f = rnd(4, 7); p.y = 0; p.ban = 0; p.inj = 0; delete p.injNew;
     var yg = YG[(p.ta || 3) - 1];
     addS(p, p.a <= 23 ? rnd(yg[0], yg[1]) : p.a <= 29 ? rnd(-1, 2) : p.a <= 32 ? rnd(-3, 0) : rnd(-5, -1));
-    if (p.a >= 36 || (p.a >= 34 && Math.random() < 0.3)) {
+    var keep = p.keep; delete p.keep; if (p.rel !== undefined) { delete p.rel; if (p.c !== undefined) { p.tl = 3; p.wl = 1; } }
+    if (p.ret || (!keep && (p.a >= 36 || (p.a >= 34 && Math.random() < 0.3)))) {
+      delete p.ret; delete p.by;
       var np = makePlayer(p.i, p.p, Math.round(0.5 * avg + 0.5 * (t.lg > 2 ? avg + 4 : lgBase(t.lg))) - 4, rnd(17, 19));
       p.n = np.n; p.a = np.a; p.s = np.s; p.at = np.at; p.ta = np.ta; p.vp = np.vp; delete p.w; delete p.it; if (p.c !== undefined) { p.c = 3; p.mo = 6; }
     }
@@ -2915,7 +2944,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '15.11. 19:20';
+var BUILD = '15.11. 19:31';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }

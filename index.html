@@ -533,6 +533,7 @@ td.tn{white-space:nowrap}td.tn .rk{display:inline-block;width:24px;text-align:ri
 .adst{display:flex;gap:2px;background:#0b1622;border:3px solid #0b1622;border-bottom:0;padding:1px}.adst img,.adst i{flex:1 1 0;min-width:0;height:auto;aspect-ratio:320/93;display:block;background:#39454d}
 .row.spb>.big{flex:1 1 0;min-width:0;padding-left:4px;padding-right:4px;font-size:10.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .achl{display:grid;grid-template-columns:1fr 1fr;gap:6px}.achl>div{background:#07302d;border:2px solid #0a3d39;padding:7px 8px 7px 30px;position:relative;opacity:.55;min-width:0}.achl>div.on{opacity:1;border-color:#c9a227;background:#0b3b36}.achl i{position:absolute;left:8px;top:6px;font-style:normal;font-size:16px;color:#8fb5ae}.achl .on i{color:#ffd84d}.achl b{display:block;font-size:13.5px;line-height:1.2}.achl small{display:block;font-size:11.5px;line-height:1.25;color:#9fc9c1;margin-top:2px}
+.held{font-style:normal;font-size:13px;color:#ffd84d;margin-right:4px;flex:none}
 </style>
 </head>
 <body>
@@ -3186,7 +3187,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '15.11. 20:23';
+var BUILD = '15.11. 20:25';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -4377,10 +4378,16 @@ function lgTabs() {
 }
 function fCrest(x, k, sz) { return crestImg(x.n, sz) || crestSvg(x.c1 || CRC[(x.ix + 3) % 9], x.c2 || '#f4efe1', x.ix % 4, crestL(x.n), sz); }
 function fTies(list, ttl) { if (!list.length) return ''; return '<p class="lbl" style="margin:6px 0 0">' + ttl + '</p><div class="list">' + list.map(function (m) { return '<div style="display:grid;grid-template-columns:1fr 50px 1fr;gap:6px;align-items:center;padding:8px 6px;background:var(--panel);font-size:13px"><span style="text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(m[0]) + ' ' + (crestImg(m[0], 18) || '') + '</span><b style="text-align:center">' + (m.length > 2 ? m[2] + ':' + m[3] : '–') + '</b><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (crestImg(m[1], 18) || '') + ' ' + esc(m[1]) + '</span></div>'; }).join('') + '</div>'; }
+function heldMark(k, n) {
+  var M = state && state.me, p = 0; if (!M) return '';
+  (M.inv || []).forEach(function (e) { if (e.k === k && e.n === n) p = e.pct; });
+  if (!p && M.sh && M.sh.club === n && k === (state.cty || 'de')) p = M.sh.pct;
+  return p ? '<i class="held" title="Dein Anteil: ' + p + ' %" aria-label="Dein Anteil: ' + p + ' Prozent">◆</i>' : '';
+}
 function vTableF() {
   var c = ui.fc, l = ui.fl ? 1 : 0, T = FM.flTable(state, c, l), I = FM.flInfo(state, c, l), nE = c === 'de' ? 4 : 3, h = sub('Tabelle') + lgTabs();
   h += '<div class="panel" style="padding:8px"><p class="hint" style="margin:0 0 6px;text-align:center">' + esc(FM.fgnLgs(state, c)[l]) + ' · ' + I.md + '. von ' + I.n + ' Spieltagen</p><table><thead><tr><th></th><th>Verein</th><th>Sp</th><th>S-U-N</th><th>Tore</th><th>Pkt</th></tr></thead><tbody>';
-  T.forEach(function (x, k) { var eu = l === 0 && k < nE, up = l === 1 && k < 3, dn = l === 0 && k >= T.length - 3; h += '<tr class="tr' + (x.id < 5000 ? ' me' : '') + '"' + (x.id < 5000 ? ' style="background:rgba(47,99,196,.25)"' : '') + '><td class="z ' + (up || eu ? 'up' : dn ? 'dn' : '') + '">' + (eu ? '★' : up ? '▲' : dn ? '▼' : '') + '</td><td class="tn"><span class="rk">' + (k + 1) + '.</span>' + fCrest(x, k, 20) + '<span class="nm">' + esc(x.n) + '</span></td><td>' + x.sp + '</td><td>' + x.s + '-' + x.u + '-' + x.nn + '</td><td>' + x.tf + ':' + x.ta + '</td><td><b>' + x.pk + '</b></td></tr>'; });
+  T.forEach(function (x, k) { var eu = l === 0 && k < nE, up = l === 1 && k < 3, dn = l === 0 && k >= T.length - 3; h += '<tr class="tr' + (x.id < 5000 ? ' me' : '') + '"' + (x.id < 5000 ? ' style="background:rgba(47,99,196,.25)"' : '') + '><td class="z ' + (up || eu ? 'up' : dn ? 'dn' : '') + '">' + (eu ? '★' : up ? '▲' : dn ? '▼' : '') + '</td><td class="tn"><span class="rk">' + (k + 1) + '.</span>' + fCrest(x, k, 20) + '' + heldMark(c, x.n) + '<span class="nm">' + esc(x.n) + '</span></td><td>' + x.sp + '</td><td>' + x.s + '-' + x.u + '-' + x.nn + '</td><td>' + x.tf + ':' + x.ta + '</td><td><b>' + x.pk + '</b></td></tr>'; });
   h += '</tbody></table></div>' + fTies(I.last, 'LETZTER SPIELTAG') + fTies(I.next, 'NÄCHSTER SPIELTAG');
   return h + inf((l === 0 ? '★ ' + EUN() + ' in der nächsten Saison · ▼ Abstiegsplatz' : '▲ Aufstiegsplatz') + '. Blau hinterlegt: spielt in dieser Saison in der ' + EUN() + '. Die Auslandsligen laufen im Takt deiner Liga mit; Ligen mit mehr Spieltagen spielen dafür öfter unter der Woche.', 'Legende');
 }
@@ -4391,7 +4398,7 @@ function vTable() {
   h += '<div class="panel" style="padding:8px"><table><thead><tr><th></th><th>Verein</th><th>Sp</th><th>Tore</th><th>Pkt</th><th>Form</th></tr></thead><tbody>';
   t.forEach(function (x, k) {
     var up = ui.lg > 0 && k < 3, dn = ui.lg < FM.NL(state) - 1 && k >= t.length - 3, eu = ui.lg === 0 && k < ((state.cty || 'de') === 'de' ? 4 : 3), on = ui.sel === x.id + 1;
-    h += '<tr class="tr ' + (x.id === state.uid ? 'me' : '') + '" data-a="sel" data-id="' + (x.id + 1) + '"><td class="z ' + (up || eu ? 'up' : dn ? 'dn' : '') + '">' + (eu ? '★' : up ? '▲' : dn ? '▼' : '') + '</td><td class="tn"><span class="rk">' + (k + 1) + '.</span>' + crest(x.id, 20) + '<span class="nm">' + esc(x.n) + '</span></td><td>' + x.sp + '</td><td>' + x.tf + ':' + x.ta + '</td><td><b>' + x.pk + '</b></td><td>' + fmDots(x.fm) + '</td></tr>';
+    h += '<tr class="tr ' + (x.id === state.uid ? 'me' : '') + '" data-a="sel" data-id="' + (x.id + 1) + '"><td class="z ' + (up || eu ? 'up' : dn ? 'dn' : '') + '">' + (eu ? '★' : up ? '▲' : dn ? '▼' : '') + '</td><td class="tn"><span class="rk">' + (k + 1) + '.</span>' + crest(x.id, 20) + '' + heldMark(state.cty || 'de', x.n) + '<span class="nm">' + esc(x.n) + '</span></td><td>' + x.sp + '</td><td>' + x.tf + ':' + x.ta + '</td><td><b>' + x.pk + '</b></td><td>' + fmDots(x.fm) + '</td></tr>';
     if (on) {
       var I = FM.teamInfo(state, x.id), nx = I.next ? FM.team(state, I.next.o) : null;
       h += '<tr><td colspan="6" style="padding:6px 4px 10px"><div class="panel" style="background:#0a3a3e;text-align:left"><div class="acard">' + crest(x.id, 42) + '<div class="grow"><p class="title">' + esc(x.n) + '</p><p class="hint" style="margin:0">' + I.fo + (I.co ? ' · ' + esc(I.co.n) + ' ' + stars(I.co.sk) : '') + '</p></div>' + ring(I.str / 100, '#ffd84d', I.str, '', 52) + '</div>' + (x.s + x.u + x.nn ? wdl(x.s, x.u, x.nn) : '') + '<div style="margin-top:8px">' + kv('Bester Torschütze', esc(I.top)) + (nx ? kv('Nächstes Spiel', (I.next.h ? 'Heim gegen ' : 'Auswärts bei ') + crest(nx.id, 20) + esc(nx.n)) : '') + '</div>' + (x.id !== state.uid ? '<button class="big sec2 sm" style="margin-top:8px" data-a="toclub" data-val="' + x.id + '">Kader ansehen</button>' : '') + '</div></td></tr>';

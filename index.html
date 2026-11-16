@@ -407,7 +407,7 @@ img.ip{image-rendering:pixelated;border:1px solid #052826;flex-shrink:0;max-widt
 .mtop{position:sticky;top:0;z-index:6;background:var(--bg);margin:-12px -12px 0;padding:12px 12px 8px;display:flex;flex-direction:column;gap:8px;box-shadow:0 6px 0 -2px #052826}
 .stad .wall{position:relative}
 .fin{position:absolute;inset:5px;border:3px solid #0b1622;background:rgba(5,14,20,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:6px 8px;overflow:hidden;animation:finIn .5s steps(6) both}
-.fin[hidden]{display:none}.pkb{position:absolute;left:8px;right:8px;top:8px;z-index:3;background:rgba(5,14,20,.9);border:2px solid #ffd84d;padding:5px 7px;font-size:11px;line-height:1.25;color:#f4efe1}.pkb[hidden]{display:none}.pkb .pt{font-family:var(--px);font-size:8px;color:#ffd84d;letter-spacing:1px;text-align:center;margin:0 0 3px}.pkb .pr{display:grid;grid-template-columns:minmax(0,1fr) auto 18px;gap:6px;align-items:center}.pkb .pr span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700}.pkb .pr b{font-family:var(--px);font-size:11px;color:#ffd84d;text-align:right}.pkb .pm{display:flex;gap:3px}.pkb .pm i{width:9px;height:9px;border-radius:50%;border:1px solid #5d6876;display:block}.pkb .pm i.g{background:#6df09a;border-color:#6df09a}.pkb .pm i.m{background:#ff6a5a;border-color:#ff6a5a}.pkb .pm i.c{border-color:#ffd84d;box-shadow:0 0 0 1px #ffd84d}.pkb .pn{margin:4px 0 0;text-align:center;color:#cfe9e5}
+.fin[hidden]{display:none}.pkb{position:relative;z-index:3;background:#050e14;border:2px solid #ffd84d;padding:8px 9px 7px;margin:0 0 5px;font-size:13px;line-height:1.3;color:#f4efe1}.pkb[hidden]{display:none}.pkb .pt{font-family:var(--px);font-size:9px;color:#ffd84d;letter-spacing:1px;text-align:center;margin:0 0 7px}.pkb .pr{display:grid;grid-template-columns:minmax(0,1fr) auto 26px;gap:8px;align-items:center;padding:3px 0}.pkb .pr span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700}.pkb .pr b{font-family:var(--px);font-size:15px;color:#ffd84d;text-align:right}.pkb .pm{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;max-width:150px}.pkb .pm i{width:14px;height:14px;border-radius:50%;border:2px solid #5d6876;display:block;box-sizing:border-box}.pkb .pm i.g{background:#6df09a;border-color:#6df09a}.pkb .pm i.m{background:#ff6a5a;border-color:#ff6a5a}.pkb .pm i.c{border-color:#ffd84d;box-shadow:0 0 0 2px #ffd84d}.pkb .pn{margin:7px 0 0;padding-top:6px;border-top:1px solid #23303d;text-align:center;color:#cfe9e5;font-size:12.5px;min-height:34px}
 @keyframes finIn{from{opacity:0;transform:scale(1.15)}to{opacity:1;transform:none}}
 .fin p{margin:0}
 .fin .ft{font-family:var(--px);font-size:10px;color:#8fd0ff;letter-spacing:2px}
@@ -3563,7 +3563,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '16.11. 22:05';
+var BUILD = '16.11. 22:11';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -4890,7 +4890,7 @@ function vOptions() {
 }
 function vMatch() {
   var I = ui.match, hn = FM.team(state, I.h).n, an = FM.team(state, I.a).n;
-  return '<div class="mtop"><div class="stad"><div class="crowd"></div><div class="wall">' + adStrip() + '<canvas id="mPitch" width="368" height="224" role="img" aria-label="Spielfeld mit Spielszenen"></canvas><div id="mPk" class="pkb" hidden></div><div id="mFin" class="fin" hidden></div></div><div class="sbd"><div class="tm">' + tm(I.h, 'r') + '<span class="sc" id="mScore">0:0</span>' + tm(I.a, 'l') + '</div><div class="sbr"><span id="mStH"></span><span class="mn" id="mMin">' + (I.fr ? 'Testspiel' : I.cup ? (I.eu ? (I.name.indexOf('Gruppe') === 0 ? '' : EUN() + ' · ') : 'Pokal · ') + I.name : 'Anpfiff') + '</span><span id="mStA"></span></div></div><div class="crowd lo"></div></div><div id="mBtns" class="row"><button class="big sec2 sm" data-a="mpause">Eingreifen</button><button class="big sec2 sm" data-a="speed" id="mSpeed">' + (ui.speed > 1 ? 'Normal' : 'Schneller') + '</button><button class="big sec2 sm" data-a="skip">Abpfiff</button></div><div id="mSh"></div></div><div id="mPanel"></div><div class="ticker" id="mTicker" aria-live="polite"></div>';
+  return '<div class="mtop"><div class="stad"><div class="crowd"></div><div class="wall">' + adStrip() + '<div id="mPk" class="pkb" hidden></div><canvas id="mPitch" width="368" height="224" role="img" aria-label="Spielfeld mit Spielszenen"></canvas><div id="mFin" class="fin" hidden></div></div><div class="sbd"><div class="tm">' + tm(I.h, 'r') + '<span class="sc" id="mScore">0:0</span>' + tm(I.a, 'l') + '</div><div class="sbr"><span id="mStH"></span><span class="mn" id="mMin">' + (I.fr ? 'Testspiel' : I.cup ? (I.eu ? (I.name.indexOf('Gruppe') === 0 ? '' : EUN() + ' · ') : 'Pokal · ') + I.name : 'Anpfiff') + '</span><span id="mStA"></span></div></div><div class="crowd lo"></div></div><div id="mBtns" class="row"><button class="big sec2 sm" data-a="mpause">Eingreifen</button><button class="big sec2 sm" data-a="speed" id="mSpeed">' + (ui.speed > 1 ? 'Normal' : 'Schneller') + '</button><button class="big sec2 sm" data-a="skip">Abpfiff</button></div><div id="mSh"></div></div><div id="mPanel"></div><div class="ticker" id="mTicker" aria-live="polite"></div>';
 }
 function shoutBar() {
   var M = ui.match, el = document.getElementById('mSh'); if (!el) return;
@@ -5708,14 +5708,14 @@ function startMatch() {
     var board = function (cur, msg) {
       if (!pe) return;
       var row = function (hh) { var ks = PK.k.slice(0, pi).filter(function (x) { return x.h === hh; }), sc = ks.filter(function (x) { return x.g; }).length, mk = ks.map(function (x) { return '<i class="' + (x.g ? 'g' : 'm') + '"></i>'; }).join(''); if (cur && cur.h === hh) mk += '<i class="c"></i>'; for (var q = ks.length + (cur && cur.h === hh ? 1 : 0); q < 5; q++) mk += '<i></i>'; return '<div class="pr"><span>' + esc(kn(hh)) + '</span><div class="pm">' + mk + '</div><b>' + sc + '</b></div>'; };
-      pe.innerHTML = '<p class="pt">ELFMETERSCHIESSEN</p>' + row(true) + row(false) + '<p class="pn">' + (cur ? '▶ <b>' + esc(cur.p) + '</b> (' + esc(kn(cur.h)) + ') · Elfmeter ' + cur.e + ' · Chance ' + cur.pr + ' %' : msg || '') + '</p>'; pe.hidden = false;
+      pe.innerHTML = '<p class="pt">ELFMETERSCHIESSEN</p>' + row(true) + row(false) + '<p class="pn">' + (cur ? '▶ <b>' + esc(cur.p) + '</b> (' + esc(kn(cur.h)) + ')<br>Elfmeterwert ' + cur.e + ' · Chance ' + cur.pr + ' %' : msg || '') + '</p>'; pe.hidden = false;
     };
     var kickTick = function (k) { tick('Elfmeterschießen: ' + k.p + ' (' + kn(k.h) + ') ' + (k.g ? 'trifft.' : k.sv ? 'scheitert am Torwart.' : 'schießt vorbei.'), k.g ? 'goal' + (k.h === M.home ? '' : ' opp') : 'info'); };
     var pkEnd = function () { M.pk = false; M.pkSkip = null; S.camSc = null; S.mode = 'idle'; S.wt = null; if (pe) pe.hidden = true; endShow(); };
-    if (fast) { PK.k.forEach(kickTick); return endShow(); }
+    if (fast) return endShow();
     var bb = document.getElementById('mBtns'); if (bb) { bb.style.display = ''; bb.innerHTML = '<button class="big sec2" data-a="pkskip">Elfmeterschießen überspringen</button>'; }
     tick('Unentschieden nach 90 Minuten – es gibt Elfmeterschießen!', 'info');
-    M.pkSkip = function () { PK.k.slice(pi).forEach(kickTick); pi = PK.k.length; pkEnd(); };
+    M.pkSkip = function () { pi = PK.k.length; pkEnd(); };
     var pkNext = function () {
       if (!M.pk) return;
       if (pi >= PK.k.length) return pkEnd();
@@ -5723,7 +5723,7 @@ function startMatch() {
       board(k);
       S.mode = 'cam'; S.cap = null; S.pass = null; S.camSc = mkCam(k.g ? 0 : k.sv ? 1 : 2, kitA, kitD, 'shoot', true, false); S.camSc.mineU = kitA === 0;
       S.camDone = function () {
-        kickTick(k); pi++; var last = pi >= PK.k.length;
+        pi++; var last = pi >= PK.k.length;
         board(null, esc(k.p) + (k.g ? ' trifft!' : k.sv ? ' scheitert am Torwart!' : ' schießt vorbei!') + (last ? '<br><b style="color:#ffd84d">' + esc(FM.team(state, m.w).n) + ' gewinnt ' + PK.hs + ':' + PK.as + '</b>' : ''));
         S.camSc.dur = S.camSc.t + (last ? 2.6 : 0.9); S.camDone = last ? pkEnd : function () { S.camSc = null; pkNext(); };
       };

@@ -2684,6 +2684,7 @@ function exportData(state) {
   var o = ['// Trainerbank Datensatz. Zeilen mit // werden ignoriert.', '// VEREIN: Name | Hauptfarbe | Zweitfarbe   (Farben sind freiwillig, VEREIN*: ist dein Verein)', '// TRIKOT: #hemd | #hose | #auswärts   (freiwillig, direkt unter der VEREIN-Zeile)', '// Spieler: POSITION Name Alter Stärke LAND Marktwert   (TW, AB, MF, ST · alles nach dem Namen ist freiwillig · Stärke ? = vergibt das Spiel · Land als Kürzel wie GER, ENG, FRA · Marktwert in Euro als Richtwert für den Preis)', ''];
   if (state.cty) o.push('LAND: ' + cfg(state).n, '');
   if (state.eun) o.push('EUROPA: ' + state.eun, '');
+  if (state.cupn) o.push('POKAL: ' + state.cupn, '');
   for (var lg = 0; lg < NL(state); lg++) {
     o.push('LIGA ' + (lg + 1) + (state.lgn && state.lgn[lg] ? ': ' + state.lgn[lg] : ''));
     state.teams.filter(function (t) { return t.lg === lg; }).sort(function (a, b) { return a.id - b.id; }).forEach(function (t) {
@@ -2701,6 +2702,7 @@ function parseData(txt) {
     var l = raw.trim(); if (!l || l.indexOf('//') === 0) return;
     var m = /^LAND\s*:\s*(.+)$/i.exec(l); if (m) { var cn = m[1].trim().toLowerCase(); Object.keys(CTY).forEach(function (k) { if (k === cn || CTY[k].n.toLowerCase() === cn) D.cty = k; }); if (!D.cty) D.err.push('Zeile ' + (ln + 1) + ': Das Land „' + m[1].trim() + '“ kenne ich nicht.'); return; }
     m = /^EUROPA\s*:\s*(.+)$/i.exec(l); if (m) { D.eun = m[1].trim().slice(0, 24); return; }
+    m = /^POKAL\s*:\s*(.+)$/i.exec(l); if (m) { D.cupn = m[1].trim().slice(0, 24); return; }
     m = /^LIGA\s*([123])\s*(?::\s*(.+))?$/i.exec(l); if (m) { lg = +m[1] - 1; cur = null; if (lg >= CTY[D.cty || 'de'].size.length) { D.err.push('Zeile ' + (ln + 1) + ': ' + CTY[D.cty || 'de'].n + ' hat nur ' + CTY[D.cty || 'de'].size.length + ' Ligen.'); lg = -1; } else if (m[2]) { D.lgn = D.lgn || []; D.lgn[lg] = m[2].trim().slice(0, 24); } return; }
     m = /^VEREIN(\*?)\s*:\s*(.+)$/i.exec(l);
     if (m) {
@@ -2764,6 +2766,7 @@ function applyData(state, D) {
   if ((D.cty || 'de') !== (state.cty || 'de')) return { err: 'Der Datensatz ist für ' + CTY[D.cty || 'de'].n + ', dein Spielstand läuft in ' + cfg(state).n + '. Bitte ein neues Spiel mit diesem Datensatz starten.' };
   if (D.lgn) state.lgn = D.lgn.slice();
   if (D.eun) state.eun = D.eun;
+  if (D.cupn) state.cupn = D.cupn; else delete state.cupn;
   for (var lg = 0; lg < NL(state); lg++) {
     var list = D.lg[lg].slice(); if (!list.length) continue;
     var tg = state.teams.filter(function (t) { return t.lg === lg; }).sort(function (a, b) { return a.id - b.id; }), si = -1;
@@ -3331,7 +3334,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '16.11. 08:26';
+var BUILD = '16.11. 08:29';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -3482,7 +3485,7 @@ function calCard(d) {
   for (var z = (off + days) % 7; z > 0 && z < 7; z++) g += '<span class="x"></span>';
   g += '</div>';
   var nx = EV.filter(function (e) { return e.t > d.t && !e.done; }).sort(function (a, b) { return a.t - b.t; })[0], nxT = '';
-  if (nx) { var xd = new Date(nx.t); nxT = (nx.k === 'liga' ? (nx.r + 1) + '. Spieltag' : nx.k === 'pokal' ? 'Pokal' : EUN()) + (nx.k === 'liga' && nx.home !== null ? (nx.home ? ' · Heim' : ' · Auswärts') : '') + ' · ' + WDK[xd.getUTCDay()] + ' ' + xd.getUTCDate() + '. ' + MS[xd.getUTCMonth()]; }
+  if (nx) { var xd = new Date(nx.t); nxT = (nx.k === 'liga' ? (nx.r + 1) + '. Spieltag' : nx.k === 'pokal' ? CUPN() : EUN()) + (nx.k === 'liga' && nx.home !== null ? (nx.home ? ' · Heim' : ' · Auswärts') : '') + ' · ' + WDK[xd.getUTCDay()] + ' ' + xd.getUTCDate() + '. ' + MS[xd.getUTCMonth()]; }
   return '<div class="calc"><div class="calh"><div class="cals"><b>' + d.wd.slice(0, 2).toUpperCase() + '</b><strong>' + d.d + '</strong><small>' + MS[d.m] + ' ' + d.y + '</small></div><div class="cali"><p class="calw">' + d.wd + ', ' + d.d + '. ' + d.mon + ' ' + d.y + '</p><p class="calp"><span>' + what + '</span>' + (FM.winOpen(state) ? '<span class="g">Transferfenster offen</span>' : '') + '</p>' + (nxT ? '<p class="caln"><small>NÄCHSTER TERMIN</small>' + nxT + '</p>' : '') + '</div></div><p class="calm">' + d.mon.toUpperCase() + ' ' + d.y + '</p>' + g + '<p class="call"><span><u class="now"></u>Heute</span><span><u class="home"></u>Heimspiel</span><span><u class="away"></u>Auswärts</span><span><u class="pokal"></u>Pokal</span><span><u class="eu"></u>' + EUN() + '</span></p></div>';
 }
 function vMenu() {
@@ -3494,7 +3497,7 @@ function vMenu() {
   var opp = ct ? FM.team(state, ct.home ? ct.a : ct.h) : nm ? FM.team(state, nm.home ? nm.a : nm.h) : null, home = ct ? ct.home : nm ? nm.home : true;
   if (opp) {
     var dS = FM.teamInfo(state, opp.id).str - FM.teamInfo(state, u.id).str + (home ? -2 : 2), dc = dS > 5 ? '#ff9a8f' : dS > -3 ? '#ffd84d' : '#6df09a', hI = home ? u : opp, aI = home ? opp : u;
-    h += '<div class="hero"' + (ct ? ' style="background:#6a4a12;border-bottom-color:#3d2a08"' : '') + '><div class="k">' + (ct ? (isEu ? EUN() : 'Pokal') + ' · ' + ct.name : (!ct && FM.isDerby(state, opp.id) ? '<b style="color:#ffd84d">DERBY</b> · ' : '') + (state.round + 1) + '. Spieltag') + ' · ' + dMt.wd + ', ' + dMt.d + '. ' + dMt.mon + ' ' + dMt.y + ' · ' + (home ? 'Heimspiel' : 'Auswärts') + '</div><div class="sbt"><div>' + crest(hI.id, 46) + '<b>' + esc(hI.n) + '</b></div><div class="vs">VS</div><div>' + crest(aI.id, 46) + '<b>' + esc(aI.n) + '</b></div></div><p class="hint" style="margin:8px 0 0;text-align:center;color:#d6e6ff"><i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:' + dc + ';margin-right:5px"></i>' + (dS > 5 ? 'Schwerer Gegner' : dS > -3 ? 'Ausgeglichen' : 'Machbarer Gegner') + ' · ' + (opp.lg < 9 ? FM.lgName(state, opp.lg) + (opp.lg === u.lg ? ', Platz ' + FM.place(state, opp.id) : '') : 'Ausland') + '</p></div>';
+    h += '<div class="hero"' + (ct ? ' style="background:#6a4a12;border-bottom-color:#3d2a08"' : '') + '><div class="k">' + (ct ? (isEu ? EUN() : CUPN()) + ' · ' + ct.name : (!ct && FM.isDerby(state, opp.id) ? '<b style="color:#ffd84d">DERBY</b> · ' : '') + (state.round + 1) + '. Spieltag') + ' · ' + dMt.wd + ', ' + dMt.d + '. ' + dMt.mon + ' ' + dMt.y + ' · ' + (home ? 'Heimspiel' : 'Auswärts') + '</div><div class="sbt"><div>' + crest(hI.id, 46) + '<b>' + esc(hI.n) + '</b></div><div class="vs">VS</div><div>' + crest(aI.id, 46) + '<b>' + esc(aI.n) + '</b></div></div><p class="hint" style="margin:8px 0 0;text-align:center;color:#d6e6ff"><i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:' + dc + ';margin-right:5px"></i>' + (dS > 5 ? 'Schwerer Gegner' : dS > -3 ? 'Ausgeglichen' : 'Machbarer Gegner') + ' · ' + (opp.lg < 9 ? FM.lgName(state, opp.lg) + (opp.lg === u.lg ? ', Platz ' + FM.place(state, opp.id) : '') : 'Ausland') + '</p></div>';
     h += '<button class="big" style="margin:-4px 0 2px" data-a="kickoff">' + (ct ? (isEu ? EUN() + ': Anpfiff' : 'Pokalspiel starten') : 'Spieltag starten') + '</button>';
   }
   var myF = []; FM.tableX(state, u.lg, 'all').forEach(function (x) { if (x.id === u.id) myF = x.fm; });
@@ -3509,7 +3512,7 @@ function vMenu() {
   h += '<div class="sec"><h2>VEREIN</h2><div class="tiles">' + tile('go', 'finance', 'finanzen', 'Finanzen', '', state.cash < 0 ? '!Minus' : '') + tile('go', 'stadium', 'stadion', 'Stadion', '', state.stad.build ? '~Bau' : '') + tile('go', 'sponsors', 'sponsoren', 'Sponsoren', '', state.sp ? (state.ads.on.length < FM.adSlots(state) && state.ads.off.length ? 'Banden frei' : (state.sp.until === undefined || state.sp.until <= state.season) && state.round >= FM.RN(state) - 4 ? '~endet' : '') : '!offen') + tile('go', 'contracts', 'vertraege', 'Verträge', '', expiring(u) ? (state.round >= FM.RN(state) - 8 ? '!' : '') + expiring(u) + ' enden' : '') + tile('go', 'board', 'vorstand_t', 'Vorstand', '', state.board.conf < 25 ? '!Warnung' : state.jobs.length || (state.fjobs || []).length || state.nto ? 'Angebot' : '') + tile('go', 'youth', 'jugend', 'Jugend', '', yrdy ? yrdy + ' letzte Saison' : '') + '</div></div>';
   h += '<div class="sec"><h2>WETTBEWERB</h2><div class="tiles">' + tile('go', 'table', 'tabelle', 'Tabelle') + tile('go', 'fixtures', 'spielplan', 'Spielplan') + tile('go', 'cup', 'pokal', 'Pokal', '', state.cup.due || state.eu.due ? '!heute' : state.cup.won ? '~Sieger' : '') + tile('go', 'stats', 'statistik', 'Statistik') + '</div></div>';
   var hd = state.hall && state.hall.due;
-  h += '<div class="sec"><h2>WEITERES</h2><div class="tiles">' + tile('go', 'toto', 'toto', 'Toto', '', FM.totoComplete(state) ? '~getippt' : state.round < FM.RN(state) && !state.over ? 'tippen' : '') + (state.hall ? tile('go', 'hall', 'halle', 'Halle', '', hd ? 'offen' : '') : tile('', '', 'halle', 'Halle', 'Winter')) + tile('go', 'fame', 'ruhm', 'Ruhmeshalle') + tile('go', 'private', 'me_tile', 'Privat', '', FM.me(state).cash >= 8000 && !FM.me(state).own.length ? 'Geld da' : '') + '</div></div>';
+  h += '<div class="sec"><h2>WEITERES</h2><div class="tiles">' + tile('go', 'toto', 'toto', 'Tippspiel', '', FM.totoComplete(state) ? '~getippt' : state.round < FM.RN(state) && !state.over ? 'tippen' : '') + (state.hall ? tile('go', 'hall', 'halle', 'Halle', '', hd ? 'offen' : '') : tile('', '', 'halle', 'Halle', 'Winter')) + tile('go', 'fame', 'ruhm', 'Ruhmeshalle') + tile('go', 'private', 'me_tile', 'Privat', '', FM.me(state).cash >= 8000 && !FM.me(state).own.length ? 'Geld da' : '') + '</div></div>';
   if (!opp) h += '<button class="big" data-a="kickoff">' + (ct ? (isEu ? EUN() + ': Anpfiff' : 'Pokalspiel starten') : 'Spieltag starten') + '</button>';
   return h;
 }
@@ -3982,8 +3985,8 @@ function finBars(rows, col) {
 }
 function vFinance() {
   var L = state.led, F = state.fin, u = FM.userTeam(state), tab = ui.fnt, h = sub('Finanzen') + heroPic('hero_finanzen', 'Schreibtisch des Schatzmeisters mit Münzstapeln, Kassenbuch und Tresor', 80);
-  var IN = [['Eintritt', L.tix], ['Logen, Imbiss', L.hosp], ['Trikotsponsor', L.spon], ['Bandenwerbung', L.ads], ['Fanartikel', L.merch], ['Spielerverkäufe', L.trIn], ['Pokal, Halle', L.cup], ['Toto', L.toto], ['Versicherung', L.insIn], ['Zinserträge', L.int]];
-  var OUT = [['Gehälter', L.sal], ['Spielerkäufe', L.trOut], ['Handgelder', L.hand], ['Prämien', L.prem], ['Stadion', L.stad], ['Jugend', L.youth], ['Trainerstab, Scout', L.staff], ['Trainingslager', L.camp], ['Fanshop', L.merchOut], ['Zinsen, Gebühren', L.bank], ['Versicherung', L.ins], ['Investor', L.inv], ['Toto', L.totoOut]];
+  var IN = [['Eintritt', L.tix], ['Logen, Imbiss', L.hosp], ['Trikotsponsor', L.spon], ['Bandenwerbung', L.ads], ['Fanartikel', L.merch], ['Spielerverkäufe', L.trIn], ['Pokal, Halle', L.cup], ['Tippspiel', L.toto], ['Versicherung', L.insIn], ['Zinserträge', L.int]];
+  var OUT = [['Gehälter', L.sal], ['Spielerkäufe', L.trOut], ['Handgelder', L.hand], ['Prämien', L.prem], ['Stadion', L.stad], ['Jugend', L.youth], ['Trainerstab, Scout', L.staff], ['Trainingslager', L.camp], ['Fanshop', L.merchOut], ['Zinsen, Gebühren', L.bank], ['Versicherung', L.ins], ['Investor', L.inv], ['Tippspiel', L.totoOut]];
   var inc = 0, exp = 0; IN.forEach(function (r) { inc += r[1]; }); OUT.forEach(function (r) { exp += r[1]; });
   h += '';
   h += '<div class="panel"><div class="rings">' + ring(1, state.cash < 0 ? '#ff9a8f' : '#6df09a', tk(state.cash), 'Kasse') + ring(state.loan / Math.max(1, FM.loanMax(state)), state.loan > 0 ? '#ff9a8f' : '#5fb7c9', tk(state.loan), 'Kredit') + ring(FM.depSum(state) > 0 ? 1 : 0, '#ffd84d', tk(FM.depSum(state)), 'Festgeld') + '</div></div>';
@@ -4356,6 +4359,7 @@ function updManual() {
   try { fetch('version.json?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { if (j && j.b && j.b !== BUILD) { NEWV = j.b; ui.updw = false; persist(); location.replace(location.pathname + '?v=' + Date.now()); } else done(j ? 'Du hast die aktuelle Version (Stand ' + BUILD + ').' : 'Die Prüfung ist hier nicht möglich.'); }).catch(function () { done('Keine Verbindung. Bitte später noch einmal versuchen.'); }); } catch (e) { done('Die Prüfung ist hier nicht möglich.'); }
 }
 function updCheck() { try { if (INAPP || !/^https?:/.test(location.protocol)) return; fetch('version.json?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { if (j && j.b && j.b !== BUILD) { NEWV = j.b; if (ui.view === 'start' || ui.view === 'menu') render(); } }).catch(function () { }); } catch (e) { } }
+function CUPN() { var st = state || (saved ? saved.state : null); return (st && st.cupn) || 'Pokal'; }
 function EUN() { return FM.euName(state || (saved ? saved.state : null)); }
 var EUFL = { de: 'GER', en: 'ENG', es: 'ESP', fr: 'FRA', it: 'ITA' };
 function euGrpHtml(T, gi) {
@@ -4369,7 +4373,7 @@ function tieRow(x, pen) {
   return '<div class="res' + (me ? ' me' : '') + '">' + tm(x[0], 'r') + '<span class="sc">' + (x.length > 2 ? x[2] + ':' + x[3] + (x[5] ? '*' : '') : '–') + '</span>' + tm(x[1], 'l') + '</div>';
 }
 function vCup() {
-  var eu = ui.cupt === 'eu', c = eu ? state.eu : state.cup, h = sub('Pokal') + tabBar('cupt', [['cup', 'Pokal'], ['eu', EUN()]], ui.cupt), ct = eu ? FM.euTie(state) : FM.cupTie(state);
+  var eu = ui.cupt === 'eu', c = eu ? state.eu : state.cup, h = sub('Pokal') + tabBar('cupt', [['cup', CUPN()], ['eu', EUN()]], ui.cupt), ct = eu ? FM.euTie(state) : FM.cupTie(state);
   var NM = eu ? FM.EUNAME : FM.CUPNAME, PZ = eu ? FM.EUPRIZE : FM.CUPPRIZE, last = eu ? 8 : 5, inEu = state.euq.indexOf(state.uid) >= 0;
   var status = eu && c.off ? 'In dieser Saison ausgesetzt' : c.won ? (eu ? EUN() + '-Sieger!' : 'Pokalsieger!') : eu && !inEu ? 'Nicht qualifiziert' : c.out ? 'Ausgeschieden' : c.r > last ? 'Beendet' : ct ? 'Im Wettbewerb' : 'Freilos in der 1. Runde';
 
@@ -4405,7 +4409,7 @@ function vCup() {
   return h;
 }
 function vToto() {
-  var ms = FM.totoMatches(state), T = state.toto && state.toto.r === state.round ? state.toto : null, tips = T ? T.tips : [], x = (T && T.x) || 1, h = sub('Toto');
+  var ms = FM.totoMatches(state), T = state.toto && state.toto.r === state.round ? state.toto : null, tips = T ? T.tips : [], x = (T && T.x) || 1, h = sub('Tippspiel');
   var nt = 0; ms.forEach(function (m, k) { if (tips[k] === 0 || tips[k] === 1 || tips[k] === 2) nt++; });
   h += '<div class="panel"><p class="lbl">EINSATZ</p>' + tiles('totox', [1, 2, 5].map(function (m, i) { return [m, money(FM.TOTOSTAKE * m), 'f_p' + (i + 1), sm('8 Richtige: ' + tk(FM.TOTOWIN[8] * m), 0) + sm('7: ' + tk(FM.TOTOWIN[7] * m) + ' · 6: ' + tk(FM.TOTOWIN[6] * m))]; }), x, 'pk3') + '<div style="margin-top:10px;text-align:center">' + pips(nt, ms.length, '#ffd84d') + '<div class="hint" style="margin-top:4px">' + (FM.totoComplete(state) ? 'Schein vollständig' : nt + ' von ' + ms.length + ' getippt') + '</div></div><button class="big sec2 sm" style="margin-top:8px" data-a="totoauto">Favoriten tippen</button>' + inf('Tippe die acht anderen Spiele deiner Liga am ' + (state.round + 1) + '. Spieltag: 1 = Heimsieg, 0 = Unentschieden, 2 = Auswärtssieg. Der Schein gilt nur vollständig ausgefüllt. Im Schnitt holt die Lotterie mehr, als sie auszahlt. Acht Richtige sind selten – ein höherer Einsatz vervielfacht Gewinn und Verlust gleichermaßen.') + '</div>';
   h += '<div class="list">';
@@ -5375,7 +5379,7 @@ function scoreCard(hId, aId, hg, ag, extra) {
 function vCupResults() {
   var R = ui.match.res, m = R.match, mine = null;
   R.ties.forEach(function (x) { if (x[0] === state.uid || x[1] === state.uid) mine = x; });
-  var h = '<div class="hdr"><div class="title grow">' + (R.tour ? TNM() : R.eu ? EUN() : 'Pokal') + ' · ' + R.name + '</div></div>';
+  var h = '<div class="hdr"><div class="title grow">' + (R.tour ? TNM() : R.eu ? EUN() : CUPN()) + ' · ' + R.name + '</div></div>';
   if (R.tour) {
     if (mine && mine.length > 3) h += scoreCard(mine[0], mine[1], mine[2], mine[3], (R.grp ? (R.won ? 'SIEG' : R.draw ? 'UNENTSCHIEDEN' : 'NIEDERLAGE') + (R.grpEnd ? '<br>' + (R.grpOk ? 'VIERTELFINALE ERREICHT' : 'IN DER GRUPPE AUSGESCHIEDEN') : '') : R.won ? (R.final ? 'TITEL GEWONNEN!' : 'WEITER') : 'AUSGESCHIEDEN') + (m.pen ? ' · NACH ELFMETERSCHIESSEN' : ''));
     h += '<button class="big" data-a="tournext">Weiter</button>' + cupPaper(R, m) + absentHtml() + '<p class="lbl" style="margin:0">ALLE SPIELE DER RUNDE</p><div class="list">';
@@ -5669,7 +5673,7 @@ function paper(R, mine, u) {
   if (R.cupNote) items.push(['Pokal', R.cupNote]);
   if (R.euNote) items.push([EUN(), R.euNote]);
   (R.world || []).forEach(function (x) { items.push(['Aus der Liga', x]); });
-  if (R.toto) items.push(['Toto', R.toto.hits + ' Richtige – ' + (R.toto.win ? 'Gewinn ' + money(R.toto.win) + '.' : 'kein Gewinn.')]);
+  if (R.toto) items.push(['Tippspiel', R.toto.hits + ' Richtige – ' + (R.toto.win ? 'Gewinn ' + money(R.toto.win) + '.' : 'kein Gewinn.')]);
   if (R.derby) items.push(['Derby', R.derby.w > 0 ? 'Die Stadt gehört uns: ' + R.derby.gf + ':' + R.derby.ga + ' gegen ' + R.derby.n + '. Moral und Vertrauen steigen.' : R.derby.w < 0 ? R.derby.gf + ':' + R.derby.ga + ' gegen ' + R.derby.n + ' – das tut weh. Moral und Vertrauen sinken.' : 'Keinen Sieger gibt es beim ' + R.derby.gf + ':' + R.derby.ga + ' gegen ' + R.derby.n + '.']);
   if (R.press) items.push(['Presse', R.press]);
   if (R.hallNote) items.push(['Winterpause', 'Einladung zum Hallenturnier liegt im Büro, dazu das Angebot für ein Trainingslager.']);
@@ -5683,7 +5687,7 @@ function seasonPaper(s, u, sl) {
   var lead = t + ' beendet die Saison ' + sl + ' auf Platz ' + s.place + ' der ' + L + (s.pts !== undefined ? ' mit ' + s.pts + ' Punkten' : '') + '. ' + (champ ? 'Dahinter landet ' + s.second + '.' : 'Meister der ' + L1 + ' wird ' + s.champion + (s.second ? ' vor ' + s.second : '') + '.');
   if (coachN()) lead += champ ? ' Trainer ' + coachN() + ' führt die Mannschaft zum Titel.' : s.move === 'auf' ? ' Trainer ' + coachN() + ' gilt als Vater des Aufstiegs.' : s.move === 'ab' ? ' Trainer ' + coachN() + ' konnte den Absturz nicht verhindern.' : '';
   var it = [];
-  if (s.top && s.top.length) it.push(['Torjägerkanone', s.top[0].n + ' (' + s.top[0].t + ') trifft ' + s.top[0].g + '-mal und ist bester Schütze der ' + L + '.' + (s.top[1] ? ' Dahinter: ' + s.top[1].n + ' (' + s.top[1].g + ').' : '')]);
+  if (s.top && s.top.length) it.push(['Torschützenkönig', s.top[0].n + ' (' + s.top[0].t + ') trifft ' + s.top[0].g + '-mal und ist bester Schütze der ' + L + '.' + (s.top[1] ? ' Dahinter: ' + s.top[1].n + ' (' + s.top[1].g + ').' : '')]);
   if (s.board) it.push(['Vorstand', s.board.sacked ? 'Der Vorstand trennt sich nach dieser Saison von ' + (coachN() ? 'Trainer ' + coachN() : 'seinem Trainer') + '.' : s.board.ok ? (coachN() ? 'Trainer ' + coachN() + ' hat das Saisonziel erreicht.' : 'Das Saisonziel ist erreicht.') + (s.boardBonus ? ' Der Vorstand überweist eine Zielprämie von ' + money(s.boardBonus) + '.' : '') : 'Das Saisonziel wurde verfehlt. Die Führungsetage erwartet eine Reaktion.']);
   if (s.up.length) it.push(['Aufsteiger', s.up.join(', ') + '.']);
   if (s.down.length) it.push(['Absteiger', s.down.join(', ') + '.']);

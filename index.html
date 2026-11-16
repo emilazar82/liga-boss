@@ -3038,7 +3038,8 @@ function liveStart(state, type, hId, aId) {
   if (u.vbU) { delete u.vb; delete u.vbU; } else if (u.vb) u.vbU = 1;
   var wm = 6, wr = Math.random(); try { wm = dateOf(state).m; } catch (eW) { }
   var wx0 = wm === 11 || wm <= 1 ? (wr < 0.28 ? 2 : wr < 0.52 ? 1 : 0) : (wm >= 5 && wm <= 7 ? (wr < 0.12 ? 1 : 0) : (wr < 0.24 ? 1 : 0));
-  var L = state.live = { wx: wx0, type: type, h: hId, a: aId, home: hId === u.id, seg: 0, hg: 0, ag: 0, ev: [], subs: {}, yc: {}, off: [], nb: {}, start: u.lu.slice(), pl: {}, need: null, r: type === 'cup' ? state.cup.r : state.round };
+  var heat0 = 0; if (wx0 === 2 && hId === u.id && state.stad && sl(state.stad, 'heat') > 0) { wx0 = 0; heat0 = 1; }
+  var L = state.live = { wx: wx0, heat: heat0, type: type, h: hId, a: aId, home: hId === u.id, seg: 0, hg: 0, ag: 0, ev: [], subs: {}, yc: {}, off: [], nb: {}, start: u.lu.slice(), pl: {}, need: null, r: type === 'cup' ? state.cup.r : state.round };
   L.subs[hId] = 3; L.subs[aId] = 3; L.pl[hId] = h.lu.slice(); L.pl[aId] = a.lu.slice();
   return L;
 }
@@ -3062,7 +3063,7 @@ function liveSub(state, outId, inId) {
 function liveDisc(state, L, t, isHome, m0, ev, auto) {
   var u = state.teams[state.uid], k = [0.6, 1, 1.6][t.ei] * (t.id === u.id && L._hard ? L._hard : 1), p, m;
   function off(q, kind, mm) { var i = t.lu.indexOf(q.i); if (i >= 0) t.lu.splice(i, 1); L.off.push({ t: t.id, id: q.i }); L.nb[q.i] = (L.nb[q.i] || 0) + (kind === 'r' ? 2 : 1); ev.push({ m: mm, h: isHome, k: kind, p: q.n, id: q.i }); }
-  if (Math.random() < 0.26 * k && (p = fieldPick(t))) {
+  if (Math.random() < 0.26 * k * (L.wx === 1 ? 1.15 : 1) && (p = fieldPick(t))) {
     if (L.yc[p.i] && Math.random() < 0.75) p = fieldPick(t);
     m = m0 + rnd(1, 15); L.yc[p.i] = (L.yc[p.i] || 0) + 1;
     if (L.yc[p.i] >= 2) off(p, 'yr', m);
@@ -3070,7 +3071,7 @@ function liveDisc(state, L, t, isHome, m0, ev, auto) {
   }
   if (Math.random() < 0.005 * k && (p = fieldPick(t))) off(p, 'r', m0 + rnd(1, 15));
   if (Math.random() < 0.003 * k) { var nbd = t.lu.map(function (id) { return findP(t, id); }).filter(function (q) { return q && q.p === 1; }); p = nbd[Math.floor(Math.random() * nbd.length)]; if (p) { off(p, 'r', m0 + rnd(1, 15)); ev[ev.length - 1].nb = 1; } }
-  if (Math.random() < 0.03 * [0.8, 1, 1.4][t.ei] && t.lu.length) {
+  if (Math.random() < 0.03 * [0.8, 1, 1.4][t.ei] * [1, 1.25, 1.5][L.wx | 0] && t.lu.length) {
     p = injPick(t); m = m0 + rnd(1, 15); p.inj = injWeeks(); p.injNew = true; t.lu.splice(t.lu.indexOf(p.i), 1);
     var e = { m: m, h: isHome, k: 'inj', p: p.n, id: p.i, w: p.inj }; ev.push(e);
     if (L.subs[t.id] > 0) {
@@ -3099,7 +3100,7 @@ function liveNext(state, auto) {
   if (SH) { var w = SH.w || 1, k = SH.k; mo = { id: u.id }; if (k === 0) { mo.att = 1 + 0.08 * w; mo.def = 1 - 0.05 * w; } else if (k === 1) { mo.def = 1 + 0.06 * w; mo.att = 1 - 0.06 * w; } else if (k === 2) { mo.mid = 1 + 0.06 * w; mo.def = 1 + 0.02 * w; } else if (k === 3) { mo.att = 1.18; mo.def = 0.82; } else if (k === 4) { mo.n = 0.7; mo.att = 0.92; } L._hard = k === 2 ? 1.7 : k === 4 ? 1.5 : 1; }
   simSeg(h, a, m0, L.type === 'cup', L.dis === L.seg ? u.id : -1, L.talk && L.seg >= 3 ? { id: u.id, f: L.talk.f } : null, mo, L.wx | 0).forEach(function (e) { if (e.g) { if (e.h) L.hg++; else L.ag++; } ev.push(e); });
   liveDisc(state, L, h, true, m0, ev, auto); liveDisc(state, L, a, false, m0, ev, auto); delete L._hard;
-  [h, a].forEach(function (t) { var loss = [9, 12, 16][t.ei] / 6 * fatMul(t); t.lu.forEach(function (id) { var p = findP(t, id); if (p) p.t = Math.max(30, p.t - (p.p === 0 ? loss / 2 : loss) * (1.25 - 0.005 * p.at[6])); }); });
+  [h, a].forEach(function (t) { var loss = [9, 12, 16][t.ei] / 6 * fatMul(t) * [1, 1.1, 1.2][L.wx | 0]; t.lu.forEach(function (id) { var p = findP(t, id); if (p) p.t = Math.max(30, p.t - (p.p === 0 ? loss / 2 : loss) * (1.25 - 0.005 * p.at[6])); }); });
   ev.sort(function (x, y) { return x.m - y.m; }); L.ev = L.ev.concat(ev); L.seg++;
   return { events: ev, done: L.seg >= 6 };
 }
@@ -3556,7 +3557,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '16.11. 21:29';
+var BUILD = '16.11. 21:56';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -4369,7 +4370,7 @@ function stadPic(st, fill) {
   if (st.light) [[px - t - 2, py - t - 2], [px + pw + t + 2, py - t - 2], [px - t - 2, py + ph + t + 2], [px + pw + t + 2, py + ph + t + 2]].forEach(function (q) { s += '<circle cx="' + q[0] + '" cy="' + q[1] + '" r="9" fill="rgba(255,240,160,.25)"/><circle cx="' + q[0] + '" cy="' + q[1] + '" r="4.5" fill="#fff0a0" stroke="#0b1622" stroke-width="1.5"/>'; });
   return s + '</svg>';
 }
-var EXN = { seats: ['Sitzplätze', 'Jede Stufe hebt die Einnahme pro Tageskarte um 8 %.'], roof: ['Überdachung', 'Jede Stufe bringt 4 % mehr Zuschauer und lässt die Fanbasis etwas schneller wachsen.'], light: ['Flutlicht', '5 % mehr Zuschauer und zwei zusätzliche Werbebanden.'], board: ['Anzeigetafel', '2 % mehr Zuschauer und eine zusätzliche Werbebande.'], heat: ['Rasenheizung', 'Ohne sie kommen im Winter (15. bis 22. Spieltag) 15 % weniger Zuschauer.'], vip: ['VIP-Logen', 'Jede Stufe bringt feste Einnahmen pro Heimspiel, mehr bei gutem Tabellenplatz. Kostet je Stufe 200 normale Plätze.'], cat: ['Imbiss und Getränke', 'Bringt 0,80 DM pro Zuschauer, auf Stufe 2 das Doppelte.'], park: ['Parkplätze und Bus', 'Jede Stufe bringt 5 % mehr Zuschauer.'] };
+var EXN = { seats: ['Sitzplätze', 'Jede Stufe hebt die Einnahme pro Tageskarte um 8 %.'], roof: ['Überdachung', 'Jede Stufe bringt 4 % mehr Zuschauer und lässt die Fanbasis etwas schneller wachsen.'], light: ['Flutlicht', '5 % mehr Zuschauer und zwei zusätzliche Werbebanden.'], board: ['Anzeigetafel', '2 % mehr Zuschauer und eine zusätzliche Werbebande.'], heat: ['Rasenheizung', 'Ohne sie kommen im Winter (15. bis 22. Spieltag) 15 % weniger Zuschauer. Bei Heimspielen im Schnee hält sie den Platz frei: keine Schnee-Nachteile, kein erhöhtes Verletzungsrisiko.'], vip: ['VIP-Logen', 'Jede Stufe bringt feste Einnahmen pro Heimspiel, mehr bei gutem Tabellenplatz. Kostet je Stufe 200 normale Plätze.'], cat: ['Imbiss und Getränke', 'Bringt 0,80 DM pro Zuschauer, auf Stufe 2 das Doppelte.'], park: ['Parkplätze und Bus', 'Jede Stufe bringt 5 % mehr Zuschauer.'] };
 function vStadium() {
   var st = state.stad, u = FM.userTeam(state), h = sub('Stadion'), f = ui.match && ui.match.res ? ui.match.res.fin : null, tab = ui.stt, E = FM.attExpect(state), ce = FM.capEff(state);
   h += stadMap(st, f && f.att ? f.att / ce : E ? E.att / ce : 0.4, tab === 'bau' ? (ui.sblk == null ? 1 : ui.sblk) : -1);
@@ -4400,7 +4401,7 @@ function vStadium() {
       h += tiles('build', opts, -9, opts.length === 3 ? 'pk3' : 'pk2') + inf('Das Stadion hat acht Blöcke: vier Ecken mit je 8.000, zwei Längsseiten mit je 12.000 und zwei Kurven mit je 10.000 Plätzen, zusammen höchstens 76.000. Es kann immer nur an einem Block gebaut werden. Sobald ein Block Plätze hat, steht seine Tribüne im Bild. Sitzplätze und Dach kommen zuerst auf die Längsseiten, dann auf die Kurven, zuletzt auf die Ecken.');
       h += '</div>';
     }
-    var EXS = { vip: 'feste Einnahmen je Heimspiel', cat: '+0,80 DM je Zuschauer und Stufe', seats: '+8 % je Tageskarte', roof: '+4 % Zuschauer', light: '+5 % Zuschauer · +2 Banden', board: '+2 % Zuschauer · +1 Bande', heat: 'volle Ränge im Winter', park: '+5 % Zuschauer' }, allInf = '';
+    var EXS = { vip: 'feste Einnahmen je Heimspiel', cat: '+0,80 DM je Zuschauer und Stufe', seats: '+8 % je Tageskarte', roof: '+4 % Zuschauer', light: '+5 % Zuschauer · +2 Banden', board: '+2 % Zuschauer · +1 Bande', heat: 'volle Ränge im Winter · kein Schnee auf dem Platz', park: '+5 % Zuschauer' }, allInf = '';
     h += '<p class="lbl" style="margin:0">EINRICHTUNGEN</p><div class="xcards">';
     ['vip', 'cat', 'seats', 'roof', 'light', 'board', 'heat', 'park'].forEach(function (k) {
       var lv = +st[k] || 0, mx = FM.EXT[k].length, c = FM.extraCost(state, k);
@@ -5615,7 +5616,7 @@ function startMatch() {
   if (!fast && M.sim && !state.live.seg) { M.sim.onKick = function () { SND.whistle(1); }; simIntro(M.sim); } else SND.whistle(1);
   var S = M.sim;
   tick('Anpfiff! ' + hn + ' gegen ' + an + '.', 'info');
-  if (state.live && state.live.wx === 1) tick('Es regnet in Strömen. Kurzes Passspiel wird auf dem nassen Rasen schwer.', 'info'); else if (state.live && state.live.wx === 2) tick('Schneetreiben! Es gibt weniger Chancen, und schnelles Spiel leidet.', 'info');
+  if (state.live && state.live.wx === 1) tick('Es regnet in Strömen. Kurzes Passspiel wird schwer, der Boden kostet Kraft, und das Verletzungsrisiko steigt.', 'info'); else if (state.live && state.live.wx === 2) tick('Schneetreiben! Weniger Chancen, schnelles Spiel leidet, und der tiefe Boden kostet Kraft – das Verletzungsrisiko ist deutlich höher.', 'info'); else if (state.live && state.live.heat) tick('Draußen schneit es, aber die Rasenheizung hält den Platz frei.', 'info');
   if (coachN()) tick('Trainer ' + coachN() + ' steht an der Seitenlinie und gibt letzte Anweisungen.', 'info');
   try { FM.exList(state, M.h, M.a).slice(0, 3).forEach(function (x) { tick(x.n + ' (' + x.t + ') trifft heute auf seinen alten Verein und ist besonders motiviert.', 'info'); }); } catch (eX) { }
   function apply(e) {

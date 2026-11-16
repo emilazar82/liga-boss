@@ -537,7 +537,7 @@ td.tn{white-space:nowrap}td.tn .rk{display:inline-block;width:24px;text-align:ri
 .res.tot span{white-space:normal;overflow:visible;text-overflow:clip;font-size:13px;line-height:1.2}.res.tot i{white-space:nowrap}
 .pl .nm.two{white-space:normal;padding:4px 0;line-height:1.25}.pl .nm.two .nn{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pl .nm.two .tg{display:block;white-space:nowrap;margin-top:2px}.pl .nm.two .tg .st{margin-left:0;margin-right:3px}
 .toast{left:5%!important;right:5%!important;transform:none!important;max-width:none!important;width:auto;line-height:1.35;pointer-events:none;opacity:.96}
-@media (max-width:350px){.plh{display:grid;grid-template-columns:30px minmax(0,1fr) 22px 28px 20px 34px!important;gap:4px;padding:0 5px!important;font-size:10px!important}.tfx{margin-left:0!important;margin-right:0!important}#app{padding:6px!important;gap:8px}.tsplit{grid-template-columns:minmax(0,1fr)!important}.tsplit .col:first-child{display:none}.pl{grid-template-columns:30px minmax(0,1fr) 22px 28px 20px 34px!important;font-size:13px!important;padding:0 5px!important}.pl .pos{font-size:10px}table{font-size:12px!important}td,th{padding-left:2px!important;padding-right:2px!important}.fmd i{width:5px!important;height:6px}.panel{padding-left:8px!important;padding-right:8px!important}.tabs button,.tbar2 button,.chips button,.chip{font-size:12px!important;padding-left:5px!important;padding-right:5px!important}.trr{grid-template-columns:32px minmax(0,1fr) 22px 26px 56px!important;font-size:13px!important}.mkr{font-size:13px!important}.big{font-size:11px}}
+@media (max-width:350px){.plh{display:grid;grid-template-columns:30px minmax(0,1fr) 22px 28px 20px 34px!important;gap:4px;padding:0 5px!important;font-size:10px!important}.tfx{margin-left:0!important;margin-right:0!important}#app{padding:6px!important;gap:8px}.tsplit{grid-template-columns:minmax(0,1fr)!important}.tsplit .col:first-child{display:none}.pl{grid-template-columns:30px minmax(0,1fr) 22px 28px 20px 34px!important;font-size:13px!important;padding:0 5px!important}.pl .pos{font-size:10px}table{font-size:12px!important}td,th{padding-left:2px!important;padding-right:2px!important}.fmd i{width:5px!important;height:6px}.panel{padding-left:8px!important;padding-right:8px!important}.tabs button,.tbar2 button,.chips button,.chip{font-size:12px!important;padding-left:5px!important;padding-right:5px!important}.trr:not([style]),.trh:not([style]){grid-template-columns:32px minmax(0,1fr) 22px 26px 56px!important}.trr{font-size:13px!important}.trr[style*="62px 58px"],.trh[style*="62px 58px"]{grid-template-columns:30px minmax(0,1fr) 24px 50px 48px!important;padding-left:4px!important;padding-right:4px!important;font-size:12px!important}.pick{grid-template-columns:repeat(2,minmax(0,1fr))!important}.tabs button{font-size:11px!important;padding:2px 1px!important;overflow-wrap:anywhere}.mkr{font-size:13px!important}.big{font-size:11px}}
 </style>
 </head>
 <body>
@@ -991,22 +991,26 @@ function fgnTop(state, noise) {
   if (noise) state.fl = null;
   return q;
 }
+function homeMean(state) { var x = 0, n = 0; state.teams.forEach(function (t) { if (t.lg !== 0 || t.id === state.uid) return; var a = t.pl.map(function (p) { return p.s; }).sort(function (a, b) { return b - a; }).slice(0, 14), v = 0; a.forEach(function (y) { v += y; }); if (a.length) { x += v / a.length; n++; } }); return n ? x / n : 0; }
 function fgnAge(state) {
+  var hm = homeMean(state), drift = state.hmp && hm ? clamp(hm - state.hmp, -1, 1.5) : 0; if (hm) state.hmp = hm;
+  function dr() { var f = Math.floor(drift), r = drift - f; return f + (Math.random() < r ? 1 : 0); }
   var yrs = state.season - (state.fg0 || state.season), FOR = ['FRA', 'BRA', 'ARG', 'POR', 'NED', 'SEN', 'MAR', 'CRO', 'SRB', 'POL', 'DEN', 'NGA', 'JPN', 'USA', 'BEL', 'AUT', 'SUI'];
   Object.keys(state.fgn || {}).forEach(function (c) {
     usePools(c); var home = CTYNAT[c];
     state.fgn[c].forEach(function (o) {
-      if (!o.ps) return;
+      if (!o.ps) { if (drift && o.st) { o.st = Math.round((o.st + drift) * 10) / 10; o.s0 = o.st; } return; }
       var P = [], cnt = [0, 0, 0, 0];
       o.ps.forEach(function (x) {
         var f = x.split('|'), pos = +f[0], age = +f[2] + yrs, str = +f[3], ta = f[5] ? +f[5] : rnd(2, 4);
         if (age > 31) str -= Math.min(yrs, age - 31); else if (age <= 24) str += Math.min(yrs, 3);
         age++;
         if (age <= 23) str += clamp(rnd(0, 1) + ta - 2, 0, 4); else if (age <= 29) str += rnd(-1, 1); else if (age <= 32) str -= rnd(0, 2); else str -= rnd(1, 3);
+        str += dr();
         if (age >= 37 || (age >= 34 && Math.random() < 0.35) || str < 30) return;
         P.push([pos, f[1], age, clamp(str, 25, 97), f[4] || '', ta]); cnt[pos]++;
       });
-      var base = Math.round(o.st), nNew = rnd(2, 3), need = [3, 7, 7, 5], k;
+      var base = Math.round(o.st + drift), nNew = rnd(2, 3), need = [3, 7, 7, 5], k;
       function youth(pos) { var ta = Math.random() < 0.12 ? 5 : Math.random() < 0.3 ? 4 : rnd(2, 3); P.push([pos, makePlayer(0, pos, 60).n, rnd(17, 19), clamp(base - rnd(9, 17) + ta, 25, 90), Math.random() < 0.8 && home ? home : pick(FOR), ta]); cnt[pos]++; }
       for (k = 0; k < 4; k++) while (cnt[k] < need[k]) { youth(k); nNew--; }
       while (nNew-- > 0 && P.length < 26) youth(pick([1, 1, 2, 2, 3]));
@@ -1299,11 +1303,14 @@ function meNet(state) {
   var x = state.cash + (state.fin && state.fin.dep ? depSum(state) : 0) - (state.loan || 0); (state.debts || []).forEach(function (d) { x -= d.amt || 0; }); if (state.inv) x -= state.inv.amt || 0; return x;
 }
 function lgBaseVal(lg, kk) { return [25000000, 6000000, 1200000][Math.min(2, lg)] * (0.6 + 0.9 * kk); }
-function lgShift(lg, kk, pl, nn, prog, lowest, rk) {
+function lgShift(lg, kk, pl, nn, prog, lowest, rk, ts) {
   var b = lgBaseVal(lg, kk), w = clamp(prog, 0, 1), tu = !pl ? 0 : pl <= 2 ? 1 : pl === 3 ? 0.75 : pl === 4 ? 0.3 : pl === 5 ? 0.1 : 0, td = !pl || !nn ? 0 : pl > nn - 2 ? 1 : pl === nn - 2 ? 0.75 : pl === nn - 3 ? 0.3 : pl === nn - 4 ? 0.1 : 0;
-  var pu = rk ? [0.75, 0.6, 0.45, 0.25, 0.12][rk - 1] || 0 : 0, pd = rk && nn ? [0.6, 0.45, 0.3, 0.15][nn - rk] || 0 : 0;
+  var pu = rk ? [0.88, 0.68, 0.45, 0.25, 0.12][rk - 1] || 0 : 0, pd = rk && nn ? [0.6, 0.45, 0.3, 0.15][nn - rk] || 0 : 0;
   var up = lg > 0 ? pu * (1 - w) + tu * 0.92 * w : 0, dn = lg < lowest ? pd * (1 - w) + td * 0.92 * w : 0;
-  return b + (lgBaseVal(Math.max(0, lg - 1), 0.1) - b) * up + (lgBaseVal(Math.min(2, lg + 1), 0.9) - b) * dn;
+  var lu = Math.max(0, lg - 1), ld = Math.min(2, lg + 1), ku = ts === undefined ? 0.1 : clamp((ts - [74, 62, 50][lu]) / [16, 10, 10][lu], 0, 1), kd = ts === undefined ? 0.9 : clamp((ts - [74, 62, 50][ld]) / [16, 10, 10][ld], 0, 1);
+  var vu = lgBaseVal(lu, ku), vd = lgBaseVal(ld, kd);
+  if (ts !== undefined) { vu += (lgBaseVal(lg, 0.9) - vu) * clamp(0.6 - 3 * ku, 0, 0.6); vd += (lgBaseVal(lg, 0.1) - vd) * clamp(0.15 + 0.6 * kd, 0, 0.75); }
+  return b + (vu - b) * up + (vd - b) * dn;
 }
 function seasProg(state) { return state.over ? 1 : clamp(state.round / Math.max(1, RN(state)), 0, 1); }
 function clubVal(state, t) {
@@ -1311,7 +1318,7 @@ function clubVal(state, t) {
   var cap = t.id === u.id ? state.stad.cap : Math.round([30000, 15000, 8000][lg] * (1 + 1.5 * kk));
   var tb = t.lg < 7 ? table(state, t.lg) : [], pl = 0; tb.forEach(function (x, i) { if (x.id === t.id) pl = i + 1; });
   var ts = tStr(t), rk = 1; tb.forEach(function (x) { if (x.id !== t.id && tStr(state.teams[x.id]) > ts) rk++; });
-  var played = t.st && (t.st.s + t.st.u + t.st.n) > 0, base = lgShift(lg, kk, played ? pl : 0, tb.length, played ? seasProg(state) : 0, NL(state) - 1, rk);
+  var played = t.st && (t.st.s + t.st.u + t.st.n) > 0, base = lgShift(lg, kk, played ? pl : 0, tb.length, played ? seasProg(state) : 0, NL(state) - 1, rk, ts);
   var v = base + cap * 150 + (t.id === u.id ? clamp(meNet(state) * 0.5, -0.7 * base, 0.5 * base) : -Math.min(0.7 * base, csDebt(state, t) * 0.5));
   return Math.round(Math.max(v, base * 0.3) / 10000) * 10000;
 }
@@ -1404,7 +1411,7 @@ function meSeason(state, sum) {
   } else delete M.red;
   M.c0 = meNet(state); M.put = 0;
 }
-function valGen(lg, str, pl, nn, prog, lowest, rk) { lg = Math.min(2, lg); var kk = clamp((str - [74, 62, 50][lg]) / [16, 10, 10][lg], 0, 1); return Math.round((lgShift(lg, kk, pl || 0, nn || 0, prog || 0, lowest === undefined ? 2 : lowest, rk || 0) + [30000, 15000, 8000][lg] * (1 + 1.5 * kk) * 150) / 10000) * 10000; }
+function valGen(lg, str, pl, nn, prog, lowest, rk) { lg = Math.min(2, lg); var kk = clamp((str - [74, 62, 50][lg]) / [16, 10, 10][lg], 0, 1); return Math.round((lgShift(lg, kk, pl || 0, nn || 0, prog || 0, lowest === undefined ? 2 : lowest, rk || 0, str) + [30000, 15000, 8000][lg] * (1 + 1.5 * kk) * 150) / 10000) * 10000; }
 function invFind(state, k, n) {
   var home = state.cty || 'de', r = null;
   if (k === home) { state.teams.forEach(function (t) { if (!r && t.n === n && t.lg < 7) { var tb = table(state, t.lg), pl = 0; tb.forEach(function (x, i) { if (x.id === t.id) pl = i + 1; }); r = { home: true, t: t, id: t.id, lg: t.lg, str: Math.round(tStr(t)), pl: pl, nn: tb.length, lgn: lgName(state, t.lg), val: clubVal(state, t), sp: t.st ? t.st.s + t.st.u + t.st.n : 0 }; } }); return r; }
@@ -1776,14 +1783,14 @@ function clubMeans(state, u) {
 function csKey(state, n) { return (state.cty || 'de') + '|' + n; }
 function csSave(state) {
   var u = state.teams[state.uid]; if (!u || u.lg >= 7 || !state.stad) return; if (!state.cs) state.cs = {};
-  var st = JSON.parse(JSON.stringify(state.stad)); st.build = null; var kp = 1 - mePct(state) / 100;
-  state.cs[csKey(state, u.n)] = { s: state.season, lg: u.lg, stad: st, yl: state.youth ? state.youth.lvl : 1, staff: state.staff ? JSON.parse(JSON.stringify(state.staff)) : null, loan: Math.round((state.loan || 0) * kp), hole: Math.round(Math.max(0, -(meNet(state) + (state.loan || 0))) * kp), cash: Math.max(0, state.cash) };
+  var st = JSON.parse(JSON.stringify(state.stad)); var kp = 1 - mePct(state) / 100;
+  state.cs[csKey(state, u.n)] = { s: state.season, lg: u.lg, stad: st, yl: state.youth ? state.youth.lvl : 1, staff: state.staff ? JSON.parse(JSON.stringify(state.staff)) : null, loan: Math.round((state.loan || 0) * kp), hole: Math.round(Math.max(0, -(meNet(state) + (state.loan || 0))) * kp), cash: Math.max(0, state.cash + (state.fin && state.fin.dep ? depSum(state) : 0)) };
   var ks = Object.keys(state.cs); if (ks.length > 24) { ks.sort(function (a, b) { return state.cs[a].s - state.cs[b].s; }); delete state.cs[ks[0]]; }
 }
 function csRestore(state) {
   var u = state.teams[state.uid], C = state.cs && state.cs[csKey(state, u.n)]; if (!C) return false;
   var yrs = Math.max(0, state.season - C.s), dec = Math.pow(0.75, yrs), cap0 = state.stad.cap, fans0 = state.stad.fans, price0 = state.stad.price;
-  if (C.stad.cap >= cap0) { state.stad = JSON.parse(JSON.stringify(C.stad)); state.stad.build = null; if (!state.stad.price || (C.lg !== undefined && C.lg !== u.lg)) state.stad.price = price0; if (yrs >= 3 || (C.lg !== undefined && C.lg !== u.lg)) state.stad.fans = fans0; }
+  if (C.stad.cap >= cap0) { state.stad = JSON.parse(JSON.stringify(C.stad)); if (!state.stad.build) state.stad.build = null; if (!state.stad.price || (C.lg !== undefined && C.lg !== u.lg)) state.stad.price = price0; if (yrs >= 3 || (C.lg !== undefined && C.lg !== u.lg)) state.stad.fans = fans0; }
   if (state.youth && C.yl) state.youth.lvl = Math.max(state.youth.lvl || 1, Math.max(1, C.yl - Math.floor(yrs / 3)));
   if (C.staff && yrs < 2) state.staff = JSON.parse(JSON.stringify(C.staff));
   if (yrs === 0 && C.cash < state.cash) state.cash = C.cash;
@@ -2270,7 +2277,7 @@ function makeTeam(id, name, lg, base) {
   t.lu = bestEleven(t);
   return t;
 }
-function eff(p) { return p.s * (0.92 + 0.016 * p.f) * (0.7 + 0.3 * p.t / 100) * (0.94 + 0.01 * (p.mo === undefined ? 6 : p.mo)); }
+function eff(p) { return p.s * (0.944 + 0.012 * p.f) * (0.7 + 0.3 * p.t / 100) * (0.955 + 0.0075 * (p.mo === undefined ? 6 : p.mo)); }
 function findP(t, id) { for (var k = 0; k < t.pl.length; k++) if (t.pl[k].i === id) return t.pl[k]; return null; }
 function need(t) { var c = FORMATIONS[t.fo]; return [1, c[0], c[1], c[2]]; }
 function avail(p) { return !(p.inj > 0) && !(p.ban > 0); }
@@ -2370,8 +2377,8 @@ function ratings(t, home) {
   var st = avg(by[3]) * (1 + 0.07 * (by[3].length - 2));
   var def = 0.3 * tw + 0.7 * ab, mid = mf, att = 0.75 * st + 0.25 * mf;
   if (t.au === 2) { att *= 1.06; def *= 0.94; } else if (t.au === 0) { att *= 0.94; def *= 1.06; }
-  var m = (home ? 1.04 + (t.hb || 0) : 1) * [0.97, 1, 1.03][t.ei] * (1 - 0.07 * Math.max(0, 11 - t.lu.length)) * (t.co ? 1 + 0.012 * (t.co.sk - 3) : 1) * (0.975 + 0.05 * (t.coh === undefined ? 50 : t.coh) / 100);
-  var sdF = 0.985 + 0.03 * (t.std === undefined ? 50 : t.std) / 100; att *= sdF; def *= sdF;
+  var m = (home ? 1.04 + (t.hb || 0) : 1) * [0.97, 1, 1.03][t.ei] * (1 - 0.07 * Math.max(0, 11 - t.lu.length)) * (t.co ? 1 + 0.012 * (t.co.sk - 3) : 1) * (0.98125 + 0.0375 * (t.coh === undefined ? 50 : t.coh) / 100);
+  var sdF = 0.98875 + 0.0225 * (t.std === undefined ? 50 : t.std) / 100; att *= sdF; def *= sdF;
   return { def: def * m, mid: mid * m, att: att * m };
 }
 function scorer(t) {
@@ -3324,7 +3331,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '15.11. 22:53';
+var BUILD = '16.11. 06:29';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -4231,15 +4238,17 @@ function popScan() {
     hurt.forEach(function (r) { pk['i' + r.i] = 1; old['i' + r.i] = 1; });
     if (TR.coach) pop('Verband', flag(TR.coach.code) + ' ' + esc(natName(TR.coach.code)) + ': ' + FM.TOURST[TR.coach.st] + '. ' + (TR.coach.fired ? 'Nach dem frühen Aus trennt sich der Verband von dir.' : TR.coach.st === 4 ? 'Das ganze Land feiert dich.' : 'Der Verband setzt weiter auf dich.'), null, 'pokal');
   }
-  var few = prefs.pw === 1, outs = [], nInj = 0, inXI = false, inSq = false, rank = u.pl.slice().sort(function (a, b) { return b.s - a.s; }).map(function (p) { return p.i; });
+  var few = prefs.pw === 1, outs = [], nInj = 0, inXI = false, inSq = false, ban1 = 0, rank = u.pl.slice().sort(function (a, b) { return b.s - a.s; }).map(function (p) { return p.i; });
   u.pl.forEach(function (p) {
-    var st = rank.indexOf(p.i) < 11; if (rank.indexOf(p.i) < 11 && ((p.inj > 0 && !old['i' + p.i]) || (p.ban > 0 && !old['b' + p.i]))) inSq = true;
+    var st = rank.indexOf(p.i) < 11; if (rank.indexOf(p.i) < 11 && ((p.inj > 0 && !old['i' + p.i]) || (p.ban > 1 && !old['b' + p.i]))) inSq = true;
     if (p.inj > 0) { pk['i' + p.i] = 1; if (!old['i' + p.i] && !first) { nInj++; if (st) inXI = true; outs.push('<b>' + esc(p.n) + '</b> (' + FM.POS[p.p] + ', Stärke ' + p.s + ') ist verletzt und fällt ' + p.inj + (p.inj === 1 ? ' Woche' : ' Wochen') + ' aus.'); } }
-    if (p.ban > 0) { pk['b' + p.i] = 1; if (!old['b' + p.i] && !first) { if (st) inXI = true; outs.push('<b>' + esc(p.n) + '</b> (' + FM.POS[p.p] + ', Stärke ' + p.s + ') ist für ' + p.ban + (p.ban === 1 ? ' Spiel' : ' Spiele') + ' gesperrt.'); } }
+    if (p.ban > 0) { pk['b' + p.i] = 1; if (!old['b' + p.i] && !first) { if (st && p.ban > 1) inXI = true; if (p.ban === 1) ban1++; outs.push('<b>' + esc(p.n) + '</b> (' + FM.POS[p.p] + ', Stärke ' + p.s + ') ist für ' + p.ban + (p.ban === 1 ? ' Spiel' : ' Spiele') + ' gesperrt.'); } }
   });
   if (outs.length && (few ? inXI : inSq)) pop(outs.length > 1 ? 'Ausfälle' : nInj ? 'Verletzung' : 'Sperre', outs.join('<br>'), [['OK'], ['Zur Aufstellung', function () { go('lineup'); }]], 'f_ins');
+  var newOf = state.offers.filter(function (o) { return !old['o' + o.i + '_' + o.c] && !first && FM.findP(u, o.i) && FM.team(state, o.c); });
+  if (newOf.length > 1) pop(newOf.length + ' Angebote für deine Spieler', newOf.map(function (o) { var p = FM.findP(u, o.i), c = FM.team(state, o.c); return '<b>' + esc(c.n) + '</b> bietet <b>' + money(o.fee) + '</b> für ' + esc(p.n) + ' (' + FM.POS[p.p] + ', Stärke ' + p.s + ', Marktwert ' + money(FM.value(p)) + ')'; }).join('<br>'), [['Zu den Angeboten', function () { ui.tg = 'sell'; go('transfers'); }], ['Später entscheiden', null, 'unter Transfers, Angebote']], 'm_sign');
   state.offers.forEach(function (o) {
-    var key = 'o' + o.i + '_' + o.c; pk[key] = 1; if (old[key] || first) return;
+    var key = 'o' + o.i + '_' + o.c; pk[key] = 1; if (old[key] || first || newOf.length > 1) return;
     var p = FM.findP(u, o.i), c = FM.team(state, o.c); if (!p || !c) return;
     function ix() { var k = -1; state.offers.forEach(function (x, j) { if (x.i === o.i && x.c === o.c) k = j; }); return k; }
     pop('Angebot für ' + p.n, '<b>' + esc(c.n) + '</b>' + (c.cty ? ' (' + FM.CTY[c.cty].n + ')' : '') + ' bietet <b>' + money(o.fee) + '</b> für ' + esc(p.n) + ' (' + FM.POS[p.p] + ', ' + p.a + ' Jahre, Stärke ' + p.s + '). Sein Marktwert liegt bei ' + money(FM.value(p)) + '.' + (p.wl ? ' Der Spieler will den Verein verlassen.' : ''), [
@@ -4248,9 +4257,10 @@ function popScan() {
       ['Ablehnen', function () { var k = ix(); if (k >= 0) { FM.rejectOffer(state, k); toast('Angebot abgelehnt.'); } }],
       ['Später entscheiden', null, 'unter Transfers, Angebote']], 'm_sign');
   });
-  FM.talkInfo(state).forEach(function (t) {
-    var key = 't' + t.p.i + t.k; pk[key] = 1; if (old[key] || first) return;
-    pop(t.p.n + ' ' + t.t, '„' + esc(t.q) + '“', t.opts.map(function (o, k) { return [o[0], function () { var j = -1; state.talks.forEach(function (x, n) { if (x.i === t.p.i && x.k === t.k) j = n; }); if (j >= 0) { var a = FM.talkAnswer(state, j, k); if (a) toast(a.t); } }, o[1]]; }).concat([['Später antworten', null, 'unter Kabine, noch ' + t.left + (t.left === 1 ? ' Woche' : ' Wochen')]]), 'm_talk');
+  var TI = FM.talkInfo(state), newT = TI.filter(function (t) { return !old['t' + t.p.i + t.k] && !first; }).length, shownT = 0;
+  TI.forEach(function (t) {
+    var key = 't' + t.p.i + t.k; pk[key] = 1; if (old[key] || first) return; if (shownT++) return;
+    pop(t.p.n + ' ' + t.t, '„' + esc(t.q) + '“' + (newT > 1 ? '<br><span class="hint">' + (newT - 1) + (newT === 2 ? ' weiterer Spieler will' : ' weitere Spieler wollen') + ' dich sprechen – unter Kabine.</span>' : ''), t.opts.map(function (o, k) { return [o[0], function () { var j = -1; state.talks.forEach(function (x, n) { if (x.i === t.p.i && x.k === t.k) j = n; }); if (j >= 0) { var a = FM.talkAnswer(state, j, k); if (a) toast(a.t); } }, o[1]]; }).concat([['Später antworten', null, 'unter Kabine, noch ' + t.left + (t.left === 1 ? ' Woche' : ' Wochen')]]), 'm_talk');
   });
   (state.jobs || []).forEach(function (id) {
     var key = 'j' + id; pk[key] = 1; if (old[key] || first) return; var j = FM.jobInfo(state, id);
@@ -4266,7 +4276,7 @@ function popScan() {
   if (R && R.meSold && !R._ms) { R._ms = 1; pop('Privat', 'Dein Konto war im Minus. <b>' + esc(R.meSold) + '</b> wurde mit Verlust verkauft.', [['OK'], ['Zu Privat', function () { go('private'); }]], 'm_bag'); }
   if (state.board && state.board.conf < 30) pk.bw = 1;
   var DLp = FM.deadline(state);
-  if (DLp && !first) { DLp.seen = 1; var dls = FM.dlList(state); if (dls.length || DLp.bids) pop('Letzter Transfertag', 'Heute schließt das Transferfenster, auf dem Markt herrscht Hektik.' + (dls.length ? '<br><b>Schnäppchen</b> (nur heute zu diesem Preis):<br>' + dls.map(function (x) { return esc(x.p.n) + ' (' + FM.POS[x.p.p] + ', ' + x.p.a + ', Stärke ' + x.p.s + ') · ' + esc(x.club ? x.club.n : 'vereinslos') + ' · <b>' + money(x.fee) + '</b>'; }).join('<br>') : '') + (DLp.bids ? '<br>Außerdem ' + (DLp.bids === 1 ? 'liegt ein Angebot' : 'liegen ' + DLp.bids + ' Angebote') + ' für deine Spieler vor, über Marktwert.' : ''), dls.length ? [['Zu den Schnäppchen', function () { ui.tg = 'buy'; ui.tt = 'scout'; ui.sel = -1; go('transfers'); }], ['Später']] : [['OK']], 'm_sign'); }
+  if (DLp && !first) { DLp.seen = 1; var dls = FM.dlList(state); if (dls.length || DLp.bids) pop('Letzter Transfertag', 'Heute schließt das Transferfenster: Danach kannst du bis zum nächsten Fenster keine Spieler mehr kaufen oder verkaufen.' + (dls.length ? '<br><b>Ohne Verhandlung zu haben</b> (nur heute zu diesem Preis):<br>' + dls.map(function (x) { return esc(x.p.n) + ' (' + FM.POS[x.p.p] + ', ' + x.p.a + ', Stärke ' + x.p.s + ') · ' + esc(x.club ? x.club.n : 'vereinslos') + ' · <b>' + money(x.fee) + '</b> (Marktwert ' + money(FM.value(x.p)) + ')'; }).join('<br>') : '') + (DLp.bids ? '<br>Außerdem ' + (DLp.bids === 1 ? 'liegt ein Angebot' : 'liegen ' + DLp.bids + ' Angebote') + ' für deine Spieler vor, über Marktwert.' : ''), dls.length ? [['Zu den Schnäppchen', function () { ui.tg = 'buy'; ui.tt = 'scout'; ui.sel = -1; go('transfers'); }], ['Später']] : [['OK']], 'm_sign'); }
   var PD = FM.pressDue(state), pck = 'pc' + state.season + '_' + state.round;
   if (PD) { pk[pck] = 1; if (!old[pck] && !first && !few) pop('Pressekonferenz', pick3([(PD.derby ? 'Die Stadt fiebert dem Derby gegen <b>' + esc(PD.opp.n) + '</b> entgegen. Was versprechen Sie den Fans?' : 'Am Wochenende geht es gegen <b>' + esc(PD.opp.n) + '</b>, einen der Besten der Liga. Wer ist Favorit?'), 'Vor dem Spiel gegen <b>' + esc(PD.opp.n) + '</b>: Wie groß ist der Druck auf Ihre Mannschaft?', 'Ein Wort zu <b>' + esc(PD.opp.n) + '</b>: Fürchten Sie den Gegner?'], state.season * 40 + state.round), [
     ['Kampfansage', function () { toast(FM.pressAnswer(state, 0)); }, 'Moral +0,3 · bei Sieg feiern dich alle, bei Niederlage Ärger mit Vorstand und Kabine'],
@@ -4451,7 +4461,7 @@ function vBoard() {
   var B = state.board, u = FM.userTeam(state), pl = FM.place(state, u.id), h = sub('Vorstand'), early = state.round <= 5, n = FM.table(state, u.lg).length;
   h += '';
   var cc = B.conf < 25 ? '#ff9a8f' : B.conf < 50 ? '#ffd84d' : '#6df09a', ok = state.round < 6 || pl <= B.goal;
-  h += '<div class="panel"><div class="rings">' + ring(B.conf / 100, cc, Math.round(B.conf), 'Vertrauen') + ring((n - pl + 1) / n, ok ? '#6df09a' : '#ff9a8f', pl + '.', 'Platz · Ziel ' + B.goal + '.') + ring(state.rep / 100, '#5fb7c9', state.rep, 'Dein Ruf') + '</div>';
+  h += '<div class="panel"><div class="rings">' + ring(B.conf / 100, cc, Math.round(B.conf), 'Vertrauen (von 100)') + ring((n - pl + 1) / n, ok ? '#6df09a' : '#ff9a8f', pl + '.', 'Platz · Ziel ' + B.goal + '.') + ring(state.rep / 100, '#5fb7c9', state.rep, 'Dein Ruf') + '</div>';
   h += '<p class="title" style="margin:12px 0 0;text-align:center;font-size:15px;color:' + cc + '">' + confText(B.conf) + '</p>';
   h += inf('<b>Vertrauen</b> steigt mit Siegen und Zielkurs, sinkt bei Niederlagen, Plätzen unter dem Ziel und Minus in der Kasse. Am Saisonende wird abgerechnet; zur neuen Saison rückt es ein Stück Richtung Mitte. Bei null wirst du entlassen. <b>Ruf</b> (' + repText(state.rep) + '): Erreichte Ziele, Aufstiege und Titel heben ihn. Mit gutem Ruf melden sich im Sommer größere Vereine.') + '</div>';
   h += '<div class="panel"><p class="lbl">SAISONZIEL ' + FM.seasonLabel(state) + '</p><p class="title" style="margin:0 0 6px">' + FM.goalText(u.lg, B.goal, state) + '</p>' + placeChart(B) + '<p class="hint" style="margin:6px 0 0;text-align:center">' + (state.round < 6 ? 'Der Tabellenplatz zählt ab dem 6. Spieltag.' : pl <= B.goal ? 'Du liegst im Soll.' : 'Du liegst unter dem Ziel.') + '</p></div>';
@@ -5738,7 +5748,7 @@ function endSeason() {
 }
 function enter(st) {
   state = FM.ensure(st); ui.lg = FM.userTeam(state).lg;
-  if (state.live) { var rr0 = FM.liveAuto(state); persist(); if (rr0.fr) return go('summer'); ui.match = { res: rr0 }; return go('results'); }
+  if (state.live) { var rr0 = FM.liveAuto(state); persist(); setTimeout(function () { toast('Das laufende Spiel wurde ohne dich zu Ende gespielt, weil die Seite neu geladen wurde.'); }, 400); if (rr0.fr) return go('summer'); ui.match = { res: rr0 }; return go('results'); }
   if (state.sacked) return go('sacked');
   if (state.over) endSeason(); else if (state.open && state.round === 0 && !(state.tour && state.tour.on)) go('opening'); else go('menu');
 }

@@ -3039,7 +3039,7 @@ function liveStart(state, type, hId, aId) {
   var wm = 6, wr = Math.random(); try { wm = dateOf(state).m; } catch (eW) { }
   var wx0 = wm === 11 || wm <= 1 ? (wr < 0.28 ? 2 : wr < 0.52 ? 1 : 0) : (wm >= 5 && wm <= 7 ? (wr < 0.12 ? 1 : 0) : (wr < 0.24 ? 1 : 0));
   var heat0 = 0; if (wx0 === 2 && hId === u.id && state.stad && sl(state.stad, 'heat') > 0) { wx0 = 0; heat0 = 1; }
-  var L = state.live = { wx: wx0, heat: heat0, type: type, h: hId, a: aId, home: hId === u.id, seg: 0, hg: 0, ag: 0, ev: [], subs: {}, yc: {}, off: [], nb: {}, start: u.lu.slice(), pl: {}, need: null, r: type === 'cup' ? state.cup.r : state.round };
+  var L = state.live = { wx: wx0, heat: heat0, wm: wm, hk: hId === u.id && state.stad && sl(state.stad, 'heat') > 0 ? 1 : 0, type: type, h: hId, a: aId, home: hId === u.id, seg: 0, hg: 0, ag: 0, ev: [], subs: {}, yc: {}, off: [], nb: {}, start: u.lu.slice(), pl: {}, need: null, r: type === 'cup' ? state.cup.r : state.round };
   L.subs[hId] = 3; L.subs[aId] = 3; L.pl[hId] = h.lu.slice(); L.pl[aId] = a.lu.slice();
   return L;
 }
@@ -3096,6 +3096,12 @@ function liveNext(state, auto) {
   var u = state.teams[state.uid], h = state.teams[L.h], a = state.teams[L.a], m0 = L.seg * 15, ev = [];
   [h, a].forEach(function (t) { if ((t.id !== u.id || auto) && (L.seg === 4 || L.seg === 5)) aiSub(state, L, t, t === h, m0 + 1, ev); });
   [h, a].forEach(function (t) { if (t.id !== u.id) aiLive(L, t, t === h, m0, ev); });
+  if (L.seg >= 1 && L.wm !== undefined && Math.random() < 0.08) {
+    var w0 = L.wx | 0, winter = L.wm === 11 || L.wm <= 1, w1 = w0 ? 0 : (winter && Math.random() < 0.5 ? 2 : 1);
+    if (w0 === 1 && winter && Math.random() < 0.35) w1 = 2;
+    if (w1 === 2 && L.hk) { w1 = 0; L.heat = 1; }
+    if (w1 !== w0) { L.wx = w1; ev.push({ m: m0 + 1, h: true, k: 'wx', w: w1, w0: w0 }); }
+  }
   var SH = L.sh && L.sh.s === L.seg ? L.sh : null, mo = null;
   if (SH) { var w = SH.w || 1, k = SH.k; mo = { id: u.id }; if (k === 0) { mo.att = 1 + 0.08 * w; mo.def = 1 - 0.05 * w; } else if (k === 1) { mo.def = 1 + 0.06 * w; mo.att = 1 - 0.06 * w; } else if (k === 2) { mo.mid = 1 + 0.06 * w; mo.def = 1 + 0.02 * w; } else if (k === 3) { mo.att = 1.18; mo.def = 0.82; } else if (k === 4) { mo.n = 0.7; mo.att = 0.92; } L._hard = k === 2 ? 1.7 : k === 4 ? 1.5 : 1; }
   simSeg(h, a, m0, L.type === 'cup', L.dis === L.seg ? u.id : -1, L.talk && L.seg >= 3 ? { id: u.id, f: L.talk.f } : null, mo, L.wx | 0).forEach(function (e) { if (e.g) { if (e.h) L.hg++; else L.ag++; } ev.push(e); });
@@ -3557,7 +3563,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '16.11. 21:56';
+var BUILD = '16.11. 22:05';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -5008,7 +5014,7 @@ function endScene(S) {
 }
 function runScene(S, steps) { S.scn = { t: 0, i: 0, steps: steps }; }
 function startScene(S, e, after) {
-  if (e.k === 'tac' || (e.k === 'sub' && !e.p)) { if (after) after(); return; }
+  if (e.k === 'tac' || e.k === 'wx' || (e.k === 'sub' && !e.p)) { if (after) after(); return; }
   var T = e.h ? 0 : 1, ref = S.ref;
   function fin() { simApply(S, e); endScene(S); if (after) after(); }
   S.mode = 'scene'; S.pass = null; S.wt = null; S.sc = null; S.scn = null;
@@ -5640,6 +5646,7 @@ function startMatch() {
   }
   M.stats = mStats; mStats();
   function note(e) {
+    if (e.k === 'wx') { if (S) S.wx = e.w; tick(e.m + "' " + (e.w === 1 ? (e.w0 === 2 ? 'Der Schnee geht in Regen über.' : 'Es beginnt zu regnen – der Rasen wird rutschig.') : e.w === 2 ? (e.w0 === 1 ? 'Der Regen geht in Schnee über.' : 'Es fängt an zu schneien.') : e.w0 === 2 ? 'Der Schneefall hört auf, der Platz wird wieder besser bespielbar.' : 'Der Regen hört auf.'), 'info'); return; }
     if (!M.mute && (e.k === 'y' || e.k === 'yr' || e.k === 'r')) SND.whistle(0);
     var sd = e.h ? 0 : 1; if (e.k === 'y') M.cnt.y[sd]++; else if (e.k === 'yr') { M.cnt.y[sd]++; M.cnt.r[sd]++; } else if (e.k === 'r') M.cnt.r[sd]++;
     mStats();

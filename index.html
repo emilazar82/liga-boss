@@ -3006,13 +3006,15 @@ function newGameCustom(D, fallbackName, ext, keepRep) {
   if (state.board) { state.board.goal = boardGoal(state); state.board.amb = 0; }
   return { state: state, res: r };
 }
-function simSeg(home, away, m0, cup, disId, bo, mo) {
+function simSeg(home, away, m0, cup, disId, bo, mo, wx) {
   var rh = ratings(home, true), ra = ratings(away, false), TX = tactApply(home, away, rh, ra);
   if (disId === home.id) { rh.mid *= 0.95; rh.def *= 0.97; } else if (disId === away.id) { ra.mid *= 0.95; ra.def *= 0.97; }
   if (bo) { var rb = bo.id === home.id ? rh : ra; rb.att *= bo.f; rb.mid *= bo.f; rb.def *= bo.f; }
   if (mo) { var rm = mo.id === home.id ? rh : ra; rm.att *= mo.att || 1; rm.mid *= mo.mid || 1; rm.def *= mo.def || 1; }
   var nf = mo && mo.n ? mo.n : 1;
   exApply(rh, home, away); exApply(ra, away, home);
+  if (wx === 1) { if (tv(home, 'ps') === 0) rh.mid *= 0.97; if (tv(away, 'ps') === 0) ra.mid *= 0.97; }
+  else if (wx === 2) { nf *= 0.9; if (tv(home, 'tp') === 2) rh.att *= 0.97; if (tv(away, 'tp') === 2) ra.att *= 0.97; }
   var mh = Math.pow(rh.mid, 2), ma = Math.pow(ra.mid, 2), share = mh / (mh + ma), ev = [];
   function side(t, isHome, sh, att, oppDef) {
     var n = pois((2.5 + 8 * sh) / 6 * (isHome ? TX.nh : TX.na) * nf), pr = clamp(0.2 + (att - oppDef) / oppDef * 0.4, 0.06, 0.45) * (isHome ? TX.ch : TX.ca), opp = isHome ? away : home;
@@ -3020,17 +3022,23 @@ function simSeg(home, away, m0, cup, disId, bo, mo) {
       var pl = scorer(t), goal = Math.random() < pr * finish(pl, opp);
       if (goal && pl) { if (!cup) pl.g++; pl.f = clamp(pl.f + 1, 1, 10); }
       var kon = tv(t, 'pr') === 0 && tv(t, 'tp') === 2, opn = opp.au === 2 || tv(opp, 'pr') === 2, kvb = t.vb === 1 ? 0.1 : 0;
-      ev.push({ m: m0 + rnd(1, 15), h: isHome, g: goal, p: pl ? pl.n : '', id: pl ? pl.i : -1, ex: goal && pl && pl.exn && pl.exn === opp.n ? 1 : 0, ct: Math.random() < (kon ? (opn ? 0.6 : 0.32) : (opn ? 0.22 : 0.1)) + kvb ? 1 : 0 });
+      var E1 = { m: m0 + rnd(1, 15), h: isHome, g: goal, p: pl ? pl.n : '', id: pl ? pl.i : -1, ex: goal && pl && pl.exn && pl.exn === opp.n ? 1 : 0, ct: Math.random() < (kon ? (opn ? 0.6 : 0.32) : (opn ? 0.22 : 0.1)) + kvb ? 1 : 0 };
+      if (goal && pl && Math.random() < 0.03) { var dfs = opp.lu.map(function (id) { return findP(opp, id); }).filter(function (q) { return q && q.p === 1; }), og = dfs[Math.floor(Math.random() * dfs.length)]; if (og) { if (!cup && pl.g > 0) pl.g--; E1.p = og.n; E1.id = -1; E1.og = 1; E1.ex = 0; E1.ct = 0; } }
+      if (!E1.ct && !E1.og && pl) { var rt = Math.random(); E1.ty = pl.p === 2 && rt < 0.45 ? 'ds' : rt < 0.24 ? 'fl' : rt < 0.4 ? 'so' : ''; }
+      ev.push(E1);
     }
   }
   side(home, true, share, rh.att, ra.def); side(away, false, 1 - share, ra.att, rh.def);
+  [[home, away, true], [away, home, false]].forEach(function (x) { if (Math.random() < 0.2 * (tv(x[1], 'ab') ? 2.2 : 1)) { var op = scorer(x[0]); if (op) ev.push({ m: m0 + rnd(1, 15), h: x[2], k: 'off', p: op.n }); } });
   return ev;
 }
 function liveStart(state, type, hId, aId) {
   var u = state.teams[state.uid], h = state.teams[hId], a = state.teams[aId], ai = hId === u.id ? a : h;
   ai.lu = bestEleven(ai);
   if (u.vbU) { delete u.vb; delete u.vbU; } else if (u.vb) u.vbU = 1;
-  var L = state.live = { type: type, h: hId, a: aId, home: hId === u.id, seg: 0, hg: 0, ag: 0, ev: [], subs: {}, yc: {}, off: [], nb: {}, start: u.lu.slice(), pl: {}, need: null, r: type === 'cup' ? state.cup.r : state.round };
+  var wm = 6, wr = Math.random(); try { wm = dateOf(state).m; } catch (eW) { }
+  var wx0 = wm === 11 || wm <= 1 ? (wr < 0.28 ? 2 : wr < 0.52 ? 1 : 0) : (wm >= 5 && wm <= 7 ? (wr < 0.12 ? 1 : 0) : (wr < 0.24 ? 1 : 0));
+  var L = state.live = { wx: wx0, type: type, h: hId, a: aId, home: hId === u.id, seg: 0, hg: 0, ag: 0, ev: [], subs: {}, yc: {}, off: [], nb: {}, start: u.lu.slice(), pl: {}, need: null, r: type === 'cup' ? state.cup.r : state.round };
   L.subs[hId] = 3; L.subs[aId] = 3; L.pl[hId] = h.lu.slice(); L.pl[aId] = a.lu.slice();
   return L;
 }
@@ -3061,6 +3069,7 @@ function liveDisc(state, L, t, isHome, m0, ev, auto) {
     else { p.y = (p.y || 0) + 1; var b5 = p.y % 5 === 0; if (b5) L.nb[p.i] = (L.nb[p.i] || 0) + 1; ev.push({ m: m, h: isHome, k: 'y', p: p.n, id: p.i, b5: b5 }); }
   }
   if (Math.random() < 0.005 * k && (p = fieldPick(t))) off(p, 'r', m0 + rnd(1, 15));
+  if (Math.random() < 0.003 * k) { var nbd = t.lu.map(function (id) { return findP(t, id); }).filter(function (q) { return q && q.p === 1; }); p = nbd[Math.floor(Math.random() * nbd.length)]; if (p) { off(p, 'r', m0 + rnd(1, 15)); ev[ev.length - 1].nb = 1; } }
   if (Math.random() < 0.03 * [0.8, 1, 1.4][t.ei] && t.lu.length) {
     p = injPick(t); m = m0 + rnd(1, 15); p.inj = injWeeks(); p.injNew = true; t.lu.splice(t.lu.indexOf(p.i), 1);
     var e = { m: m, h: isHome, k: 'inj', p: p.n, id: p.i, w: p.inj }; ev.push(e);
@@ -3088,7 +3097,7 @@ function liveNext(state, auto) {
   [h, a].forEach(function (t) { if (t.id !== u.id) aiLive(L, t, t === h, m0, ev); });
   var SH = L.sh && L.sh.s === L.seg ? L.sh : null, mo = null;
   if (SH) { var w = SH.w || 1, k = SH.k; mo = { id: u.id }; if (k === 0) { mo.att = 1 + 0.08 * w; mo.def = 1 - 0.05 * w; } else if (k === 1) { mo.def = 1 + 0.06 * w; mo.att = 1 - 0.06 * w; } else if (k === 2) { mo.mid = 1 + 0.06 * w; mo.def = 1 + 0.02 * w; } else if (k === 3) { mo.att = 1.18; mo.def = 0.82; } else if (k === 4) { mo.n = 0.7; mo.att = 0.92; } L._hard = k === 2 ? 1.7 : k === 4 ? 1.5 : 1; }
-  simSeg(h, a, m0, L.type === 'cup', L.dis === L.seg ? u.id : -1, L.talk && L.seg >= 3 ? { id: u.id, f: L.talk.f } : null, mo).forEach(function (e) { if (e.g) { if (e.h) L.hg++; else L.ag++; } ev.push(e); });
+  simSeg(h, a, m0, L.type === 'cup', L.dis === L.seg ? u.id : -1, L.talk && L.seg >= 3 ? { id: u.id, f: L.talk.f } : null, mo, L.wx | 0).forEach(function (e) { if (e.g) { if (e.h) L.hg++; else L.ag++; } ev.push(e); });
   liveDisc(state, L, h, true, m0, ev, auto); liveDisc(state, L, a, false, m0, ev, auto); delete L._hard;
   [h, a].forEach(function (t) { var loss = [9, 12, 16][t.ei] / 6 * fatMul(t); t.lu.forEach(function (id) { var p = findP(t, id); if (p) p.t = Math.max(30, p.t - (p.p === 0 ? loss / 2 : loss) * (1.25 - 0.005 * p.at[6])); }); });
   ev.sort(function (x, y) { return x.m - y.m; }); L.ev = L.ev.concat(ev); L.seg++;
@@ -3547,7 +3556,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '16.11. 21:23';
+var BUILD = '16.11. 21:29';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -5004,11 +5013,13 @@ function startScene(S, e, after) {
   S.mode = 'scene'; S.pass = null; S.wt = null; S.sc = null; S.scn = null;
   if (e.k === 'y' || e.k === 'yr' || e.k === 'r') {
     var F = simFind(S, T, e.p) || nearest(mates(S, T, 1), S.bx, S.by), V = nearest(mates(S, 1 - T, 1), F.x, F.y);
+    if (e.nb && F) V = nearest(mates(S, 1 - T, 3), F.x, F.y) || V;
     if (!F || !V) return fin();
     var off = e.k !== 'y', far = Math.abs(V.x - S.bx) * FW + Math.abs(V.y - S.by) * FH > 150;
     passTo(S, V.x, V.y, far ? 9 : 0, 300, function () {
       var fl = F.x > V.x, FV = [['slide', 'GRÄTSCHE', 0], ['push', 'STOSSEN', 1], ['kick', 'HOHES BEIN', 0], ['elbow', 'ELLBOGEN', 0], ['pull', 'HALTEN', 2]][Math.floor(Math.random() * 5)];
       if (e.k === 'r' && Math.random() < 0.6) FV = Math.random() < 0.5 ? ['slide', 'GRÄTSCHE VON HINTEN', 1] : ['elbow', 'ELLBOGEN', 0];
+      if (e.nb) FV = Math.random() < 0.5 ? ['pull', 'NOTBREMSE', 2] : ['slide', 'NOTBREMSE', 1];
       var fwdFall = FV[2] === 1, vfl = FV[2] === 2 ? !fl : fl;
       S.own = V; F.run = { x: V.x + (fl ? 0.02 : -0.02), y: V.y }; F.spd = 2;
       runScene(S, [
@@ -5021,6 +5032,15 @@ function startScene(S, e, after) {
         [off ? 4.7 : 3.8, function () { simApply(S, e); S.own = V; endScene(S); if (after) after(); }]
       ]);
     });
+  } else if (e.k === 'off') {
+    var oP = simFind(S, T, e.p) || nearest(mates(S, T, 3), S.bx, S.by) || nearest(mates(S, T, 1), S.bx, S.by); if (!oP) return fin();
+    var oX = T ? 0.2 : 0.8, oY = 0.3 + Math.random() * 0.4;
+    oP.run = { x: oX, y: oY }; oP.spd = 2.3;
+    passTo(S, oX, oY, 10, 250, function () { S.own = oP; });
+    runScene(S, [
+      [1.15, function () { S.cap = { title: 'ABSEITS', col: '#ffd84d', lines: [{ txt: e.p }] }; oP.run = { x: oP.x, y: oP.y }; ref.run = { x: T ? 0.3 : 0.7, y: Math.min(0.9, oY + 0.12) }; ref.spd = 2; try { SND.whistle(0); } catch (eS) { } }],
+      [2.7, function () { S.pass = null; S.own = nearest(mates(S, 1 - T, 1), S.bx, S.by); fin(); }]
+    ]);
   } else if (e.k === 'inj') {
     var P = simFind(S, T, e.p) || nearest(mates(S, T, 1), S.bx, S.by);
     if (!P) return fin();
@@ -5094,11 +5114,25 @@ function startChance(S, e, apply) {
   var keeper = S.pl.filter(function (p) { return p.T === D && p.l === 0; })[0] || nearest(mates(S, D, 1), W(0.95), 0.5);
   var kind = e.g ? 0 : 1 + Math.floor(Math.random() * 3), ry = 0.34 + Math.random() * 0.32;
   var rs = Math.random(), pq = e.g ? 0.08 : 0.005, sp = rs < pq ? 'pen' : rs < pq + 0.16 ? 'corner' : rs < pq + 0.3 ? 'fk' : '';
-  if (e.ct) sp = '';
+  var ty = e.ty || '';
+  if (e.ct || ty || e.og) sp = '';
   if (sp === 'pen' && kind === 3) kind = 2;
   e.sp = sp;
+  var pb = !sp && !e.ct && !e.og && Math.random() < 0.1, penReb = sp === 'pen' && e.g && Math.random() < 0.25, ke = e.g && !sp && !e.og && !pb && Math.random() < 0.06, two = 0, soD = null;
+  e.pb = pb ? 1 : 0; e.pr2 = penReb ? 1 : 0; e.ke = ke ? 1 : 0;
   function toCam(force) {
-    S.mode = 'cam'; S.cap = null; S.camSc = mkCam(kind, fwd.kit, keeper.kit, force, sp === 'pen', sp === 'fk'); S.camSc.mineU = fwd.kit === 0; e._cam = true;
+    if (soD) { soD.act = null; soD = null; }
+    if ((pb || penReb) && !two) {
+      two = 1; S.mode = 'cam'; S.cap = null; e._cam = true;
+      var C1 = mkCam(pb ? 2 : 1, fwd.kit, keeper.kit, pb ? force : 'shoot', !pb, pb && sp === 'fk');
+      if (pb) { C1.tx = 184 + C1.side * 101; C1.ty = 86; C1.note = 'PFOSTEN!'; } else C1.note = 'ELFMETER';
+      C1.dur = C1.pre + C1.tc + C1.fly + 0.9; C1.mineU = fwd.kit === 0; S.camSc = C1;
+      S.camDone = function () { S.camSc = null; if (!pb) sp = ''; toCam(Math.random() < 0.5 ? 'volley' : 'shoot'); };
+      return;
+    }
+    S.mode = 'cam'; S.cap = null; S.camSc = mkCam(kind, fwd.kit, keeper.kit, force, sp === 'pen', sp === 'fk' && !two); S.camSc.mineU = fwd.kit === 0; e._cam = true;
+    var CQ = S.camSc; CQ.note = two ? 'NACHSCHUSS!' : ke ? 'TORWARTFEHLER!' : e.og ? 'EIGENTOR!' : ty === 'ds' ? 'DISTANZSCHUSS' : null;
+    if (ty === 'ds' && !two) { CQ.fly *= 1.45; CQ.arc = Math.max(CQ.arc, 13); CQ.kt = CQ.tc + CQ.fly - KA[CQ.kp][2]; CQ.dur = CQ.pre + CQ.tc + CQ.fly + (kind === 0 ? 2.0 : 1.3); }
     S.camDone = function () {
       S.camSc = null; fwd.run = null; fwd.spd = 1;
       apply(e);
@@ -5144,6 +5178,42 @@ function startChance(S, e, apply) {
         wait(S, 0.95, function () { toCam(Math.random() < 0.75 ? 'shoot' : 'side'); });
       });
       S.pass.dur = Math.max(S.pass.dur, 0.7);
+    });
+    return;
+  }
+  if (ty === 'ds') {
+    var dsP = simFind(S, T, e.p) || mid; fwd = dsP;
+    S.cap = { title: 'DISTANZSCHUSS', col: '#ffd84d', lines: [{ txt: e.p }] };
+    passTo(S, dsP.x, dsP.y, 0, 270, function () {
+      S.own = dsP; dsP.run = { x: W(0.68), y: 0.38 + Math.random() * 0.24 }; dsP.spd = 1.5;
+      wait(S, 1.0, function () { toCam('shoot'); });
+    });
+    return;
+  }
+  if (ty === 'fl') {
+    var wgs = mids.slice().sort(function (a, b) { return Math.abs(b.y - 0.5) - Math.abs(a.y - 0.5); }), wg = wgs[0] || mid, yS = wg.y < 0.5 ? 0.07 : 0.93;
+    S.cap = { title: 'ÜBER AUSSEN', col: '#ffd84d', lines: [{ txt: S.tm[T].n }] };
+    wg.run = { x: W(0.56), y: yS }; wg.spd = 2;
+    passTo(S, W(0.56), yS, 6, 250, function () {
+      S.own = wg; wg.run = { x: W(0.9), y: yS }; wg.spd = 2.2; fwd.run = { x: W(0.9), y: 0.44 + Math.random() * 0.12 }; fwd.spd = 1.6;
+      wait(S, 1.25, function () {
+        S.cap = { title: 'FLANKE', col: '#ffd84d', lines: [{ txt: e.p }] };
+        passTo(S, fwd.run.x, fwd.run.y, 16, 210, function () { toCam(Math.random() < 0.65 ? 'header' : 'volley'); });
+      });
+    });
+    return;
+  }
+  if (ty === 'so') {
+    var soP = simFind(S, T, e.p) || fwd, dfl2 = S.pl.filter(function (p) { return p.T === D && p.l === 1; }), soDf = nearest(dfl2, W(0.76), ry); fwd = soP;
+    S.cap = { title: 'SOLO', col: '#ffd84d', lines: [{ txt: e.p }] };
+    passTo(S, soP.x, soP.y, 0, 270, function () {
+      S.own = soP; soP.run = { x: W(0.74), y: ry }; soP.spd = 1.9;
+      if (soDf) { soDf.run = { x: W(0.765), y: ry }; soDf.spd = 1.7; }
+      wait(S, 1.05, function () {
+        if (soDf) { soDf.act = { a: 'fall', t0: S.t, flip: T === 0 }; soDf.run = { x: soDf.x, y: soDf.y }; soD = soDf; }
+        soP.run = { x: W(0.875), y: 0.5 + (ry - 0.5) * 0.5 };
+        wait(S, 0.7, function () { toCam('shoot'); });
+      });
     });
     return;
   }
@@ -5281,6 +5351,21 @@ function ballSpr(c, x, y, depth, spin) {
   if (!im || !im.complete || !im.naturalWidth) { c.fillStyle = '#fff'; c.fillRect(Math.round(x) - 2, Math.round(y) - 2, 4, 4); return; }
   c.drawImage(im, (Math.floor(spin) % 8) * sz, 0, sz, sz, Math.round(x - sz / 2), Math.round(y - sz / 2), sz, sz);
 }
+function wxDraw(c, S, w, h) {
+  var wx = S.wx | 0; if (!wx) return; var n, i, x, y, t = S.t;
+  if (wx === 1) {
+    c.fillStyle = 'rgba(8,18,40,.16)'; c.fillRect(0, 0, w, h); c.fillStyle = 'rgba(205,225,255,.5)'; n = Math.round(w * h / 420);
+    for (i = 0; i < n; i++) { x = (i * 73 + Math.floor(t * 90) * 3 + (i % 7) * 11) % w; y = (i * 131 + Math.floor(t * 260) + (i % 5) * 17) % h; c.fillRect(x, y, 1, w > 200 ? 6 : 3); }
+  } else {
+    c.fillStyle = 'rgba(255,255,255,.2)'; c.fillRect(0, 0, w, h); c.fillStyle = 'rgba(255,255,255,.92)'; n = Math.round(w * h / 520);
+    for (i = 0; i < n; i++) { x = (i * 97 + Math.floor(Math.sin(t * 1.3 + i) * 4) + w) % w; y = (i * 151 + Math.floor(t * (24 + (i % 5) * 6))) % h; c.fillRect(x, y, w > 200 ? 2 : 1, w > 200 ? 2 : 1); }
+  }
+}
+function camNote(c, C) {
+  if (!C.note) return;
+  c.fillStyle = 'rgba(11,22,34,.86)'; c.fillRect(64, 10, 240, 24); c.fillStyle = '#ffd84d'; c.fillRect(64, 10, 240, 2); c.fillRect(64, 32, 240, 2);
+  c.font = "11px 'Press Start 2P', monospace"; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(C.note, 184, 22);
+}
 function camDraw(c, S) {
   var C = S.camSc, t = Math.max(0, C.t - (C.pre || 0)), tc = C.tc, GL = C.GL, A = AA[C.shot], dead = C.pen || C.fk;
   var q = Math.max(0, Math.min(1.2, (t - tc) / C.fly)), e = Math.min(1, q), hit = t >= tc + C.fly, goal = C.kind === 0 && hit;
@@ -5395,7 +5480,7 @@ function simDraw(M) {
   var cv = document.getElementById('mPitch'); if (!cv) return;
   var c = cv.getContext('2d'), S = M.sim, ox = Math.round(S.cam.x), oy = Math.round(S.cam.y), k;
   c.imageSmoothingEnabled = false; cv.dataset.cam = S.mode === 'cam' ? '1' : '';
-  if (S.mode === 'cam' && S.camSc) { c.setTransform(1, 0, 0, 1, 0, 0); return camDraw(c, S); }
+  if (S.mode === 'cam' && S.camSc) { c.setTransform(1, 0, 0, 1, 0, 0); camDraw(c, S); camNote(c, S.camSc); wxDraw(c, S, 368, 224); return; }
   c.setTransform(2, 0, 0, 2, 0, 0);
   function R(col, wx, wy, w, h) { c.fillStyle = col; c.fillRect(Math.round(wx) - ox, Math.round(wy) - oy, w, h); }
   c.fillStyle = '#2a7d3c'; c.fillRect(0, 0, VW, VH);
@@ -5517,6 +5602,7 @@ function simDraw(M) {
     c.fillStyle = '#ffd84d'; c.fillRect(VW / 2 - 52, 8, 104, 2); c.fillRect(VW / 2 - 52, 36, 104, 2);
     if (Math.floor(S.t * 6) % 2 || S.banner < 0.9) { c.font = "16px 'Press Start 2P', monospace"; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('TOR!', VW / 2, 24); }
   }
+  wxDraw(c, S, VW, VH);
 }
 function startMatch() {
   var M = ui.match, ht = FM.team(state, M.h), at = FM.team(state, M.a), hn = ht.n, an = at.n;
@@ -5524,17 +5610,24 @@ function startMatch() {
   if (prefs.fast) fast = true;
   M.goals = []; M.min = 0; M.hg = 0; M.ag = 0; M.done = false; M.acc = 0; M.last = 0; M.queue = []; M.segEnd = 0; M.paused = false; M.htDone = false; M.n = 0; M.wantPause = false; M.ptitle = '';
   simInit(M, ht, at, M.home);
+  if (M.sim) M.sim.wx = state.live ? state.live.wx | 0 : 0;
   M.mute = false; M.outro = 0; SND.crowd(true);
   if (!fast && M.sim && !state.live.seg) { M.sim.onKick = function () { SND.whistle(1); }; simIntro(M.sim); } else SND.whistle(1);
   var S = M.sim;
   tick('Anpfiff! ' + hn + ' gegen ' + an + '.', 'info');
+  if (state.live && state.live.wx === 1) tick('Es regnet in Strömen. Kurzes Passspiel wird auf dem nassen Rasen schwer.', 'info'); else if (state.live && state.live.wx === 2) tick('Schneetreiben! Es gibt weniger Chancen, und schnelles Spiel leidet.', 'info');
   if (coachN()) tick('Trainer ' + coachN() + ' steht an der Seitenlinie und gibt letzte Anweisungen.', 'info');
   try { FM.exList(state, M.h, M.a).slice(0, 3).forEach(function (x) { tick(x.n + ' (' + x.t + ') trifft heute auf seinen alten Verein und ist besonders motiviert.', 'info'); }); } catch (eX) { }
   function apply(e) {
     var tn = e.h ? hn : an, tpl; M.n++;
     if (e.g && e.h !== M.home && state.live && !M.mute && !state.live.ban && (state.live.prN || 0) < 2) { M.prE = e; setTimeout(shoutBar, 0); setTimeout(function () { if (M.prE === e) { M.prE = null; shoutBar(); } }, 8000); }
-    if (e.g) { if (e.h) M.hg++; else M.ag++; M.goals.push({ m: e.m, h: e.h, p: e.p }); tpl = T_GOAL[(e.m + M.n) % T_GOAL.length]; if (!M.mute && !e._cam) SND.goal(e.h === M.home); }
+    if (e.g) { if (e.h) M.hg++; else M.ag++; M.goals.push({ m: e.m, h: e.h, p: e.p + (e.og ? ' (ET)' : ''), rp: e.p }); tpl = T_GOAL[(e.m + M.n) % T_GOAL.length]; if (!M.mute && !e._cam) SND.goal(e.h === M.home); }
     else { tpl = T_MISS[(e.m + M.n) % T_MISS.length]; if (!M.mute && !e._cam) SND.miss(); }
+    if (e.og) tpl = ['Eigentor! {p} lenkt den Ball unglücklich ins eigene Netz – {s} für {t}.', 'Was für ein Pech: {p} trifft ins eigene Tor. {s} für {t}.', '{p} will klären und überwindet den eigenen Torwart – {s} für {t}.'][(e.m + M.n) % 3];
+    else if (e.ty === 'ds') tpl = e.g ? ['{p} zieht aus der Distanz ab – der Ball schlägt im Winkel ein! {s} für {t}.', 'Traumtor! {p} hämmert den Ball aus 25 Metern ins Netz – {s} für {t}.', '{p} fasst sich ein Herz und trifft aus der zweiten Reihe. {s} für {t}.'][(e.m + M.n) % 3] : ['Distanzschuss von {p} ({t}) – knapp vorbei.', '{p} ({t}) versucht es aus der Ferne, der Torwart lenkt den Ball über die Latte.', '{p} ({t}) zieht aus 25 Metern ab – drüber.'][(e.m + M.n) % 3];
+    else if (e.ty === 'fl') tpl = e.g ? ['Flanke von außen, {p} ist zur Stelle – {s} für {t}.', 'Über den Flügel! {p} verwertet die Hereingabe zum {s} für {t}.', 'Maßflanke, {p} steigt am höchsten: {s} für {t}.'][(e.m + M.n) % 3] : ['Flanke in den Strafraum, {p} ({t}) kommt nicht richtig hinter den Ball.', '{t} kommt über außen, doch {p} verpasst die Hereingabe knapp.', 'Gute Flanke, aber {p} ({t}) köpft dem Torwart in die Arme.'][(e.m + M.n) % 3];
+    else if (e.ty === 'so') tpl = e.g ? ['{p} lässt seinen Gegenspieler stehen und vollendet zum {s} für {t}.', 'Solo! {p} tanzt die Abwehr aus und schiebt ein – {s} für {t}.', '{p} setzt sich im Eins-gegen-eins durch: {s} für {t}.'][(e.m + M.n) % 3] : ['{p} ({t}) setzt sich im Solo durch, scheitert aber am Torwart.', 'Starkes Dribbling von {p} ({t}), der Abschluss geht vorbei.', '{p} ({t}) lässt zwei Mann stehen und verzieht dann.'][(e.m + M.n) % 3];
+    if (e.pb) tpl = 'Pfosten! Der Ball springt zurück – Nachschuss: ' + tpl; else if (e.pr2) tpl = 'Der Torwart hält den Elfmeter, aber der Nachschuss: ' + tpl; else if (e.ke) tpl = 'Torwartfehler! ' + tpl;
     if (e.ct) tpl = e.g ? ['{p} läuft allein auf den Torwart zu und schiebt eiskalt ein – {s} für {t}.', 'Blitzschnell umgeschaltet! {p} vollendet den Gegenstoß zum {s} für {t}.', 'Ein langer Ball, {p} ist durch und trifft – {s} für {t}.'][(e.m + M.n) % 3] : ['{p} ({t}) ist nach einem langen Ball frei durch, scheitert aber am Torwart.', '{t} schaltet schnell um, doch {p} verzieht im Laufduell.', '{p} ({t}) läuft allein aufs Tor zu und vergibt.'][(e.m + M.n) % 3];
     tick(e.m + "' " + (e.ct ? 'Konter! ' : e.sp === 'pen' ? 'Elfmeter! ' : e.sp === 'corner' ? 'Ecke. ' : e.sp === 'fk' ? 'Freistoß. ' : '') + tpl.replace('{t}', tn).replace('{p}', e.p).replace('{s}', M.hg + ':' + M.ag) + (e.g && e.ex ? ' Ausgerechnet gegen seinen alten Verein!' : ''), e.g ? 'goal' + (e.h === M.home ? '' : ' opp') : '');
     var sc = document.getElementById('mScore'); if (sc) sc.textContent = M.hg + ':' + M.ag;
@@ -5552,7 +5645,8 @@ function startMatch() {
     var tn = e.h ? hn : an, txt, cls = 'info';
     if (e.k === 'y') { txt = 'Gelbe Karte für ' + e.p + ' (' + tn + ').' + (e.b5 ? ' Es ist seine fünfte, er fehlt im nächsten Spiel.' : ''); cls = 'card'; }
     else if (e.k === 'yr') { txt = 'Gelb-Rot! ' + e.p + ' (' + tn + ') muss vom Platz.'; cls = 'red'; }
-    else if (e.k === 'r') { txt = 'Rote Karte! ' + e.p + ' (' + tn + ') fliegt vom Platz.'; cls = 'red'; }
+    else if (e.k === 'r') { txt = e.nb ? 'Notbremse! ' + e.p + ' (' + tn + ') reißt den durchgebrochenen Stürmer um und sieht Rot.' : 'Rote Karte! ' + e.p + ' (' + tn + ') fliegt vom Platz.'; cls = 'red'; }
+    else if (e.k === 'off') txt = ['Abseits! ' + e.p + ' (' + tn + ') stand einen Schritt zu weit vorn.', e.p + ' (' + tn + ') ist durch – aber die Fahne ist oben. Abseits.', 'Die Fahne geht hoch: ' + e.p + ' (' + tn + ') im Abseits.'][(e.m + M.n) % 3];
     else if (e.k === 'inj') { txt = e.p + ' (' + tn + ') hat sich verletzt und muss raus. Voraussichtliche Pause: ' + e.w + (e.w === 1 ? ' Woche.' : ' Wochen.'); cls = 'red'; }
     else if (e.k === 'tac') txt = tn + e.t;
     else txt = 'Wechsel bei ' + tn + ': ' + e.p + ' kommt' + (e.o ? ' für ' + e.o : '') + '.';
@@ -5561,7 +5655,7 @@ function startMatch() {
   function any(e) { if (e.k === 'tac') note(e); else if (e.k) { note(e); simApply(S, e); } else apply(e); }
   M.note = function (e) { note(e); if (e.k === 'tac') return; if (fast) simApply(S, e); else S.pend.push(e); };
   function loadSeg() { var r = FM.liveNext(state); M.queue = r.events.slice(); M.segEnd = state.live.seg * 15; persist(); shoutBar(); }
-  M.unGoal = function (e) { for (var gi = M.goals.length - 1; gi >= 0; gi--) if (M.goals[gi].m === e.m && M.goals[gi].p === e.p && M.goals[gi].h === e.h) { M.goals.splice(gi, 1); break; } if (e.h) M.hg = Math.max(0, M.hg - 1); else M.ag = Math.max(0, M.ag - 1); var sc0 = document.getElementById('mScore'); if (sc0) sc0.textContent = M.hg + ':' + M.ag; };
+  M.unGoal = function (e) { for (var gi = M.goals.length - 1; gi >= 0; gi--) if (M.goals[gi].m === e.m && (M.goals[gi].rp || M.goals[gi].p) === e.p && M.goals[gi].h === e.h) { M.goals.splice(gi, 1); break; } if (e.h) M.hg = Math.max(0, M.hg - 1); else M.ag = Math.max(0, M.ag - 1); var sc0 = document.getElementById('mScore'); if (sc0) sc0.textContent = M.hg + ':' + M.ag; };
   function finish() {
     if (M.pkWait) return;
     if (!M.pkAsked && state.live && FM.penDue(state)) { M.pkAsked = true; M.pkWait = true; M.paused = false; M.prE = null; tick('Unentschieden – es gibt Elfmeterschießen. Wähle deine Schützen.', 'info'); matchPanel(); return; }
@@ -6033,7 +6127,7 @@ function paper(R, mine, u) {
     : d === 0 ? pv(['Punkteteilung: ' + t + ' und ' + o + ' trennen sich ' + sc, sc + ' – keiner gewinnt zwischen ' + t + ' und ' + o, t + ' holt einen Punkt gegen ' + o, 'Remis: ' + t + ' kommt gegen ' + o + ' nicht über ein ' + sc + ' hinaus', 'Gerechtes ' + sc + ' zwischen ' + t + ' und ' + o, t + ' und ' + o + ' teilen die Punkte', 'Ein Punkt, der keinem hilft: ' + sc + ' gegen ' + o, 'Unentschieden – ' + t + ' tritt auf der Stelle'], 11)
     : d <= -3 ? pv(['Debakel für ' + t + ': ' + sc + ' gegen ' + o, t + ' geht gegen ' + o + ' unter', 'Schwarzer Tag: ' + t + ' verliert ' + sc, 'Vorgeführt: ' + o + ' demontiert ' + t, sc + ' – ' + t + ' erlebt ein Desaster', 'Klatsche gegen ' + o + ': ' + t + ' am Boden', 'Zum Vergessen: ' + t + ' kassiert ' + ga + ' Gegentore'], 12)
     : pv([t + ' unterliegt ' + o + ' ' + sc, 'Knappe Pleite: ' + t + ' verliert gegen ' + o, o + ' zu stark: ' + t + ' verliert ' + sc, 'Leere Hände für ' + t + ' gegen ' + o, t + ' zieht gegen ' + o + ' den Kürzeren', 'Rückschlag: ' + t + ' verliert ' + sc, 'Nichts zu holen für ' + t + ' gegen ' + o, 'Enttäuschung – ' + t + ' unterliegt ' + o, t + ' belohnt sich nicht und verliert ' + sc], 13);
-  var mineG = G.filter(function (g) { return g.h === home; }).map(function (g) { return g.p; }), cnt = {}, top = '';
+  var mineG = G.filter(function (g) { return g.h === home && !/\(ET\)$/.test(g.p); }).map(function (g) { return g.p; }), cnt = {}, top = '';
   mineG.forEach(function (n) { cnt[n] = (cnt[n] || 0) + 1; }); Object.keys(cnt).forEach(function (n) { if (!top || cnt[n] > cnt[top]) top = n; });
   var pl = FM.place(state, u.id), NTn = FM.NT(state, u.lg), rd = R.round + 1;
   var scTxt = top ? (cnt[top] >= 3 ? pv([top + ' trifft dreifach. ', 'Mann des Tages ist ' + top + ' mit drei Toren. ', top + ' schnürt einen Dreierpack. '], 20) : cnt[top] === 2 ? pv(['Doppelpack von ' + top + '. ', top + ' trifft doppelt. ', 'Zweimal ' + top + ': Er war nicht zu halten. ', top + ' erzielt zwei Treffer. '], 21) : pv([top + ' trifft für ' + t + '. ', 'Das Tor für ' + t + ' erzielt ' + top + '. ', top + ' trägt sich in die Torschützenliste ein. ', 'Für ' + t + ' ist ' + top + ' erfolgreich. '], 22)) : gf === 0 && d < 0 ? pv(['Vorne ging gar nichts. ', 'Im Angriff blieb ' + t + ' harmlos. ', 'Ein eigenes Tor wollte nicht fallen. '], 23) : '';

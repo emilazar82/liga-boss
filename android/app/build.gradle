@@ -1,0 +1,61 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Versionsnummer kommt vom automatischen Bau auf GitHub; lokal gilt 1.
+def vCode = (System.getenv('TB_VERSION_CODE') ?: '1') as Integer
+def vName = System.getenv('TB_VERSION_NAME') ?: '1.0'
+def ksFile = System.getenv('TB_KEYSTORE_FILE')
+
+android {
+    namespace 'de.trainerbank.app'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'de.trainerbank.app'
+        minSdk 24
+        targetSdk 36
+        versionCode vCode
+        versionName vName
+    }
+
+    signingConfigs {
+        release {
+            if (ksFile) {
+                storeFile file(ksFile)
+                storePassword System.getenv('TB_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('TB_KEY_ALIAS')
+                keyPassword System.getenv('TB_KEY_PASSWORD')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (ksFile) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    // Das Spiel ist eine einzige HTML-Datei und soll unkomprimiert bleiben, damit es schnell startet.
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+
+    androidResources {
+        noCompress 'html'
+    }
+}
+
+dependencies {
+    implementation 'androidx.activity:activity:1.9.3'
+    implementation 'androidx.core:core:1.13.1'
+}

@@ -3275,6 +3275,7 @@ var SND = (function () {
     mSrc = ac.createBufferSource(); mGain = ac.createGain(); mSrc.buffer = buf.music; mSrc.loop = true; mSrc.loopStart = 1; mSrc.loopEnd = 17;
     mGain.gain.value = 0.0001; mGain.gain.linearRampToValueAtTime(0.5, ac.currentTime + 0.8); mSrc.connect(mGain); mGain.connect(master); mSrc.start(0, 1);
   }
+  try { document.addEventListener('visibilitychange', function () { if (!ac) return; try { if (document.hidden) ac.suspend(); else if (prefs.snd) ac.resume(); } catch (eV) { } }); } catch (eW) { }
   function ctx() {
     if (!prefs.snd) return null;
     if (!ac) { try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e0) { }
@@ -3337,7 +3338,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '16.11. 10:32';
+var BUILD = '16.11. 10:43';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -4354,6 +4355,14 @@ function vTour() {
 }
 var NEWV = '';
 var INAPP = false; try { INAPP = !!window.TBApp; } catch (eA) { }
+try {
+  window.tbSaved = function (ok) { toast(ok ? 'Spielstand als Datei gesichert.' : 'Sichern abgebrochen.'); };
+  window.tbBack = function () {
+    var pb = document.querySelector('.popbg'); if (pb) { var bs = pb.querySelectorAll('[data-a=pop]'); if (bs.length) { bs[bs.length - 1].click(); return true; } }
+    var bk = document.querySelector('[data-a=go][data-v=menu]'); if (bk && ui.view !== 'menu') { bk.click(); return true; }
+    return false;
+  };
+} catch (eB) { }
 function updHtml() { return INAPP ? '' : NEWV ? '<div class="panel" style="border-color:var(--yellow)"><p style="margin:0 0 8px;font-size:15px"><b>Neue Version verfügbar</b> (Stand ' + esc(NEWV) + '). Dein Spielstand bleibt erhalten.</p><button class="big" data-a="update">Neue Version laden</button></div>' : ''; }
 function updBtn() { return NEWV || INAPP ? '' : '<div style="text-align:center"><button class="big sec2 sm" style="width:auto;padding:0 18px;min-height:38px;font-size:13px" data-a="updcheck">' + (ui.updw ? 'Prüfe …' : 'Auf Updates prüfen') + '</button></div>'; }
 function updManual() {

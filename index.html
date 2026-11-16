@@ -418,7 +418,7 @@ img.ip{image-rendering:pixelated;border:1px solid #052826;flex-shrink:0;max-widt
 .fin .fv{font-family:var(--px);font-size:11px;padding:5px 9px 3px;background:#232c38;color:#fff}
 .fin .fv.w{background:#1f7333;color:#eaffea}.fin .fv.l{background:#a82a1e}
 .fin .fs{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;font-size:11px;line-height:1.3}
-.fin .fs ul{list-style:none;margin:0;padding:0;text-align:center;max-height:44px;overflow:hidden}
+.fin .fs ul{list-style:none;margin:0;padding:0;text-align:center;max-height:58px;overflow:hidden}
 .fin .fs i{font-style:normal;color:#8fb5b0}.fin .fs .no{color:#5d6876}
 .fin .fa{font-size:10px;color:#8fb5b0}
 .fin s{position:absolute;top:-8px;width:5px;height:5px;animation:conf 3s linear infinite}
@@ -3452,7 +3452,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '16.11. 18:18';
+var BUILD = '16.11. 18:43';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -5452,7 +5452,14 @@ function startMatch() {
     M.showFin = null; var fe = document.getElementById('mFin');
     if (fe) {
       var uh = M.home, gf = uh ? m.hg : m.ag, ga = uh ? m.ag : m.hg, won = m.pen ? m.w === state.uid : gf > ga, lost = m.pen ? m.w !== state.uid : gf < ga;
-      var sl = function (hh) { var g = M.goals.filter(function (x) { return x.h === hh; }); return g.length ? g.map(function (x) { return '<li>' + esc(x.p) + ' <i>' + x.m + "'</i></li>"; }).join('') : '<li class="no">–</li>'; };
+      var sl = function (hh) {
+        var g = M.goals.filter(function (x) { return x.h === hh; }), by = [], ix = {};
+        g.forEach(function (x) { if (ix[x.p] === undefined) { ix[x.p] = by.length; by.push({ p: x.p, m: [] }); } by[ix[x.p]].m.push(x.m + "'"); });
+        if (!by.length) return '<li class="no">–</li>';
+        var row = function (o) { return esc(o.p) + ' <i>' + o.m.join(', ') + '</i>'; };
+        if (by.length <= 4) return by.map(function (o) { return '<li>' + row(o) + '</li>'; }).join('');
+        return by.slice(0, 3).map(function (o) { return '<li>' + row(o) + '</li>'; }).join('') + '<li>' + by.slice(3).map(function (o) { return esc(o.p.split(' ').pop()) + ' <i>' + o.m.join(', ') + '</i>'; }).join(' · ') + '</li>';
+      };
       var cf = ''; if (won) for (var ci = 0; ci < 26; ci++) cf += '<s style="left:' + (ci * 3.9 + (ci % 3)) + '%;background:' + ['#ffd84d', '#ff7a66', '#8fd0ff', '#6df09a', '#fff'][ci % 5] + ';animation-delay:' + ((ci * 37) % 23) / 10 + 's;animation-duration:' + (2.2 + (ci % 4) * 0.5) + 's"></s>';
       fe.innerHTML = cf + '<p class="ft">ABPFIFF</p><div class="fr"><span>' + crest(M.h, 34) + '<small>' + esc(hn) + '</small></span><b>' + m.hg + ':' + m.ag + '</b><span>' + crest(M.a, 34) + '<small>' + esc(an) + '</small></span></div><p class="fv ' + (won ? 'w' : lost ? 'l' : 'd') + '">' + (m.pen ? (won ? 'SIEG IM ELFMETERSCHIESSEN' : 'AUS IM ELFMETERSCHIESSEN') : won ? 'SIEG' : lost ? 'NIEDERLAGE' : 'UNENTSCHIEDEN') + '</p>' + (coachN() ? '<p class="fa" style="margin:0 0 4px">Trainer ' + esc(coachN()) + (won ? ' reißt an der Seitenlinie die Arme hoch.' : lost ? ' verschwindet wortlos in der Kabine.' : ' hadert mit dem einen Punkt.') + '</p>' : '') + '<div class="fs"><ul>' + sl(true) + '</ul><ul>' + sl(false) + '</ul></div>' + (R.fin && R.fin.att ? '<p class="fa">' + num(R.fin.att) + ' Zuschauer</p>' : R.fr ? '<p class="fa">Testspiel' + (R.g.inc ? ' · +' + tk(R.g.inc) + ' Einnahmen' : '') + '</p>' : '');
       fe.className = 'fin' + (won ? ' won' : lost ? ' lost' : ''); fe.hidden = false;

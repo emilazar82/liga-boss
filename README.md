@@ -1,8 +1,8 @@
-# Liga-Boss
+# Trainerbank
 
 Fußballmanager im Retro-Look, komplett in einer einzigen Datei (`index.html`). Läuft im Browser, Spielstände bleiben auf dem Gerät.
 
-Spielen: https://emilazar82.github.io/liga-boss/
+Spielen: https://emilazar82.github.io/trainerbank/
 
 ## Inhalt
 

@@ -3020,7 +3020,7 @@ function simSeg(home, away, m0, cup, disId, bo, mo) {
       var pl = scorer(t), goal = Math.random() < pr * finish(pl, opp);
       if (goal && pl) { if (!cup) pl.g++; pl.f = clamp(pl.f + 1, 1, 10); }
       var kon = tv(t, 'pr') === 0 && tv(t, 'tp') === 2, opn = opp.au === 2 || tv(opp, 'pr') === 2, kvb = t.vb === 1 ? 0.1 : 0;
-      ev.push({ m: m0 + rnd(1, 15), h: isHome, g: goal, p: pl ? pl.n : '', id: pl ? pl.i : -1, ex: goal && pl && pl.exn && pl.exn === opp.n ? 1 : 0, ct: Math.random() < (kon ? (opn ? 0.5 : 0.22) : (opn ? 0.14 : 0.05)) + kvb ? 1 : 0 });
+      ev.push({ m: m0 + rnd(1, 15), h: isHome, g: goal, p: pl ? pl.n : '', id: pl ? pl.i : -1, ex: goal && pl && pl.exn && pl.exn === opp.n ? 1 : 0, ct: Math.random() < (kon ? (opn ? 0.6 : 0.32) : (opn ? 0.22 : 0.1)) + kvb ? 1 : 0 });
     }
   }
   side(home, true, share, rh.att, ra.def); side(away, false, 1 - share, ra.att, rh.def);
@@ -3547,7 +3547,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '16.11. 20:43';
+var BUILD = '16.11. 21:23';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -5535,6 +5535,7 @@ function startMatch() {
     if (e.g && e.h !== M.home && state.live && !M.mute && !state.live.ban && (state.live.prN || 0) < 2) { M.prE = e; setTimeout(shoutBar, 0); setTimeout(function () { if (M.prE === e) { M.prE = null; shoutBar(); } }, 8000); }
     if (e.g) { if (e.h) M.hg++; else M.ag++; M.goals.push({ m: e.m, h: e.h, p: e.p }); tpl = T_GOAL[(e.m + M.n) % T_GOAL.length]; if (!M.mute && !e._cam) SND.goal(e.h === M.home); }
     else { tpl = T_MISS[(e.m + M.n) % T_MISS.length]; if (!M.mute && !e._cam) SND.miss(); }
+    if (e.ct) tpl = e.g ? ['{p} läuft allein auf den Torwart zu und schiebt eiskalt ein – {s} für {t}.', 'Blitzschnell umgeschaltet! {p} vollendet den Gegenstoß zum {s} für {t}.', 'Ein langer Ball, {p} ist durch und trifft – {s} für {t}.'][(e.m + M.n) % 3] : ['{p} ({t}) ist nach einem langen Ball frei durch, scheitert aber am Torwart.', '{t} schaltet schnell um, doch {p} verzieht im Laufduell.', '{p} ({t}) läuft allein aufs Tor zu und vergibt.'][(e.m + M.n) % 3];
     tick(e.m + "' " + (e.ct ? 'Konter! ' : e.sp === 'pen' ? 'Elfmeter! ' : e.sp === 'corner' ? 'Ecke. ' : e.sp === 'fk' ? 'Freistoß. ' : '') + tpl.replace('{t}', tn).replace('{p}', e.p).replace('{s}', M.hg + ':' + M.ag) + (e.g && e.ex ? ' Ausgerechnet gegen seinen alten Verein!' : ''), e.g ? 'goal' + (e.h === M.home ? '' : ' opp') : '');
     var sc = document.getElementById('mScore'); if (sc) sc.textContent = M.hg + ':' + M.ag;
   }

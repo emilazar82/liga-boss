@@ -1551,16 +1551,32 @@ function hallSquad(state, mode) {
   var list = (tw ? [tw] : []).concat(f), x = 0; list.forEach(function (p) { x += eff(p); });
   return { list: list, str: list.length ? x / list.length : 30 };
 }
+var HALLPZ = [80000, 40000, 20000, 10000, 5000, 2000];
+function hallField(state) {
+  var u = state.teams[state.uid], F = [];
+  [0, 1].forEach(function (lg) { var T = leagueTeams(state, lg).slice().sort(function (a, b) { return place(state, a.id) - place(state, b.id); }).slice(0, 8); T.forEach(function (t) { F.push(t); }); });
+  if (F.length < 16) leagueTeams(state, u.lg).forEach(function (t) { if (F.length < 16 && F.indexOf(t) < 0) F.push(t); });
+  if (F.indexOf(u) < 0) F[F.length - 1] = u;
+  return F;
+}
+function hallPrize(state, pl) { return HALLPZ[pl === 1 ? 0 : pl === 2 ? 1 : pl === 3 ? 2 : pl === 4 ? 3 : pl <= 8 ? 4 : 5] * [4, 2, 1][state.teams[state.uid].lg]; }
 function hallPlay(state, mode) {
   if (!state.hall || !state.hall.due) return null;
   mode = mode || 0; var HS = hallSquad(state, mode), notes = [];
-  state.teams[state.uid]._hs = HS.str;
-  var u = state.teams[state.uid], others = shuffle(leagueTeams(state, u.lg).filter(function (t) { return t.id !== u.id; })).slice(0, 3);
-  var s1 = hallGame(u, others[0]), s2 = hallGame(others[1], others[2]), fin = hallGame(s1.w, s2.w), third = hallGame(s1.l, s2.l);
-  var place = fin.w === u ? 1 : fin.l === u ? 2 : third.w === u ? 3 : 4;
-  var prize = [60000, 30000, 15000, 5000][place - 1] * [4, 2, 1][u.lg];
-  state.cash += prize; state.led.cup += prize;
+  var u = state.teams[state.uid], F = shuffle(hallField(state)), place0 = 0, rounds = [], NMS = { 16: 'Achtelfinale', 8: 'Viertelfinale', 4: 'Halbfinale' };
+  u._hs = HS.str;
   function cut(g) { return { a: g.a, b: g.b, ga: g.ga, gb: g.gb, pen: g.pen, w: g.w.n }; }
+  var cur = F, semiL = [];
+  while (cur.length > 2) {
+    var gs = [], nx = [];
+    for (var k = 0; k < cur.length; k += 2) { var g = hallGame(cur[k], cur[k + 1]); gs.push(g); nx.push(g.w); if (cur.length === 4) semiL.push(g.l); if (g.l === u && cur.length > 4) place0 = cur.length === 16 ? 9 : 5; }
+    rounds.push({ n: NMS[cur.length], g: gs.map(cut) }); cur = nx;
+  }
+  var third = hallGame(semiL[0], semiL[1]), fin = hallGame(cur[0], cur[1]);
+  rounds.push({ n: 'Spiel um Platz 3', g: [cut(third)] }); rounds.push({ n: 'Finale', g: [cut(fin)] });
+  var place = fin.w === u ? 1 : fin.l === u ? 2 : third.w === u ? 3 : third.l === u ? 4 : place0;
+  var prize = hallPrize(state, place);
+  state.cash += prize; state.led.cup += prize;
   delete u._hs;
   HS.list.forEach(function (p) {
     var youth = p.c === undefined;
@@ -1569,7 +1585,7 @@ function hallPlay(state, mode) {
     else { p.mo = Math.round(clamp((p.mo === undefined ? 6 : p.mo) + 0.8, 1, 10) * 10) / 10; p.f = clamp(p.f + 1, 1, 10); }
   });
   if (mode === 1) notes.push('Die Reservisten freuen sich über den Einsatz: Moral und Form steigen.');
-  state.hall = { done: true, res: { semi: [cut(s1), cut(s2)], third: cut(third), fin: cut(fin), place: place, prize: prize, notes: notes, mode: mode, who: HS.list.map(function (p) { return p.n; }) } };
+  state.hall = { done: true, res: { rounds: rounds, place: place, prize: prize, champ: fin.w.n, notes: notes, mode: mode, who: HS.list.map(function (p) { return p.n; }) } };
   return state.hall.res;
 }
 var TOTOSTAKE = 0, TOTOWIN = { 8: 20000, 7: 5000, 6: 2000 };
@@ -3353,7 +3369,7 @@ function topScorers(state, lg, n) {
   all.sort(function (a, b) { return b.g - a.g; });
   return all.slice(0, n);
 }
-return { NTN: NTN, TOURST: TOURST, tourDue: tourDue, tourKind: tourKind, tourStart: tourStart, tourTie: tourTie, startTour: startTour, tourRest: tourRest, tourInfo: tourInfo, ntAnswer: ntAnswer, ACH: ACH, achState: achState, achNew: achNew, fcInfo: fcInfo, invInfo: invInfo, invList: invList, invBuy: invBuy, invSell: invSell, invBoost: invBoost, fgnLgsX: fgnLgs, clubVal: clubVal, mePct: mePct, meOwner: meOwner, meShareBuy: meShareBuy, meShareSell: meShareSell, meDraw: meDraw, mePut: mePut, meStep: meStep, shareWin: shareWin, meNet: meNet, meBuyList: meBuyList, meBuyClub: meBuyClub, MEOWN: MEOWN, MEEDU: MEEDU, me: me, meWage: meWage, meUpkeep: meUpkeep, meAsk: meAsk, meBuy: meBuy, meSell: meSell, meLearn: meLearn, deadline: deadline, dlList: dlList, pressDue: pressDue, pressAnswer: pressAnswer, rival: rival, setRival: setRival, isDerby: isDerby, resign: resign, fgnAge: fgnAge, fgnTopX: fgnTop, clubTeam: clubTeam, spFac: spFac, fjobInfo: fjobInfo, moveCountry: moveCountry, fgnJobs: fgnJobs, worldExport: worldExport, flTable: flTable, flInfo: flInfo, flScorers: flScorers, fgnReal: fgnReal, fgnApply: fgnApply, weeklyOffers: weeklyOffers, fgnLgs: fgnLgs, fgnClubs: fgnClubs, fgnOpen: fgnOpen, cupDate: cupDate, euName: euName, euGroups: euGroups, tCty: tCty, EUDRAW: EUDRAW, exportData: exportData, parseData: parseData, applyData: applyData, newGameCustom: newGameCustom, winText: winText, startFriendly: startFriendly, cupGoalR: cupGoalR, friendly: friendly, friendInfo: friendInfo, car: car, liveTalk: liveTalk, talkInfo: talkInfo, talkAnswer: talkAnswer, liveTact: liveTact, liveTactInfo: liveTactInfo, tableX: tableX, teamInfo: teamInfo, leagueStats: leagueStats, totoAuto: totoAuto, totoMult: totoMult, hallSquad: hallSquad, boardAmb: boardAmb, boardAsk: boardAsk, boardTalk: boardTalk, GRANT: GRANT, youthTrial: youthTrial, youthLoan: youthLoan, youthDrop: youthDrop, youthProj: youthProj, sponProj: sponProj, sponReneg: sponReneg, extOffer: extOffer, raise: raise, release: release, releaseCost: releaseCost, EXT: EXT, VIPB: VIPB, setOps: setOps, capEff: capEff, attExpect: attExpect, LGF: LGF, SECC: SECC, PITC: PITC, PPR: PPR, PPN: PPN, DEPO: DEPO, INVAMT: INVAMT, absWeek: absWeek, wageSum: wageSum, setPP: setPP, setGoalBonus: setGoalBonus, setIns: setIns, deposit: deposit, breakDep: breakDep, depSum: depSum, investor: investor, winOpen: winOpen, scoutCap: scoutCap, scoutFee: scoutFee, scoutAsk: scoutAsk, scoutTips: scoutTips, posCount: posCount, planInfo: planInfo, indInfo: indInfo, kitInfo: kitInfo, kitBuy: kitBuy, kitColor: kitColor, kitPlain: kitPlain, KITCOL: KITCOL, KITPAT: KITPAT, PREP: PREP, setPrep: setPrep, nextOpp: nextOpp, trainEvInfo: trainEvInfo, trainEv: trainEv, setPreset: setPreset, STAFFN: STAFFN, staffLv: staffLv, staffWage: staffWage, staffCost: staffCost, setStaff: setStaff, indMax: indMax, tactInfo: tactInfo, euTie: euTie, startEu: startEu, EUNAME: EUNAME, EUPRIZE: EUPRIZE, jobInfo: jobInfo, adSlots: adSlots, adSign: adSign, MN: MN, MUP: MUP, MCOST: MCOST, merchExpect: merchExpect, merchUpgrade: merchUpgrade, DKD: DKD, dkPreview: dkPreview, dkSell: dkSell, extraCost: extraCost, stadExtra: stadExtra, upkeepOf: upkeepOf, goalText: goalText, takeOver: takeOver, SESS: SESS, planFit: planFit, setPlan: setPlan, setInd: setInd, CAMP: CAMP, campCost: campCost, campGo: campGo, ATN: ATN, ATW: ATW, YCOST: YCOST, YUP: YUP, YMAX: YMAX, youthUpgrade: youthUpgrade, promote: promote, POS: POS, FORMATIONS: FORMATIONS, LEAGUES: LEAGUES, ROUNDS: ROUNDS, CTY: CTY, cfg: cfg, NL: NL, NT: NT, RN: RN, HN: HN, lgName: lgName, newGame: newGame, userTeam: userTeam, team: team, table: table, place: place, nextMatch: nextMatch, playRound: playRound, finishSeason: finishSeason, bestEleven: bestEleven, lineupValid: lineupValid, counts: counts, need: need, eff: eff, findP: findP, dateOf: dateOf, seasonLabel: seasonLabel, topScorers: topScorers, ensure: ensure, value: value, salary: salary, buy: buy, sell: sell, sellPrice: sellPrice, MAXSQUAD: MAXSQUAD, signSponsor: signSponsor, loanMax: loanMax, loanStep: loanStep, borrow: borrow, repay: repay, setPrice: setPrice, calEvents: calEvents, startBuild: startBuild, blocks: blocks, buildPlan: buildPlan, BMAX: BMAX, BUILDS: BUILDS, handgeld: handgeld, extend: extend, PRICE: PRICE, cupTie: cupTie, cupPlay: cupPlay, startRound: startRound, startCup: startCup, baseWage: baseWage, demand: demand, offer: offer, loanFee: loanFee, canLoanIn: canLoanIn, loanIn: loanIn, loanOut: loanOut, toggleList: toggleList, acceptOffer: acceptOffer, rejectOffer: rejectOffer, haggle: haggle, findTarget: findTarget, liveNext: liveNext, liveSub: liveSub, liveBench: liveBench, finishLive: finishLive, liveAuto: liveAuto, avail: avail, CUPNAME: CUPNAME, CUPPRIZE: CUPPRIZE, hallPlay: hallPlay, totoMatches: totoMatches, totoTip: totoTip, totoComplete: totoComplete, TOTOSTAKE: TOTOSTAKE, TOTOWIN: TOTOWIN };
+return { NTN: NTN, TOURST: TOURST, tourDue: tourDue, tourKind: tourKind, tourStart: tourStart, tourTie: tourTie, startTour: startTour, tourRest: tourRest, tourInfo: tourInfo, ntAnswer: ntAnswer, ACH: ACH, achState: achState, achNew: achNew, fcInfo: fcInfo, invInfo: invInfo, invList: invList, invBuy: invBuy, invSell: invSell, invBoost: invBoost, fgnLgsX: fgnLgs, clubVal: clubVal, mePct: mePct, meOwner: meOwner, meShareBuy: meShareBuy, meShareSell: meShareSell, meDraw: meDraw, mePut: mePut, meStep: meStep, shareWin: shareWin, meNet: meNet, meBuyList: meBuyList, meBuyClub: meBuyClub, MEOWN: MEOWN, MEEDU: MEEDU, me: me, meWage: meWage, meUpkeep: meUpkeep, meAsk: meAsk, meBuy: meBuy, meSell: meSell, meLearn: meLearn, deadline: deadline, dlList: dlList, pressDue: pressDue, pressAnswer: pressAnswer, rival: rival, setRival: setRival, isDerby: isDerby, resign: resign, fgnAge: fgnAge, fgnTopX: fgnTop, clubTeam: clubTeam, spFac: spFac, fjobInfo: fjobInfo, moveCountry: moveCountry, fgnJobs: fgnJobs, worldExport: worldExport, flTable: flTable, flInfo: flInfo, flScorers: flScorers, fgnReal: fgnReal, fgnApply: fgnApply, weeklyOffers: weeklyOffers, fgnLgs: fgnLgs, fgnClubs: fgnClubs, fgnOpen: fgnOpen, cupDate: cupDate, euName: euName, euGroups: euGroups, tCty: tCty, EUDRAW: EUDRAW, exportData: exportData, parseData: parseData, applyData: applyData, newGameCustom: newGameCustom, winText: winText, startFriendly: startFriendly, cupGoalR: cupGoalR, friendly: friendly, friendInfo: friendInfo, car: car, liveTalk: liveTalk, talkInfo: talkInfo, talkAnswer: talkAnswer, liveTact: liveTact, liveTactInfo: liveTactInfo, tableX: tableX, teamInfo: teamInfo, leagueStats: leagueStats, totoAuto: totoAuto, totoMult: totoMult, hallSquad: hallSquad, hallPrize: hallPrize, hallField: hallField, boardAmb: boardAmb, boardAsk: boardAsk, boardTalk: boardTalk, GRANT: GRANT, youthTrial: youthTrial, youthLoan: youthLoan, youthDrop: youthDrop, youthProj: youthProj, sponProj: sponProj, sponReneg: sponReneg, extOffer: extOffer, raise: raise, release: release, releaseCost: releaseCost, EXT: EXT, VIPB: VIPB, setOps: setOps, capEff: capEff, attExpect: attExpect, LGF: LGF, SECC: SECC, PITC: PITC, PPR: PPR, PPN: PPN, DEPO: DEPO, INVAMT: INVAMT, absWeek: absWeek, wageSum: wageSum, setPP: setPP, setGoalBonus: setGoalBonus, setIns: setIns, deposit: deposit, breakDep: breakDep, depSum: depSum, investor: investor, winOpen: winOpen, scoutCap: scoutCap, scoutFee: scoutFee, scoutAsk: scoutAsk, scoutTips: scoutTips, posCount: posCount, planInfo: planInfo, indInfo: indInfo, kitInfo: kitInfo, kitBuy: kitBuy, kitColor: kitColor, kitPlain: kitPlain, KITCOL: KITCOL, KITPAT: KITPAT, PREP: PREP, setPrep: setPrep, nextOpp: nextOpp, trainEvInfo: trainEvInfo, trainEv: trainEv, setPreset: setPreset, STAFFN: STAFFN, staffLv: staffLv, staffWage: staffWage, staffCost: staffCost, setStaff: setStaff, indMax: indMax, tactInfo: tactInfo, euTie: euTie, startEu: startEu, EUNAME: EUNAME, EUPRIZE: EUPRIZE, jobInfo: jobInfo, adSlots: adSlots, adSign: adSign, MN: MN, MUP: MUP, MCOST: MCOST, merchExpect: merchExpect, merchUpgrade: merchUpgrade, DKD: DKD, dkPreview: dkPreview, dkSell: dkSell, extraCost: extraCost, stadExtra: stadExtra, upkeepOf: upkeepOf, goalText: goalText, takeOver: takeOver, SESS: SESS, planFit: planFit, setPlan: setPlan, setInd: setInd, CAMP: CAMP, campCost: campCost, campGo: campGo, ATN: ATN, ATW: ATW, YCOST: YCOST, YUP: YUP, YMAX: YMAX, youthUpgrade: youthUpgrade, promote: promote, POS: POS, FORMATIONS: FORMATIONS, LEAGUES: LEAGUES, ROUNDS: ROUNDS, CTY: CTY, cfg: cfg, NL: NL, NT: NT, RN: RN, HN: HN, lgName: lgName, newGame: newGame, userTeam: userTeam, team: team, table: table, place: place, nextMatch: nextMatch, playRound: playRound, finishSeason: finishSeason, bestEleven: bestEleven, lineupValid: lineupValid, counts: counts, need: need, eff: eff, findP: findP, dateOf: dateOf, seasonLabel: seasonLabel, topScorers: topScorers, ensure: ensure, value: value, salary: salary, buy: buy, sell: sell, sellPrice: sellPrice, MAXSQUAD: MAXSQUAD, signSponsor: signSponsor, loanMax: loanMax, loanStep: loanStep, borrow: borrow, repay: repay, setPrice: setPrice, calEvents: calEvents, startBuild: startBuild, blocks: blocks, buildPlan: buildPlan, BMAX: BMAX, BUILDS: BUILDS, handgeld: handgeld, extend: extend, PRICE: PRICE, cupTie: cupTie, cupPlay: cupPlay, startRound: startRound, startCup: startCup, baseWage: baseWage, demand: demand, offer: offer, loanFee: loanFee, canLoanIn: canLoanIn, loanIn: loanIn, loanOut: loanOut, toggleList: toggleList, acceptOffer: acceptOffer, rejectOffer: rejectOffer, haggle: haggle, findTarget: findTarget, liveNext: liveNext, liveSub: liveSub, liveBench: liveBench, finishLive: finishLive, liveAuto: liveAuto, avail: avail, CUPNAME: CUPNAME, CUPPRIZE: CUPPRIZE, hallPlay: hallPlay, totoMatches: totoMatches, totoTip: totoTip, totoComplete: totoComplete, TOTOSTAKE: TOTOSTAKE, TOTOWIN: TOTOWIN };
 })();
 </script>
 
@@ -3436,7 +3452,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '16.11. 18:50';
+var BUILD = '16.11. 19:10';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -4540,15 +4556,17 @@ function vHall() {
   var H = state.hall, h = sub('Hallenturnier');
   if (!H) return h + '<p class="hint" style="margin:0">Das Hallenturnier findet zur Saisonhälfte nach dem ' + FM.HN(state) + '. Spieltag statt.</p>';
   if (H.due) {
-    var HQ = FM.hallSquad(state, ui.hallm), pz = [60000, 30000, 15000, 5000].map(function (v) { return v * [4, 2, 1][FM.userTeam(state).lg]; });
-    h += '<div class="panel">' + acard('halle', 'Hallenturnier', 'Winterpause · vier Vereine deiner Liga') + '<div class="ladder">' + pz.map(function (v, i) { return '<div class="' + (i === 0 ? 'cur' : '') + '"><i>' + (i + 1) + '.</i><small>' + tk(v) + '</small></div>'; }).join('') + '</div>' + inf('Halbfinale, Spiel um Platz 3 und Finale. Ein Torwart und vier Feldspieler treten an.') + '</div>';
+    var HQ = FM.hallSquad(state, ui.hallm), pz = [1, 2, 3, 4, 5, 9].map(function (v) { return FM.hallPrize(state, v); }), HF = FM.hallField(state);
+    h += '<div class="panel">' + acard('halle', 'Hallenturnier', 'Winterpause · 16 Vereine · die besten acht der 1. und der 2. Liga') + '<div class="ladder" style="grid-auto-flow:row;grid-template-columns:repeat(3,1fr)">' + pz.map(function (v, i) { return '<div class="' + (i === 0 ? 'cur' : '') + '"><i>' + ['1.', '2.', '3.', '4.', 'VF', 'AF'][i] + '</i><small>' + tk(v) + '</small></div>'; }).join('') + '</div><p class="hint" style="margin:8px 0 0">Dabei: ' + HF.map(function (t) { return t.id === state.uid ? '<b style="color:#ffd84d">' + esc(t.n) + '</b>' : esc(t.n); }).join(' · ') + '</p>' + inf('Achtelfinale, Viertelfinale, Halbfinale, Spiel um Platz 3 und Finale – ausgelost, jede Runde K.-o. Ein Torwart und vier Feldspieler treten an. Gehört dein Verein nicht zu den besten acht seiner Liga, bekommt er als Gastgeber den letzten Startplatz. VF und AF: Preisgeld beim Ausscheiden im Viertel- oder Achtelfinale.') + '</div>';
     h += '<div class="panel"><p class="lbl">WEN SCHICKST DU?</p>' + tiles('hallm', [[0, 'Beste Fünf', 'm_shirt', sm('beste Chance', 0) + sm('je 4 % Verletzung', 1)], [1, 'Reservisten', 'o_bench', sm('Moral + Form ▲', 0) + sm('schwächer', 1)], [2, 'Jugend', 'jugend', sm('Talente +1 Stärke', 0) + sm('am schwächsten', 1)]], ui.hallm, 'pk3') + '<div class="rings" style="grid-template-columns:1fr;margin-top:10px">' + ring(HQ.str / 100, '#ffd84d', Math.round(HQ.str), 'Stärke der Fünf') + '</div><div class="pills" style="justify-content:center;margin-top:8px">' + HQ.list.map(function (p) { return '<span class="pill" style="padding-left:9px">' + esc(p.n) + '</span>'; }).join('') + '</div>' + inf(['Die größte Chance aufs Preisgeld. Jeder der fünf hat aber 4 % Risiko, sich auf dem harten Boden für ein bis drei Wochen zu verletzen.', 'Wer sonst auf der Bank sitzt, darf ran: schwächer, aber Moral und Form der fünf steigen deutlich. Kein Verletzungsrisiko für die Stammelf.', 'Talente ab 16 aus der Jugend, aufgefüllt mit Reservisten: die schwächste Wahl, aber jeder Jugendspieler lernt dazu (+1 Stärke).'][ui.hallm]) + '</div>';
     return h + '<button class="big" data-a="hall">Turnier spielen</button><p class="hint" style="margin:0">Wer lieber gleich den nächsten Spieltag startet, lässt das Turnier aus.</p>';
   }
   var r = H.res;
-  if (ui.hallStep !== undefined && ui.hallStep < 4) return hallStage(r, ui.hallStep);
-  h += '<div class="panel">' + acard(r.place === 1 ? 'm_cup' : 'halle', r.place + '. Platz', 'Hallenturnier') + fx([['Preisgeld +' + money(r.prize), 1]]) + (r.who ? '<p class="hint" style="margin:6px 0 0">Gespielt haben: ' + r.who.map(esc).join(' · ') + '</p>' : '') + (r.notes || []).map(function (t) { return '<p class="hint" style="margin:6px 0 0;color:#ffd84d">' + esc(t) + '</p>'; }).join('') + '</div>';
-  h += '<p class="lbl" style="margin:0">HALBFINALE</p><div class="list">' + hallRow(r.semi[0]) + hallRow(r.semi[1]) + '</div><p class="lbl" style="margin:6px 0 0">SPIEL UM PLATZ 3</p><div class="list">' + hallRow(r.third) + '</div><p class="lbl" style="margin:6px 0 0">FINALE</p><div class="list">' + hallRow(r.fin) + '</div><p class="hint" style="margin:0">* nach Neunmeterschießen</p>';
+  if (!r.rounds) r.rounds = [{ n: 'Halbfinale', g: r.semi }, { n: 'Spiel um Platz 3', g: [r.third] }, { n: 'Finale', g: [r.fin] }];
+  if (ui.hallStep !== undefined && ui.hallStep < hallFlat(r).length) return hallStage(r, ui.hallStep);
+  h += '<div class="panel">' + acard(r.place === 1 ? 'm_cup' : 'halle', r.place <= 4 ? r.place + '. Platz' : r.place === 5 ? 'Aus im Viertelfinale' : 'Aus im Achtelfinale', 'Hallenturnier' + (r.champ ? ' · Sieger: ' + esc(r.champ) : '')) + fx([['Preisgeld +' + money(r.prize), 1]]) + (r.who ? '<p class="hint" style="margin:6px 0 0">Gespielt haben: ' + r.who.map(esc).join(' · ') + '</p>' : '') + (r.notes || []).map(function (t) { return '<p class="hint" style="margin:6px 0 0;color:#ffd84d">' + esc(t) + '</p>'; }).join('') + '</div>';
+  r.rounds.forEach(function (R, i) { h += '<p class="lbl" style="margin:' + (i ? '6px' : '0') + ' 0 0">' + R.n.toUpperCase() + '</p><div class="list">' + R.g.map(hallRow).join('') + '</div>'; });
+  h += '<p class="hint" style="margin:0">* nach Neunmeterschießen</p>';
   return h;
 }
 function jobsHtml() {
@@ -5675,8 +5693,10 @@ function vFame() {
   h += '</div>';
   return h;
 }
+function hallFlat(r) { var F = []; r.rounds.forEach(function (R) { R.g.forEach(function (g, x) { F.push({ g: g, n: R.n + (R.g.length > 1 ? ' · Spiel ' + (x + 1) + ' von ' + R.g.length : '') }); }); }); return F; }
 function hallStage(r, k) {
-  var G = [r.semi[0], r.semi[1], r.third, r.fin][k], NM = ['1. Halbfinale', '2. Halbfinale', 'Spiel um Platz 3', 'Finale'][k], u = FM.userTeam(state), n = G.ga + G.gb, ord = [], i;
+  var FL = hallFlat(r), G = FL[k].g, NM = FL[k].n, u = FM.userTeam(state), n = G.ga + G.gb, ord = [], i, last = k >= FL.length - 1, nextMine = -1;
+  for (i = k + 1; i < FL.length; i++) if (FL[i].g.a === u.n || FL[i].g.b === u.n) { nextMine = i; break; }
   for (i = 0; i < G.ga; i++) ord.push(0); for (i = 0; i < G.gb; i++) ord.push(1);
   for (i = ord.length - 1; i > 0; i--) { var j = hash(k * 31 + i, G.ga * 7 + G.gb) % (i + 1), tmp = ord[i]; ord[i] = ord[j]; ord[j] = tmp; }
   var a = 0, b = 0, who = r.who || [], h = sub('Hallenturnier') + '<div class="hallbd"><p class="lbl" style="margin:0 0 8px">' + NM.toUpperCase() + '</p><div class="tm"><span' + (G.a === u.n ? ' class="me"' : '') + '>' + esc(G.a) + '</span><i>–</i><span' + (G.b === u.n ? ' class="me"' : '') + '>' + esc(G.b) + '</span></div><div class="hl">';
@@ -5686,7 +5706,7 @@ function hallStage(r, k) {
     h += '<p class="' + (mine ? 'g' : G.a === u.n || G.b === u.n ? 'o' : '') + '" style="animation-delay:' + (0.8 + x * 0.8) + 's"><b>' + a + ':' + b + '</b><span>' + min + "' Tor für " + esc(tn) + (mine && who.length ? ' · ' + esc(who[hash(x * 13 + k, a * 5 + b) % who.length]) : '') + '</span></p>';
   });
   h += '<p class="end" style="animation-delay:' + (0.9 + n * 0.8) + 's"><b>' + G.ga + ':' + G.gb + '</b><span>Schlusspfiff' + (G.pen ? ' · ' + esc(G.w) + ' gewinnt das Neunmeterschießen' : ' · ' + esc(G.w) + ' gewinnt') + '</span></p></div></div>';
-  h += '<button class="big" data-a="hallnext">' + (k < 3 ? 'Nächstes Spiel' : 'Zur Siegerehrung') + '</button><button class="big sec2 sm" data-a="hallskip">Alle Ergebnisse zeigen</button>';
+  h += '<p class="hint" style="margin:0;text-align:center">Spiel ' + (k + 1) + ' von ' + FL.length + '</p><button class="big" data-a="hallnext">' + (!last ? 'Nächstes Spiel' : 'Zur Siegerehrung') + '</button>' + (nextMine > k + 1 ? '<button class="big sec2 sm" data-a="hallmine" data-val="' + nextMine + '">Zu meinem nächsten Spiel</button>' : '') + '<button class="big sec2 sm" data-a="hallskip">Alle Ergebnisse zeigen</button>';
   return h;
 }
 function cupPaper(R, m) {
@@ -6150,7 +6170,8 @@ app.addEventListener('click', function (ev) {
     ui.match = { h: LF.h, a: LF.a, home: LF.home, cup: false, fr: true, eu: false, name: 'Testspiel', res: null }; ui.subOut = -1; persist(); go('match'); return startMatch();
   }
   if (a === 'hallnext') { ui.hallStep = (ui.hallStep || 0) + 1; render(); return window.scrollTo(0, 0); }
-  if (a === 'hallskip') { ui.hallStep = 4; return render(); }
+  if (a === 'hallskip') { ui.hallStep = 999; return render(); }
+  if (a === 'hallmine') { ui.hallStep = +b.getAttribute('data-val'); render(); return window.scrollTo(0, 0); }
   if (a === 'drawdone') { return go('menu'); }
   if (a === 'tocamp') { ui.trt = 'camp'; return go('training'); }
   if (a === 'htalk') { var ht = FM.liveTalk(state, +b.getAttribute('data-val')); matchPanel(); if (ht) toast(ht.t); return; }

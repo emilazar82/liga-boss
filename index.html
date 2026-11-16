@@ -1572,7 +1572,7 @@ function hallPlay(state, mode) {
   state.hall = { done: true, res: { semi: [cut(s1), cut(s2)], third: cut(third), fin: cut(fin), place: place, prize: prize, notes: notes, mode: mode, who: HS.list.map(function (p) { return p.n; }) } };
   return state.hall.res;
 }
-var TOTOSTAKE = 2000, TOTOWIN = { 8: 250000, 7: 20000, 6: 4000 };
+var TOTOSTAKE = 0, TOTOWIN = { 8: 20000, 7: 5000, 6: 2000 };
 function totoMatches(state) {
   if (state.round >= RN(state)) return [];
   var u = state.teams[state.uid];
@@ -3078,7 +3078,7 @@ function roundFinish(state, L, h, a) {
   if (totoM) {
     var hits = 0;
     totoM.forEach(function (m, k) { var res = m[2] > m[3] ? 1 : m[2] === m[3] ? 0 : 2; if (res === totoTips[k]) hits++; });
-    var tx = (state.toto && state.toto.x) || 1, win = (TOTOWIN[hits] || 0) * tx;
+    var tx = 1, win = TOTOWIN[hits] || 0;
     state.cash += win - TOTOSTAKE * tx; state.led.toto += win; state.led.totoOut += TOTOSTAKE * tx;
     out.toto = { hits: hits, win: win };
   }
@@ -3337,7 +3337,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '16.11. 09:29';
+var BUILD = '16.11. 09:46';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -3989,7 +3989,7 @@ function finBars(rows, col) {
 function vFinance() {
   var L = state.led, F = state.fin, u = FM.userTeam(state), tab = ui.fnt, h = sub('Finanzen') + heroPic('hero_finanzen', 'Schreibtisch des Schatzmeisters mit Münzstapeln, Kassenbuch und Tresor', 80);
   var IN = [['Eintritt', L.tix], ['Logen, Imbiss', L.hosp], ['Trikotsponsor', L.spon], ['Bandenwerbung', L.ads], ['Fanartikel', L.merch], ['Spielerverkäufe', L.trIn], ['Pokal, Halle', L.cup], ['Tippspiel', L.toto], ['Versicherung', L.insIn], ['Zinserträge', L.int]];
-  var OUT = [['Gehälter', L.sal], ['Spielerkäufe', L.trOut], ['Handgelder', L.hand], ['Prämien', L.prem], ['Stadion', L.stad], ['Jugend', L.youth], ['Trainerstab, Scout', L.staff], ['Trainingslager', L.camp], ['Fanshop', L.merchOut], ['Zinsen, Gebühren', L.bank], ['Versicherung', L.ins], ['Investor', L.inv], ['Tippspiel', L.totoOut]];
+  var OUT = [['Gehälter', L.sal], ['Spielerkäufe', L.trOut], ['Handgelder', L.hand], ['Prämien', L.prem], ['Stadion', L.stad], ['Jugend', L.youth], ['Trainerstab, Scout', L.staff], ['Trainingslager', L.camp], ['Fanshop', L.merchOut], ['Zinsen, Gebühren', L.bank], ['Versicherung', L.ins], ['Investor', L.inv]];
   var inc = 0, exp = 0; IN.forEach(function (r) { inc += r[1]; }); OUT.forEach(function (r) { exp += r[1]; });
   h += '';
   h += '<div class="panel"><div class="rings">' + ring(1, state.cash < 0 ? '#ff9a8f' : '#6df09a', tk(state.cash), 'Kasse') + ring(state.loan / Math.max(1, FM.loanMax(state)), state.loan > 0 ? '#ff9a8f' : '#5fb7c9', tk(state.loan), 'Kredit') + ring(FM.depSum(state) > 0 ? 1 : 0, '#ffd84d', tk(FM.depSum(state)), 'Festgeld') + '</div></div>';
@@ -4414,7 +4414,7 @@ function vCup() {
 function vToto() {
   var ms = FM.totoMatches(state), T = state.toto && state.toto.r === state.round ? state.toto : null, tips = T ? T.tips : [], x = (T && T.x) || 1, h = sub('Tippspiel');
   var nt = 0; ms.forEach(function (m, k) { if (tips[k] === 0 || tips[k] === 1 || tips[k] === 2) nt++; });
-  h += '<div class="panel"><p class="lbl">EINSATZ</p>' + tiles('totox', [1, 2, 5].map(function (m, i) { return [m, money(FM.TOTOSTAKE * m), 'f_p' + (i + 1), sm('8 Richtige: ' + tk(FM.TOTOWIN[8] * m), 0) + sm('7: ' + tk(FM.TOTOWIN[7] * m) + ' · 6: ' + tk(FM.TOTOWIN[6] * m))]; }), x, 'pk3') + '<div style="margin-top:10px;text-align:center">' + pips(nt, ms.length, '#ffd84d') + '<div class="hint" style="margin-top:4px">' + (FM.totoComplete(state) ? 'Schein vollständig' : nt + ' von ' + ms.length + ' getippt') + '</div></div><button class="big sec2 sm" style="margin-top:8px" data-a="totoauto">Favoriten tippen</button>' + inf('Tippe die acht anderen Spiele deiner Liga am ' + (state.round + 1) + '. Spieltag: 1 = Heimsieg, 0 = Unentschieden, 2 = Auswärtssieg. Der Schein gilt nur vollständig ausgefüllt. Im Schnitt holt die Lotterie mehr, als sie auszahlt. Acht Richtige sind selten – ein höherer Einsatz vervielfacht Gewinn und Verlust gleichermaßen.') + '</div>';
+  h += '<div class="panel"><p class="lbl">TIPPRUNDE DES LIGA-KURIERS</p><div class="row" style="justify-content:space-around;text-align:center"><div><b>' + tk(FM.TOTOWIN[8]) + '</b><div class="hint">8 Richtige</div></div><div><b>' + tk(FM.TOTOWIN[7]) + '</b><div class="hint">7 Richtige</div></div><div><b>' + tk(FM.TOTOWIN[6]) + '</b><div class="hint">6 Richtige</div></div></div><div style="margin-top:10px;text-align:center">' + pips(nt, ms.length, '#ffd84d') + '<div class="hint" style="margin-top:4px">' + (FM.totoComplete(state) ? 'Alle Spiele getippt' : nt + ' von ' + ms.length + ' getippt') + '</div></div><button class="big sec2 sm" style="margin-top:8px" data-a="totoauto">Favoriten tippen</button>' + inf('Tippe die acht anderen Spiele deiner Liga am ' + (state.round + 1) + '. Spieltag: 1 = Heimsieg, 0 = Unentschieden, 2 = Auswärtssieg. Die Teilnahme kostet nichts. Wer alle acht Spiele tippt und mindestens sechs richtig hat, bekommt von der Zeitung eine Prämie für die Vereinskasse.') + '</div>';
   h += '<div class="list">';
   ms.forEach(function (m, k) {
     var a = FM.team(state, m[0]), c = FM.team(state, m[1]);
@@ -5676,7 +5676,7 @@ function paper(R, mine, u) {
   if (R.cupNote) items.push(['Pokal', R.cupNote]);
   if (R.euNote) items.push([EUN(), R.euNote]);
   (R.world || []).forEach(function (x) { items.push(['Aus der Liga', x]); });
-  if (R.toto) items.push(['Tippspiel', R.toto.hits + ' Richtige – ' + (R.toto.win ? 'Gewinn ' + money(R.toto.win) + '.' : 'kein Gewinn.')]);
+  if (R.toto) items.push(['Tippspiel', R.toto.hits + ' Richtige – ' + (R.toto.win ? 'Prämie ' + money(R.toto.win) + '.' : 'keine Prämie.')]);
   if (R.derby) items.push(['Derby', R.derby.w > 0 ? 'Die Stadt gehört uns: ' + R.derby.gf + ':' + R.derby.ga + ' gegen ' + R.derby.n + '. Moral und Vertrauen steigen.' : R.derby.w < 0 ? R.derby.gf + ':' + R.derby.ga + ' gegen ' + R.derby.n + ' – das tut weh. Moral und Vertrauen sinken.' : 'Keinen Sieger gibt es beim ' + R.derby.gf + ':' + R.derby.ga + ' gegen ' + R.derby.n + '.']);
   if (R.press) items.push(['Presse', R.press]);
   if (R.hallNote) items.push(['Winterpause', 'Einladung zum Hallenturnier liegt im Büro, dazu das Angebot für ein Trainingslager.']);

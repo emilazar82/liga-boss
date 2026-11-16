@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
-<title>Liga-Boss – Retro-Fußballmanager</title>
-<meta name="description" content="Liga-Boss: Fußballmanager im Retro-Look. Verein aus der Regionalliga in die 1. Liga führen – mit Aufstellung, Taktik, Live-Ticker und Tabellen.">
+<title>Trainerbank – Retro-Fußballmanager</title>
+<meta name="description" content="Trainerbank: Fußballmanager im Retro-Look. Verein aus der Regionalliga in die 1. Liga führen – mit Aufstellung, Taktik, Live-Ticker und Tabellen.">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Press+Start+2P&family=Pixelify+Sans:wght@400;500;700&display=swap">
 <style>html,body{-webkit-text-size-adjust:100%}*{touch-action:manipulation}select,textarea{font-size:16px}
 :root{--bg:#0d4a4f;--panel:#072c2f;--panel2:#0a3a3e;--tile:#2459b8;--edge:#123a7d;--card:#123a7d;--yellow:#ffd84d;--mint:#b5e3de;--green:#1e8a3c;--greenedge:#0e5122;--red:#b3241a;--text:#fff;--dis:#9fc4c9;--px:'Press Start 2P',monospace}
@@ -537,7 +537,7 @@ td.tn{white-space:nowrap}td.tn .rk{display:inline-block;width:24px;text-align:ri
 .res.tot span{white-space:normal;overflow:visible;text-overflow:clip;font-size:13px;line-height:1.2}.res.tot i{white-space:nowrap}
 .pl .nm.two{white-space:normal;padding:4px 0;line-height:1.25}.pl .nm.two .nn{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pl .nm.two .tg{display:block;white-space:nowrap;margin-top:2px}.pl .nm.two .tg .st{margin-left:0;margin-right:3px}
 .toast{left:5%!important;right:5%!important;transform:none!important;max-width:none!important;width:auto;line-height:1.35;pointer-events:none;opacity:.96}
-@media (max-width:350px){.plh{display:grid;grid-template-columns:30px minmax(0,1fr) 22px 28px 20px 34px!important;gap:4px;padding:0 5px!important;font-size:10px!important}.tfx{margin-left:0!important;margin-right:0!important}#app{padding:6px!important;gap:8px}.tsplit{grid-template-columns:minmax(0,1fr)!important}.tsplit .col:first-child{display:none}.pl{grid-template-columns:30px minmax(0,1fr) 22px 28px 20px 34px!important;font-size:13px!important;padding:0 5px!important}.pl .pos{font-size:10px}table{font-size:12px!important}td,th{padding-left:2px!important;padding-right:2px!important}.fmd i{width:5px!important;height:6px}.panel{padding-left:8px!important;padding-right:8px!important}.tabs button,.tbar2 button,.chips button,.chip{font-size:12px!important;padding-left:5px!important;padding-right:5px!important}.trr:not([style]),.trh:not([style]){grid-template-columns:32px minmax(0,1fr) 22px 26px 56px!important}.trr{font-size:13px!important}.trr[style*="62px 58px"],.trh[style*="62px 58px"]{grid-template-columns:30px minmax(0,1fr) 24px 50px 48px!important;padding-left:4px!important;padding-right:4px!important;font-size:12px!important}.pick{grid-template-columns:repeat(2,minmax(0,1fr))!important}.tabs button{font-size:11px!important;padding:2px 1px!important;overflow-wrap:anywhere}.mkr{font-size:13px!important}.big{font-size:11px}}
+@media (max-width:350px){.logo{font-size:18px!important}.plh{display:grid;grid-template-columns:30px minmax(0,1fr) 22px 28px 20px 34px!important;gap:4px;padding:0 5px!important;font-size:10px!important}.tfx{margin-left:0!important;margin-right:0!important}#app{padding:6px!important;gap:8px}.tsplit{grid-template-columns:minmax(0,1fr)!important}.tsplit .col:first-child{display:none}.pl{grid-template-columns:30px minmax(0,1fr) 22px 28px 20px 34px!important;font-size:13px!important;padding:0 5px!important}.pl .pos{font-size:10px}table{font-size:12px!important}td,th{padding-left:2px!important;padding-right:2px!important}.fmd i{width:5px!important;height:6px}.panel{padding-left:8px!important;padding-right:8px!important}.tabs button,.tbar2 button,.chips button,.chip{font-size:12px!important;padding-left:5px!important;padding-right:5px!important}.trr:not([style]),.trh:not([style]){grid-template-columns:32px minmax(0,1fr) 22px 26px 56px!important}.trr{font-size:13px!important}.trr[style*="62px 58px"],.trh[style*="62px 58px"]{grid-template-columns:30px minmax(0,1fr) 24px 50px 48px!important;padding-left:4px!important;padding-right:4px!important;font-size:12px!important}.pick{grid-template-columns:repeat(2,minmax(0,1fr))!important}.tabs button{font-size:11px!important;padding:2px 1px!important;overflow-wrap:anywhere}.mkr{font-size:13px!important}.big{font-size:11px}}
 </style>
 </head>
 <body>
@@ -2681,7 +2681,7 @@ function friendFinish(state, L, h, a) {
 }
 function cupGoalR(state) { return [3, 2, 1][state.teams[state.uid].lg]; }
 function exportData(state) {
-  var o = ['// Liga-Boss Datensatz. Zeilen mit // werden ignoriert.', '// VEREIN: Name | Hauptfarbe | Zweitfarbe   (Farben sind freiwillig, VEREIN*: ist dein Verein)', '// TRIKOT: #hemd | #hose | #auswärts   (freiwillig, direkt unter der VEREIN-Zeile)', '// Spieler: POSITION Name Alter Stärke LAND Marktwert   (TW, AB, MF, ST · alles nach dem Namen ist freiwillig · Stärke ? = vergibt das Spiel · Land als Kürzel wie GER, ENG, FRA · Marktwert in Euro als Richtwert für den Preis)', ''];
+  var o = ['// Trainerbank Datensatz. Zeilen mit // werden ignoriert.', '// VEREIN: Name | Hauptfarbe | Zweitfarbe   (Farben sind freiwillig, VEREIN*: ist dein Verein)', '// TRIKOT: #hemd | #hose | #auswärts   (freiwillig, direkt unter der VEREIN-Zeile)', '// Spieler: POSITION Name Alter Stärke LAND Marktwert   (TW, AB, MF, ST · alles nach dem Namen ist freiwillig · Stärke ? = vergibt das Spiel · Land als Kürzel wie GER, ENG, FRA · Marktwert in Euro als Richtwert für den Preis)', ''];
   if (state.cty) o.push('LAND: ' + cfg(state).n, '');
   if (state.eun) o.push('EUROPA: ' + state.eun, '');
   for (var lg = 0; lg < NL(state); lg++) {
@@ -3331,7 +3331,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '16.11. 06:29';
+var BUILD = '16.11. 08:26';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -3421,7 +3421,7 @@ function render() {
   if (state && v === 'menu' && NEWV && !ui.pops.length) app.insertAdjacentHTML('afterbegin', updHtml());
 }
 function vStart() {
-  var h = '<div class="logo" style="margin-top:14px">LIGA-BOSS</div><p class="hint" style="text-align:center;margin:0 0 4px">Retro-Fußballmanager · Arbeitstitel · Stand ' + BUILD + '</p>' + updHtml() + updBtn() + (ui.ldp ? '<div class="panel" style="border-color:var(--yellow)"><p style="margin:0 0 8px;font-size:15px">Datei: <b>' + esc(FM.clubTeam(ui.ldp.state).n) + '</b>, Saison ' + ui.ldp.state.season + ', ' + ui.ldp.state.round + '. Spieltag.' + (saved ? ' Der Spielstand auf diesem Gerät wird ersetzt.' : '') + '</p><div class="row"><button class="big" data-a="ldyes">Laden</button><button class="big sec2" data-a="ldno">Abbrechen</button></div></div>' : '<div style="text-align:center;margin-top:8px"><label class="big sec2 sm flab" style="display:inline-flex;width:auto;padding:0 18px;min-height:38px;font-size:13px;align-items:center">Spielstand aus Datei laden<input type="file" accept=".json,.txt,application/json" data-f="svload" hidden></label></div>');
+  var h = '<div class="logo" style="margin-top:14px">TRAINERBANK</div><p class="hint" style="text-align:center;margin:0 0 4px">Retro-Fußballmanager · Stand ' + BUILD + '</p>' + updHtml() + updBtn() + (ui.ldp ? '<div class="panel" style="border-color:var(--yellow)"><p style="margin:0 0 8px;font-size:15px">Datei: <b>' + esc(FM.clubTeam(ui.ldp.state).n) + '</b>, Saison ' + ui.ldp.state.season + ', ' + ui.ldp.state.round + '. Spieltag.' + (saved ? ' Der Spielstand auf diesem Gerät wird ersetzt.' : '') + '</p><div class="row"><button class="big" data-a="ldyes">Laden</button><button class="big sec2" data-a="ldno">Abbrechen</button></div></div>' : '<div style="text-align:center;margin-top:8px"><label class="big sec2 sm flab" style="display:inline-flex;width:auto;padding:0 18px;min-height:38px;font-size:13px;align-items:center">Spielstand aus Datei laden<input type="file" accept=".json,.txt,application/json" data-f="svload" hidden></label></div>');
   h += '<img class="heropic" alt="Fußballstadion bei Flutlicht mit vollen Rängen" src="' + PICS.flutlicht + '" width="192" height="144">';
   h += '<p style="text-align:center;margin:0 0 6px"><button class="mini" data-a="prefmus" style="padding:6px 12px">♪ Musik ' + (prefs.snd && prefs.mus !== false ? 'an' : 'aus') + '</button></p>';
   if (saved) {
@@ -4347,14 +4347,15 @@ function vTour() {
   return h + (pg < 7 ? '<button class="big sec2 sm" data-a="tourpg" data-val="7">Direkt zur Bilanz</button>' : done);
 }
 var NEWV = '';
-function updHtml() { return NEWV ? '<div class="panel" style="border-color:var(--yellow)"><p style="margin:0 0 8px;font-size:15px"><b>Neue Version verfügbar</b> (Stand ' + esc(NEWV) + '). Dein Spielstand bleibt erhalten.</p><button class="big" data-a="update">Neue Version laden</button></div>' : ''; }
-function updBtn() { return NEWV ? '' : '<div style="text-align:center"><button class="big sec2 sm" style="width:auto;padding:0 18px;min-height:38px;font-size:13px" data-a="updcheck">' + (ui.updw ? 'Prüfe …' : 'Auf Updates prüfen') + '</button></div>'; }
+var INAPP = false; try { INAPP = !!window.TBApp; } catch (eA) { }
+function updHtml() { return INAPP ? '' : NEWV ? '<div class="panel" style="border-color:var(--yellow)"><p style="margin:0 0 8px;font-size:15px"><b>Neue Version verfügbar</b> (Stand ' + esc(NEWV) + '). Dein Spielstand bleibt erhalten.</p><button class="big" data-a="update">Neue Version laden</button></div>' : ''; }
+function updBtn() { return NEWV || INAPP ? '' : '<div style="text-align:center"><button class="big sec2 sm" style="width:auto;padding:0 18px;min-height:38px;font-size:13px" data-a="updcheck">' + (ui.updw ? 'Prüfe …' : 'Auf Updates prüfen') + '</button></div>'; }
 function updManual() {
   if (ui.updw) return; ui.updw = true; render();
   var done = function (msg) { ui.updw = false; render(); if (msg) toast(msg); };
   try { fetch('version.json?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { if (j && j.b && j.b !== BUILD) { NEWV = j.b; ui.updw = false; persist(); location.replace(location.pathname + '?v=' + Date.now()); } else done(j ? 'Du hast die aktuelle Version (Stand ' + BUILD + ').' : 'Die Prüfung ist hier nicht möglich.'); }).catch(function () { done('Keine Verbindung. Bitte später noch einmal versuchen.'); }); } catch (e) { done('Die Prüfung ist hier nicht möglich.'); }
 }
-function updCheck() { try { if (!/^https?:/.test(location.protocol)) return; fetch('version.json?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { if (j && j.b && j.b !== BUILD) { NEWV = j.b; if (ui.view === 'start' || ui.view === 'menu') render(); } }).catch(function () { }); } catch (e) { } }
+function updCheck() { try { if (INAPP || !/^https?:/.test(location.protocol)) return; fetch('version.json?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { if (j && j.b && j.b !== BUILD) { NEWV = j.b; if (ui.view === 'start' || ui.view === 'menu') render(); } }).catch(function () { }); } catch (e) { } }
 function EUN() { return FM.euName(state || (saved ? saved.state : null)); }
 var EUFL = { de: 'GER', en: 'ENG', es: 'ESP', fr: 'FRA', it: 'ITA' };
 function euGrpHtml(T, gi) {
@@ -5816,7 +5817,7 @@ app.addEventListener('click', function (ev) {
   if (a === 'rsg') { ui.rsg = true; return render(); }
   if (a === 'rsgno') { ui.rsg = false; return render(); }
   if (a === 'rsgyes') { ui.rsg = false; var rq = FM.resign(state); if (rq) return toast(rq); ui.pops = []; persist(); return go('sacked'); }
-  if (a === 'svfile') { if (!state) return; persist(); try { var sj = JSON.stringify({ app: 'liga-boss', ts: Date.now(), state: state }), sb = new Blob([sj], { type: 'application/json' }), su = URL.createObjectURL(sb), sa = document.createElement('a'); sa.href = su; sa.download = 'liga-boss-spielstand-' + state.season + '-spieltag-' + state.round + '.json'; document.body.appendChild(sa); sa.click(); setTimeout(function () { sa.remove(); URL.revokeObjectURL(su); }, 2000); toast('Spielstand als Datei gesichert.'); } catch (e8) { toast('Das Sichern als Datei geht hier nicht.'); } return; }
+  if (a === 'svfile') { if (!state) return; persist(); try { var sj = JSON.stringify({ app: 'trainerbank', ts: Date.now(), state: state }); if (INAPP) { window.TBApp.saveFile('trainerbank-spielstand-' + state.season + '-spieltag-' + state.round + '.json', sj); return; } var sb = new Blob([sj], { type: 'application/json' }), su = URL.createObjectURL(sb), sa = document.createElement('a'); sa.href = su; sa.download = 'trainerbank-spielstand-' + state.season + '-spieltag-' + state.round + '.json'; document.body.appendChild(sa); sa.click(); setTimeout(function () { sa.remove(); URL.revokeObjectURL(su); }, 2000); toast('Spielstand als Datei gesichert.'); } catch (e8) { toast('Das Sichern als Datei geht hier nicht.'); } return; }
   if (a === 'ldno') { ui.ldp = null; return render(); }
   if (a === 'ldyes') { var LD = ui.ldp; ui.ldp = null; if (!LD) return render(); ui.pops = []; ui.match = null; saved = { ts: Date.now(), state: LD.state }; SND.jingle(); enter(LD.state); persist(); return toast('Spielstand geladen.'); }
   if (a === 'update') { persist(); location.replace(location.pathname + '?v=' + Date.now()); return; }
@@ -6005,7 +6006,7 @@ app.addEventListener('change', function (ev) {
   if (f === 'rival' && state) { var er = FM.setRival(state, +el.value); if (er) toast(er); persist(); return render(); }
   if (!f || !file) return;
   if (f === 'custfile') { var fr = new FileReader(); fr.onload = function () { custTxt = String(fr.result || '').slice(0, 400000); try { localStorage.setItem('ligaboss-custom', custTxt); } catch (e) { } ui.custNew = false; ui.custRep = custReport(FM.parseData(custTxt)); render(); }; fr.readAsText(file); return; }
-  if (f === 'svload') { var fr2 = new FileReader(); fr2.onload = function () { var o2 = null; try { o2 = JSON.parse(String(fr2.result || '')); } catch (e) { } if (!o2 || !o2.state || o2.state.v !== 1 || !o2.state.teams || o2.state.uid === undefined) return toast('Das ist kein Liga-Boss-Spielstand.'); ui.ldp = { ts: o2.ts, state: o2.state }; render(); }; fr2.onerror = function () { toast('Die Datei lässt sich nicht lesen.'); }; fr2.readAsText(file); return; }
+  if (f === 'svload') { var fr2 = new FileReader(); fr2.onload = function () { var o2 = null; try { o2 = JSON.parse(String(fr2.result || '')); } catch (e) { } if (!o2 || !o2.state || o2.state.v !== 1 || !o2.state.teams || o2.state.uid === undefined) return toast('Das ist kein Trainerbank-Spielstand.'); ui.ldp = { ts: o2.ts, state: o2.state }; render(); }; fr2.onerror = function () { toast('Die Datei lässt sich nicht lesen.'); }; fr2.readAsText(file); return; }
   if (f === 'crest') { crestAdd(file, el.getAttribute('data-n'), function (ok) { if (!ok) return toast('Das Bild lässt sich nicht verarbeiten oder der Speicher ist voll.'); var y = window.scrollY; render(); window.scrollTo(0, y); }); return; }
   if (f === 'pack') {
     toast('Paket wird gelesen …');

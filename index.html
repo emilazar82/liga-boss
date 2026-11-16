@@ -1726,9 +1726,12 @@ function kitCur(state) { var u = state.teams[state.uid]; return { k1: u.k1 || '#
 function kitColCost(state) { return r1000([15000, 6000, 2500][state.teams[state.uid].lg] || 2500); }
 function kitOffers(state) {
   var u = state.teams[state.uid], C = kitCur(state), out = [];
+  var h0 = kitH(state.season * 7, u.id + 11), plain = h0 % 3, pats = [1, 2, 3, 4], used = [];
   for (var b = 0; b < 3; b++) {
-    var h = kitH(state.season * 7 + b, u.id + 11), pat = 1 + h % 4, cand = KITCOL.filter(function (c) { return kitD(c[1], C.k1) >= 150; }), c2 = cand[(h >>> 5) % cand.length];
-    out.push({ k: b, br: KITBR[b], n: KITBR[b] + ' ' + KITPAT[pat], pat: pat, c: c2[1], cn: c2[0], cost: r1000(([60000, 25000, 10000][u.lg] || 10000) * (0.8 + 0.3 * b)), bo: KITBO[b], pay: 'cash' });
+    var h = kitH(state.season * 7 + b, u.id + 11), pat = 0, cand = KITCOL.filter(function (c) { return kitD(c[1], C.k1) >= 150 && used.indexOf(c[1]) < 0; }), c2 = cand[(h >>> 5) % cand.length];
+    if (b !== plain && !(b === (plain + 1) % 3 && (h0 >>> 3) % 3 === 0)) { var left = pats.filter(function (x) { return used.indexOf('p' + x) < 0; }); pat = left[(h >>> 2) % left.length]; used.push('p' + pat); }
+    used.push(c2[1]);
+    out.push({ k: b, br: KITBR[b], n: KITBR[b] + ' ' + (pat ? KITPAT[pat] : 'Klassik'), pat: pat, c: c2[1], cn: c2[0], ho: pat ? '' : c2[1], cost: r1000(([60000, 25000, 10000][u.lg] || 10000) * (0.8 + 0.3 * b)), bo: KITBO[b], pay: 'cash' });
   }
   return out;
 }
@@ -1739,7 +1742,7 @@ function kitBuy(state, k) {
   var u = state.teams[state.uid], o = kitOffers(state)[k], B = kitBonus(state); if (!o) return 'Das Angebot gibt es nicht.';
   if (B && B.k === k) return 'Diese Kollektion trägt die Mannschaft schon.';
   if (state.cash < o.cost) return 'Dafür reicht die Kasse nicht.';
-  state.cash -= o.cost; state.led.merchOut += o.cost; kitBase(u); u.kp = o.pat; u.kc = o.c;
+  state.cash -= o.cost; state.led.merchOut += o.cost; kitBase(u); if (o.pat) { u.kp = o.pat; u.kc = o.c; } else { delete u.kp; delete u.kc; u.k2 = o.ho; }
   state.kitb = { s: state.season, t: u.id, k: k, f: o.bo, n: o.n };
   return '';
 }
@@ -1747,9 +1750,9 @@ function kitColor(state, sh, ho) {
   var u = state.teams[state.uid], C = kitCur(state), c = kitColCost(state);
   if (!KITCOL.some(function (x) { return x[1] === sh; }) && sh !== C.k1) return 'Diese Farbe gibt es nicht.';
   if (sh === C.k1 && ho === C.k2) return 'Das ist der aktuelle Trikotsatz.';
+  if (u.kp && sh !== C.k1) return 'Die Kollektion gibt die Trikotfarben vor. Für eine andere Trikotfarbe erst das Muster ablegen.';
   if (state.cash < c) return 'Dafür reicht die Kasse nicht.';
   state.cash -= c; state.led.merchOut += c; kitBase(u); u.k1 = sh; u.k2 = ho;
-  if (u.kp && kitD(u.kc || '#f4efe1', sh) < 150) u.kc = kitD('#f4efe1', sh) >= 150 ? '#f4efe1' : '#16181d';
   return '';
 }
 function kitPlain(state) { var u = state.teams[state.uid]; delete u.kp; delete u.kc; }
@@ -3477,7 +3480,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '16.11. 19:05';
+var BUILD = '16.11. 19:09';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -5668,15 +5671,16 @@ function vShop() {
   h += '<div class="panel"><p class="lbl">SO LÄUFT DIE MANNSCHAFT AUF</p>' + kitPrev(K.k1, K.k2, K.kp, K.kc, 120) + '<div style="margin-top:8px">' + kv('Muster', FM.KITPAT[K.kp]) + (K.bonus ? kv('Kollektion', esc(K.bonus.n)) + kv('Fanartikel diese Saison', '+' + Math.round(K.bonus.f * 100) + ' %') : kv('Kollektion', 'keine')) + '</div>' + (K.kp ? '<button class="big sec2" data-a="kplain" style="margin-top:8px">Muster ablegen (kostenlos)</button>' : '') + '</div>';
   h += chips('kst', [['col', 'Kollektionen'], ['far', 'Farben']], tab);
   if (tab === 'col') {
-    h += '<p class="hint" style="margin:0 2px 8px">Jede Saison bringen drei Ausrüster eine neue Kollektion. Ein neuer Satz kostet Geld, dafür verkaufen sich die Fanartikel bis zum Saisonende besser.' + (K.merch ? '' : ' <b style="color:#ffd84d">Du hast noch keinen Fanartikel-Verkauf (Stadion) – ohne den bringt die Kollektion kein Geld.</b>') + '</p>';
+    h += '<p class="hint" style="margin:0 2px 8px">Jede Saison bringen drei Ausrüster eine neue Kollektion – mal mit Muster, mal einfarbig mit neuer Hose. Ein neuer Satz kostet Geld, dafür verkaufen sich die Fanartikel bis zum Saisonende besser.' + (K.merch ? '' : ' <b style="color:#ffd84d">Du hast noch keinen Fanartikel-Verkauf (Stadion) – ohne den bringt die Kollektion kein Geld.</b>') + '</p>';
     K.offers.forEach(function (o) {
       var on = K.bonus && K.bonus.k === o.k;
-      h += '<div class="panel"><div style="display:flex;gap:12px;align-items:center"><div style="flex:0 0 96px">' + kitPrev(K.k1, K.k2, o.pat, o.c, 96) + '</div><div class="grow"><p class="title" style="margin:0 0 4px">' + esc(o.n) + '</p>' + kv('Zweitfarbe', o.cn) + kv('Fanartikel', '+' + Math.round(o.bo * 100) + ' %') + kv('Preis', money(o.cost)) + '</div></div>' + (on ? '<p class="hint" style="margin:8px 0 0;color:#6df09a">Diese Kollektion trägt die Mannschaft.</p>' : '<button class="big" data-a="kbuy" data-val="' + o.k + '" style="margin-top:8px"' + (state.cash < o.cost ? ' disabled' : '') + '>Kaufen · ' + money(o.cost) + '</button>') + '</div>';
+      h += '<div class="panel"><div style="display:flex;gap:12px;align-items:center"><div style="flex:0 0 96px">' + kitPrev(K.k1, o.pat ? K.k2 : o.ho, o.pat, o.c, 96) + '</div><div class="grow"><p class="title" style="margin:0 0 4px">' + esc(o.n) + '</p>' + kv(o.pat ? 'Streifenfarbe' : 'Hose', o.cn) + kv('Fanartikel', '+' + Math.round(o.bo * 100) + ' %') + kv('Preis', money(o.cost)) + '</div></div>' + (on ? '<p class="hint" style="margin:8px 0 0;color:#6df09a">Diese Kollektion trägt die Mannschaft.</p>' : '<button class="big" data-a="kbuy" data-val="' + o.k + '" style="margin-top:8px"' + (state.cash < o.cost ? ' disabled' : '') + '>Kaufen · ' + money(o.cost) + '</button>') + '</div>';
     });
   } else {
-    var sw = function (part, cur) { return '<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px">' + FM.KITCOL.map(function (c) { var on = c[1] === cur; return '<button data-a="kcol" data-p="' + part + '" data-val="' + c[1] + '" aria-label="' + c[0] + '" aria-pressed="' + on + '" style="height:38px;background:' + c[1] + ';border:3px solid ' + (on ? '#ffd84d' : '#052826') + ';border-radius:4px;box-shadow:' + (on ? '0 0 0 2px #0b1622 inset' : 'none') + '"></button>'; }).join('') + '</div>'; };
+    var lock = K.kp > 0; if (lock) S.sh = K.k1;
+    var sw = function (part, cur) { var dis = lock && part === 'sh'; return '<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px' + (dis ? ';opacity:.3' : '') + '">' + FM.KITCOL.map(function (c) { var on = c[1] === cur; return '<button data-a="kcol" data-p="' + part + '" data-val="' + c[1] + '" aria-label="' + c[0] + '" aria-pressed="' + on + '"' + (dis ? ' disabled' : '') + ' style="height:38px;background:' + c[1] + ';border:3px solid ' + (on ? '#ffd84d' : '#052826') + ';border-radius:4px;box-shadow:' + (on ? '0 0 0 2px #0b1622 inset' : 'none') + '"></button>'; }).join('') + '</div>'; };
     var same = S.sh === K.k1 && S.ho === K.k2;
-    h += '<div class="panel"><p class="lbl">NEUER TRIKOTSATZ IN WUNSCHFARBEN</p>' + kitPrev(S.sh, S.ho, K.kp, K.kc, 110) + '<p class="lbl" style="margin:10px 0 6px">TRIKOT</p>' + sw('sh', S.sh) + '<p class="lbl" style="margin:10px 0 6px">HOSE</p>' + sw('ho', S.ho) + '<button class="big" data-a="kcolbuy" style="margin-top:12px"' + (same || state.cash < K.colCost ? ' disabled' : '') + '>' + (same ? 'Farben wählen' : 'Bestellen · ' + money(K.colCost)) + '</button><p class="hint" style="margin:8px 0 0">Ein Satz in neuen Farben kostet ' + money(K.colCost) + '. Die Farben siehst du im Spiel und in der Torszene. Trägt der Gegner fast dieselbe Farbe, weicht er auf sein Auswärtstrikot aus.</p></div>';
+    h += '<div class="panel"><p class="lbl">NEUER TRIKOTSATZ IN WUNSCHFARBEN</p>' + kitPrev(S.sh, S.ho, K.kp, K.kc, 110) + '<p class="lbl" style="margin:10px 0 6px">TRIKOT</p>' + sw('sh', S.sh) + (lock ? '<p class="hint" style="margin:6px 0 0;color:#ffd84d">Die Kollektion gibt Trikot- und Streifenfarbe vor. Für eine andere Trikotfarbe erst oben das Muster ablegen.</p>' : '') + '<p class="lbl" style="margin:10px 0 6px">HOSE</p>' + sw('ho', S.ho) + '<button class="big" data-a="kcolbuy" style="margin-top:12px"' + (same || state.cash < K.colCost ? ' disabled' : '') + '>' + (same ? 'Farben wählen' : 'Bestellen · ' + money(K.colCost)) + '</button><p class="hint" style="margin:8px 0 0">Ein Satz in neuen Farben kostet ' + money(K.colCost) + '. Die Farben siehst du im Spiel und in der Torszene. Trägt der Gegner fast dieselbe Farbe, weicht er auf sein Auswärtstrikot aus.</p></div>';
   }
   return h;
 }

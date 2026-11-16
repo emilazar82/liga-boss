@@ -2094,6 +2094,7 @@ function moveToUser(state, T, years, wage) {
   else {
     T.club.pl = T.club.pl.filter(function (x) { return x.i !== p.i; }); T.club.lu = T.club.lu.filter(function (x) { return x !== p.i; });
   }
+  if (T.club) p.exn = T.club.n; else delete p.exn;
   p.c = years; if (wage) p.w = wage; delete p.tl; p.mo = 7; p.kn = 1; u.pl.push(p);
   if (state.dl && state.dl.s === state.season && state.dl.r === state.round && state.dl.ids[p.i]) { p.dlb = state.season; delete state.dl.ids[p.i]; }
 }
@@ -2221,7 +2222,7 @@ function weeklyOffers(state) {
 function toClub(state, p, club) {
   var u = state.teams[state.uid], same = club.pl.filter(function (x) { return x.p === p.p; }).sort(function (a, b) { return a.s - b.s; })[0];
   if (same && club.pl.length >= 18) club.pl = club.pl.filter(function (x) { return x.i !== same.i; });
-  delete p.c; delete p.w; delete p.tl; delete p.mo; delete p.it; delete p.sg; delete p.rs; club.pl.push(p); club.lu = bestEleven(club);
+  delete p.c; delete p.w; delete p.tl; delete p.mo; delete p.it; delete p.sg; delete p.rs; p.exn = u.n; club.pl.push(p); club.lu = bestEleven(club);
   u.pl = u.pl.filter(function (x) { return x.i !== p.i; }); u.lu = u.lu.filter(function (x) { return x !== p.i; });
 }
 function acceptOffer(state, k) {
@@ -2258,6 +2259,7 @@ function aiDeals(state) {
       var seller = pick(state.teams.filter(function (t) { return t.id !== u.id && t.id !== buyer.id && t.lg >= buyer.lg; })); if (!seller) continue;
       var c = seller.pl.filter(function (x) { return x.p === pos && x.s >= weak.s + 3; }).sort(function (a, b) { return b.s - a.s; })[0]; if (!c) continue;
       seller.pl = seller.pl.filter(function (x) { return x.i !== c.i; }); buyer.pl = buyer.pl.filter(function (x) { return x.i !== weak.i; });
+      c.exn = seller.n; weak.exn = buyer.n;
       buyer.pl.push(c); seller.pl.push(weak); seller.lu = bestEleven(seller);
       state.offers = state.offers.filter(function (o) { return o.c !== buyer.id || true; });
       news(state, buyer.n + ' holt ' + c.n + ' (' + POS[pos] + ', ' + c.s + ') von ' + seller.n + '.');
@@ -2552,7 +2554,10 @@ function scorer(t) {
   return pool[pool.length - 1];
 }
 function keeperOf(t) { for (var k = 0; k < t.lu.length; k++) { var p = findP(t, t.lu[k]); if (p && p.p === 0) return p; } return null; }
-function finish(pl, opp) { if (!pl) return 1; var kp = keeperOf(opp), tw = kp ? kp.at[5] : 30; return clamp(1.03 + (pl.at[2] - tw) / 100 * 0.8, 0.7, 1.3); }
+function finish(pl, opp) { if (!pl) return 1; var kp = keeperOf(opp), tw = kp ? kp.at[5] : 30; return clamp(1.03 + (pl.at[2] - tw) / 100 * 0.8, 0.7, 1.3) * (pl.exn && pl.exn === opp.n ? 1.12 : 1); }
+function exCount(t, opp) { var n = 0; t.lu.forEach(function (id) { var p = findP(t, id); if (p && p.exn && p.exn === opp.n) n++; }); return n; }
+function exApply(r, t, opp) { var n = exCount(t, opp); if (n) { var f = 1 + Math.min(0.03, 0.012 * n); r.att *= f; r.mid *= f; r.def *= f; } }
+function exList(state, hId, aId) { var h = state.teams[hId], a = state.teams[aId], out = []; [[h, a], [a, h]].forEach(function (x) { x[0].lu.forEach(function (id) { var p = findP(x[0], id); if (p && p.exn && p.exn === x[1].n) out.push({ n: p.n, t: x[0].n, o: x[1].n }); }); }); return out; }
 function injPick(t) {
   var c = t.lu.map(function (id) { return findP(t, id); }).filter(function (p) { return !!p; }); if (!c.length) return null;
   var sum = 0; c.forEach(function (p) { sum += 0.25 + 0.25 * (p.vp || 3); });
@@ -2562,6 +2567,7 @@ function injPick(t) {
 }
 function simMatch(home, away, cup) {
   var rh = ratings(home, true), ra = ratings(away, false), TX = tactApply(home, away, rh, ra);
+  exApply(rh, home, away); exApply(ra, away, home);
   var mh = Math.pow(rh.mid, 2), ma = Math.pow(ra.mid, 2), share = mh / (mh + ma);
   var events = [];
   function side(t, isHome, sh, att, oppDef) {
@@ -3006,6 +3012,7 @@ function simSeg(home, away, m0, cup, disId, bo, mo) {
   if (bo) { var rb = bo.id === home.id ? rh : ra; rb.att *= bo.f; rb.mid *= bo.f; rb.def *= bo.f; }
   if (mo) { var rm = mo.id === home.id ? rh : ra; rm.att *= mo.att || 1; rm.mid *= mo.mid || 1; rm.def *= mo.def || 1; }
   var nf = mo && mo.n ? mo.n : 1;
+  exApply(rh, home, away); exApply(ra, away, home);
   var mh = Math.pow(rh.mid, 2), ma = Math.pow(ra.mid, 2), share = mh / (mh + ma), ev = [];
   function side(t, isHome, sh, att, oppDef) {
     var n = pois((2.5 + 8 * sh) / 6 * (isHome ? TX.nh : TX.na) * nf), pr = clamp(0.2 + (att - oppDef) / oppDef * 0.4, 0.06, 0.45) * (isHome ? TX.ch : TX.ca), opp = isHome ? away : home;
@@ -3013,7 +3020,7 @@ function simSeg(home, away, m0, cup, disId, bo, mo) {
       var pl = scorer(t), goal = Math.random() < pr * finish(pl, opp);
       if (goal && pl) { if (!cup) pl.g++; pl.f = clamp(pl.f + 1, 1, 10); }
       var kon = tv(t, 'pr') === 0 && tv(t, 'tp') === 2, opn = opp.au === 2 || tv(opp, 'pr') === 2, kvb = t.vb === 1 ? 0.1 : 0;
-      ev.push({ m: m0 + rnd(1, 15), h: isHome, g: goal, p: pl ? pl.n : '', id: pl ? pl.i : -1, ct: Math.random() < (kon ? (opn ? 0.5 : 0.22) : (opn ? 0.14 : 0.05)) + kvb ? 1 : 0 });
+      ev.push({ m: m0 + rnd(1, 15), h: isHome, g: goal, p: pl ? pl.n : '', id: pl ? pl.i : -1, ex: goal && pl && pl.exn && pl.exn === opp.n ? 1 : 0, ct: Math.random() < (kon ? (opn ? 0.5 : 0.22) : (opn ? 0.14 : 0.05)) + kvb ? 1 : 0 });
     }
   }
   side(home, true, share, rh.att, ra.def); side(away, false, 1 - share, ra.att, rh.def);
@@ -3455,7 +3462,7 @@ function topScorers(state, lg, n) {
   all.sort(function (a, b) { return b.g - a.g; });
   return all.slice(0, n);
 }
-return { NTN: NTN, TOURST: TOURST, tourDue: tourDue, tourKind: tourKind, tourStart: tourStart, tourTie: tourTie, startTour: startTour, tourRest: tourRest, tourInfo: tourInfo, ntAnswer: ntAnswer, ACH: ACH, achState: achState, achNew: achNew, fcInfo: fcInfo, invInfo: invInfo, invList: invList, invBuy: invBuy, invSell: invSell, invBoost: invBoost, fgnLgsX: fgnLgs, clubVal: clubVal, mePct: mePct, meOwner: meOwner, meShareBuy: meShareBuy, meShareSell: meShareSell, meDraw: meDraw, mePut: mePut, meStep: meStep, shareWin: shareWin, meNet: meNet, meBuyList: meBuyList, meBuyClub: meBuyClub, MEOWN: MEOWN, MEEDU: MEEDU, me: me, meWage: meWage, meUpkeep: meUpkeep, meAsk: meAsk, meBuy: meBuy, meSell: meSell, meLearn: meLearn, deadline: deadline, dlList: dlList, pressDue: pressDue, pressAnswer: pressAnswer, rival: rival, setRival: setRival, isDerby: isDerby, resign: resign, fgnAge: fgnAge, fgnTopX: fgnTop, clubTeam: clubTeam, spFac: spFac, fjobInfo: fjobInfo, moveCountry: moveCountry, fgnJobs: fgnJobs, worldExport: worldExport, flTable: flTable, flInfo: flInfo, flScorers: flScorers, fgnReal: fgnReal, fgnApply: fgnApply, weeklyOffers: weeklyOffers, fgnLgs: fgnLgs, fgnClubs: fgnClubs, fgnOpen: fgnOpen, cupDate: cupDate, euName: euName, euGroups: euGroups, tCty: tCty, EUDRAW: EUDRAW, exportData: exportData, parseData: parseData, applyData: applyData, newGameCustom: newGameCustom, winText: winText, startFriendly: startFriendly, cupGoalR: cupGoalR, friendly: friendly, friendInfo: friendInfo, car: car, liveTalk: liveTalk, talkInfo: talkInfo, talkAnswer: talkAnswer, liveTact: liveTact, liveTactInfo: liveTactInfo, tableX: tableX, teamInfo: teamInfo, leagueStats: leagueStats, totoAuto: totoAuto, totoMult: totoMult, hallSquad: hallSquad, hallPrize: hallPrize, hallField: hallField, boardAmb: boardAmb, boardAsk: boardAsk, boardTalk: boardTalk, GRANT: GRANT, youthTrial: youthTrial, youthLoan: youthLoan, youthDrop: youthDrop, youthProj: youthProj, sponProj: sponProj, sponReneg: sponReneg, extOffer: extOffer, raise: raise, release: release, releaseCost: releaseCost, EXT: EXT, VIPB: VIPB, setOps: setOps, capEff: capEff, attExpect: attExpect, LGF: LGF, SECC: SECC, PITC: PITC, PPR: PPR, PPN: PPN, DEPO: DEPO, INVAMT: INVAMT, absWeek: absWeek, wageSum: wageSum, setPP: setPP, setGoalBonus: setGoalBonus, setIns: setIns, deposit: deposit, breakDep: breakDep, depSum: depSum, investor: investor, winOpen: winOpen, scoutCap: scoutCap, scoutFee: scoutFee, scoutAsk: scoutAsk, scoutTips: scoutTips, posCount: posCount, planInfo: planInfo, indInfo: indInfo, elfList: elfList, cdLeft: cdLeft, CDW: CDW, kitInfo: kitInfo, kitBuy: kitBuy, kitColor: kitColor, kitPlain: kitPlain, KITCOL: KITCOL, KITPAT: KITPAT, PREP: PREP, setPrep: setPrep, nextOpp: nextOpp, trainEvInfo: trainEvInfo, trainEv: trainEv, setPreset: setPreset, STAFFN: STAFFN, staffLv: staffLv, staffWage: staffWage, staffCost: staffCost, setStaff: setStaff, indMax: indMax, tactInfo: tactInfo, euTie: euTie, startEu: startEu, euLeg: euLeg, legName: legName, SHOUT: SHOUT, shoutInfo: shoutInfo, liveShout: liveShout, liveProtest: liveProtest, penDue: penDue, penCand: penCand, setPenOrder: setPenOrder, EUNAME: EUNAME, EUPRIZE: EUPRIZE, jobInfo: jobInfo, adSlots: adSlots, adSign: adSign, MN: MN, MUP: MUP, MCOST: MCOST, merchExpect: merchExpect, merchUpgrade: merchUpgrade, DKD: DKD, dkPreview: dkPreview, dkSell: dkSell, extraCost: extraCost, stadExtra: stadExtra, upkeepOf: upkeepOf, goalText: goalText, takeOver: takeOver, SESS: SESS, planFit: planFit, setPlan: setPlan, setInd: setInd, CAMP: CAMP, campCost: campCost, campGo: campGo, ATN: ATN, ATW: ATW, YCOST: YCOST, YUP: YUP, YMAX: YMAX, youthUpgrade: youthUpgrade, promote: promote, POS: POS, FORMATIONS: FORMATIONS, LEAGUES: LEAGUES, ROUNDS: ROUNDS, CTY: CTY, cfg: cfg, NL: NL, NT: NT, RN: RN, HN: HN, lgName: lgName, newGame: newGame, userTeam: userTeam, team: team, table: table, place: place, nextMatch: nextMatch, playRound: playRound, finishSeason: finishSeason, bestEleven: bestEleven, lineupValid: lineupValid, counts: counts, need: need, eff: eff, findP: findP, dateOf: dateOf, seasonLabel: seasonLabel, topScorers: topScorers, ensure: ensure, value: value, salary: salary, buy: buy, sell: sell, sellPrice: sellPrice, MAXSQUAD: MAXSQUAD, signSponsor: signSponsor, loanMax: loanMax, loanStep: loanStep, borrow: borrow, repay: repay, setPrice: setPrice, calEvents: calEvents, startBuild: startBuild, blocks: blocks, buildPlan: buildPlan, BMAX: BMAX, BUILDS: BUILDS, handgeld: handgeld, extend: extend, PRICE: PRICE, cupTie: cupTie, cupPlay: cupPlay, startRound: startRound, startCup: startCup, baseWage: baseWage, demand: demand, offer: offer, loanFee: loanFee, canLoanIn: canLoanIn, loanIn: loanIn, loanOut: loanOut, toggleList: toggleList, acceptOffer: acceptOffer, rejectOffer: rejectOffer, haggle: haggle, findTarget: findTarget, liveNext: liveNext, liveSub: liveSub, liveBench: liveBench, finishLive: finishLive, liveAuto: liveAuto, avail: avail, CUPNAME: CUPNAME, CUPPRIZE: CUPPRIZE, hallPlay: hallPlay, totoMatches: totoMatches, totoTip: totoTip, totoComplete: totoComplete, TOTOSTAKE: TOTOSTAKE, TOTOWIN: TOTOWIN };
+return { NTN: NTN, TOURST: TOURST, tourDue: tourDue, tourKind: tourKind, tourStart: tourStart, tourTie: tourTie, startTour: startTour, tourRest: tourRest, tourInfo: tourInfo, ntAnswer: ntAnswer, ACH: ACH, achState: achState, achNew: achNew, fcInfo: fcInfo, invInfo: invInfo, invList: invList, invBuy: invBuy, invSell: invSell, invBoost: invBoost, fgnLgsX: fgnLgs, clubVal: clubVal, mePct: mePct, meOwner: meOwner, meShareBuy: meShareBuy, meShareSell: meShareSell, meDraw: meDraw, mePut: mePut, meStep: meStep, shareWin: shareWin, meNet: meNet, meBuyList: meBuyList, meBuyClub: meBuyClub, MEOWN: MEOWN, MEEDU: MEEDU, me: me, meWage: meWage, meUpkeep: meUpkeep, meAsk: meAsk, meBuy: meBuy, meSell: meSell, meLearn: meLearn, deadline: deadline, dlList: dlList, pressDue: pressDue, pressAnswer: pressAnswer, rival: rival, setRival: setRival, isDerby: isDerby, resign: resign, fgnAge: fgnAge, fgnTopX: fgnTop, clubTeam: clubTeam, spFac: spFac, fjobInfo: fjobInfo, moveCountry: moveCountry, fgnJobs: fgnJobs, worldExport: worldExport, flTable: flTable, flInfo: flInfo, flScorers: flScorers, fgnReal: fgnReal, fgnApply: fgnApply, weeklyOffers: weeklyOffers, fgnLgs: fgnLgs, fgnClubs: fgnClubs, fgnOpen: fgnOpen, cupDate: cupDate, euName: euName, euGroups: euGroups, tCty: tCty, EUDRAW: EUDRAW, exportData: exportData, parseData: parseData, applyData: applyData, newGameCustom: newGameCustom, winText: winText, startFriendly: startFriendly, cupGoalR: cupGoalR, friendly: friendly, friendInfo: friendInfo, car: car, liveTalk: liveTalk, talkInfo: talkInfo, talkAnswer: talkAnswer, liveTact: liveTact, liveTactInfo: liveTactInfo, tableX: tableX, teamInfo: teamInfo, leagueStats: leagueStats, totoAuto: totoAuto, totoMult: totoMult, hallSquad: hallSquad, hallPrize: hallPrize, hallField: hallField, boardAmb: boardAmb, boardAsk: boardAsk, boardTalk: boardTalk, GRANT: GRANT, youthTrial: youthTrial, youthLoan: youthLoan, youthDrop: youthDrop, youthProj: youthProj, sponProj: sponProj, sponReneg: sponReneg, extOffer: extOffer, raise: raise, release: release, releaseCost: releaseCost, EXT: EXT, VIPB: VIPB, setOps: setOps, capEff: capEff, attExpect: attExpect, LGF: LGF, SECC: SECC, PITC: PITC, PPR: PPR, PPN: PPN, DEPO: DEPO, INVAMT: INVAMT, absWeek: absWeek, wageSum: wageSum, setPP: setPP, setGoalBonus: setGoalBonus, setIns: setIns, deposit: deposit, breakDep: breakDep, depSum: depSum, investor: investor, winOpen: winOpen, scoutCap: scoutCap, scoutFee: scoutFee, scoutAsk: scoutAsk, scoutTips: scoutTips, posCount: posCount, planInfo: planInfo, indInfo: indInfo, elfList: elfList, exList: exList, cdLeft: cdLeft, CDW: CDW, kitInfo: kitInfo, kitBuy: kitBuy, kitColor: kitColor, kitPlain: kitPlain, KITCOL: KITCOL, KITPAT: KITPAT, PREP: PREP, setPrep: setPrep, nextOpp: nextOpp, trainEvInfo: trainEvInfo, trainEv: trainEv, setPreset: setPreset, STAFFN: STAFFN, staffLv: staffLv, staffWage: staffWage, staffCost: staffCost, setStaff: setStaff, indMax: indMax, tactInfo: tactInfo, euTie: euTie, startEu: startEu, euLeg: euLeg, legName: legName, SHOUT: SHOUT, shoutInfo: shoutInfo, liveShout: liveShout, liveProtest: liveProtest, penDue: penDue, penCand: penCand, setPenOrder: setPenOrder, EUNAME: EUNAME, EUPRIZE: EUPRIZE, jobInfo: jobInfo, adSlots: adSlots, adSign: adSign, MN: MN, MUP: MUP, MCOST: MCOST, merchExpect: merchExpect, merchUpgrade: merchUpgrade, DKD: DKD, dkPreview: dkPreview, dkSell: dkSell, extraCost: extraCost, stadExtra: stadExtra, upkeepOf: upkeepOf, goalText: goalText, takeOver: takeOver, SESS: SESS, planFit: planFit, setPlan: setPlan, setInd: setInd, CAMP: CAMP, campCost: campCost, campGo: campGo, ATN: ATN, ATW: ATW, YCOST: YCOST, YUP: YUP, YMAX: YMAX, youthUpgrade: youthUpgrade, promote: promote, POS: POS, FORMATIONS: FORMATIONS, LEAGUES: LEAGUES, ROUNDS: ROUNDS, CTY: CTY, cfg: cfg, NL: NL, NT: NT, RN: RN, HN: HN, lgName: lgName, newGame: newGame, userTeam: userTeam, team: team, table: table, place: place, nextMatch: nextMatch, playRound: playRound, finishSeason: finishSeason, bestEleven: bestEleven, lineupValid: lineupValid, counts: counts, need: need, eff: eff, findP: findP, dateOf: dateOf, seasonLabel: seasonLabel, topScorers: topScorers, ensure: ensure, value: value, salary: salary, buy: buy, sell: sell, sellPrice: sellPrice, MAXSQUAD: MAXSQUAD, signSponsor: signSponsor, loanMax: loanMax, loanStep: loanStep, borrow: borrow, repay: repay, setPrice: setPrice, calEvents: calEvents, startBuild: startBuild, blocks: blocks, buildPlan: buildPlan, BMAX: BMAX, BUILDS: BUILDS, handgeld: handgeld, extend: extend, PRICE: PRICE, cupTie: cupTie, cupPlay: cupPlay, startRound: startRound, startCup: startCup, baseWage: baseWage, demand: demand, offer: offer, loanFee: loanFee, canLoanIn: canLoanIn, loanIn: loanIn, loanOut: loanOut, toggleList: toggleList, acceptOffer: acceptOffer, rejectOffer: rejectOffer, haggle: haggle, findTarget: findTarget, liveNext: liveNext, liveSub: liveSub, liveBench: liveBench, finishLive: finishLive, liveAuto: liveAuto, avail: avail, CUPNAME: CUPNAME, CUPPRIZE: CUPPRIZE, hallPlay: hallPlay, totoMatches: totoMatches, totoTip: totoTip, totoComplete: totoComplete, TOTOSTAKE: TOTOSTAKE, TOTOWIN: TOTOWIN };
 })();
 </script>
 
@@ -3540,7 +3547,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '16.11. 20:30';
+var BUILD = '16.11. 20:43';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -5522,12 +5529,13 @@ function startMatch() {
   var S = M.sim;
   tick('Anpfiff! ' + hn + ' gegen ' + an + '.', 'info');
   if (coachN()) tick('Trainer ' + coachN() + ' steht an der Seitenlinie und gibt letzte Anweisungen.', 'info');
+  try { FM.exList(state, M.h, M.a).slice(0, 3).forEach(function (x) { tick(x.n + ' (' + x.t + ') trifft heute auf seinen alten Verein und ist besonders motiviert.', 'info'); }); } catch (eX) { }
   function apply(e) {
     var tn = e.h ? hn : an, tpl; M.n++;
     if (e.g && e.h !== M.home && state.live && !M.mute && !state.live.ban && (state.live.prN || 0) < 2) { M.prE = e; setTimeout(shoutBar, 0); setTimeout(function () { if (M.prE === e) { M.prE = null; shoutBar(); } }, 8000); }
     if (e.g) { if (e.h) M.hg++; else M.ag++; M.goals.push({ m: e.m, h: e.h, p: e.p }); tpl = T_GOAL[(e.m + M.n) % T_GOAL.length]; if (!M.mute && !e._cam) SND.goal(e.h === M.home); }
     else { tpl = T_MISS[(e.m + M.n) % T_MISS.length]; if (!M.mute && !e._cam) SND.miss(); }
-    tick(e.m + "' " + (e.ct ? 'Konter! ' : e.sp === 'pen' ? 'Elfmeter! ' : e.sp === 'corner' ? 'Ecke. ' : e.sp === 'fk' ? 'Freistoß. ' : '') + tpl.replace('{t}', tn).replace('{p}', e.p).replace('{s}', M.hg + ':' + M.ag), e.g ? 'goal' + (e.h === M.home ? '' : ' opp') : '');
+    tick(e.m + "' " + (e.ct ? 'Konter! ' : e.sp === 'pen' ? 'Elfmeter! ' : e.sp === 'corner' ? 'Ecke. ' : e.sp === 'fk' ? 'Freistoß. ' : '') + tpl.replace('{t}', tn).replace('{p}', e.p).replace('{s}', M.hg + ':' + M.ag) + (e.g && e.ex ? ' Ausgerechnet gegen seinen alten Verein!' : ''), e.g ? 'goal' + (e.h === M.home ? '' : ' opp') : '');
     var sc = document.getElementById('mScore'); if (sc) sc.textContent = M.hg + ':' + M.ag;
   }
   M.cnt = M.cnt || { y: [0, 0], r: [0, 0] };

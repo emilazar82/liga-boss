@@ -791,8 +791,10 @@ function cupQuick(state, m) {
   h.lu = bestEleven(h); a.lu = bestEleven(a);
   var res = simMatch(h, a, true), w = res.hg > res.ag ? h.id : res.ag > res.hg ? a.id : -1, pen = false, lgq = euLeg(state.cup);
   if (lgq === 2) { var f1 = euL1(state.cup, h.id, a.id), th = res.hg + (f1 ? f1[3] : 0), ta = res.ag + (f1 ? f1[2] : 0); w = th > ta ? h.id : ta > th ? a.id : -1; }
+  var etq = false;
+  if (w < 0 && !euGrp(state.cup) && lgq !== 1) { etq = true; var EG = etGoals(h, a); res.hg += EG[0]; res.ag += EG[1]; w = EG[0] > EG[1] ? h.id : EG[1] > EG[0] ? a.id : -1; }
   if (w < 0 && !euGrp(state.cup) && lgq !== 1) { pen = true; w = Math.random() < 0.5 ? h.id : a.id; }
-  m[2] = res.hg; m[3] = res.ag; m[4] = w; m[5] = pen ? 1 : 0;
+  m[2] = res.hg; m[3] = res.ag; m[4] = w; m[5] = pen ? 1 : 0; if (etq) m[6] = 1;
   quickDisc(h); quickDisc(a);
   return w;
 }
@@ -807,8 +809,8 @@ function cupFinish(state, L, h, a) {
   var c = state.cup, u = state.teams[state.uid], w = L.hg > L.ag ? h.id : L.ag > L.hg ? a.id : -1, pen = false, grp = euGrp(c), PKr = null, leg = euLeg(c), agg = null, mw = w;
   if (leg === 2) { var f1 = euL1(c, h.id, a.id); agg = [L.hg + (f1 ? f1[3] : 0), L.ag + (f1 ? f1[2] : 0)]; w = agg[0] > agg[1] ? h.id : agg[1] > agg[0] ? a.id : -1; }
   if (w < 0 && !grp && leg !== 1) { pen = true; PKr = penShoot(h, a, L.pko, u.id); w = PKr.w; }
-  c.ties.forEach(function (m) { if (m[0] === h.id && m[1] === a.id) { m[2] = L.hg; m[3] = L.ag; m[4] = w; m[5] = pen ? 1 : 0; } });
-  var out = { cup: true, eu: !!c.eu, name: cNames(c)[c.r], leg: leg, agg: agg, match: { h: h.id, a: a.id, hg: L.hg, ag: L.ag, events: L.ev, home: L.home, pen: pen, w: w, agg: agg, leg: leg, pk: PKr ? { k: PKr.k, hs: PKr.hs, as: PKr.as } : null }, prize: 0, inc: 0, att: 0, ties: c.ties, won: w === u.id, final: c.r === cLast(c), grp: grp, draw: (grp || leg === 1) && w < 0 };
+  c.ties.forEach(function (m) { if (m[0] === h.id && m[1] === a.id) { m[2] = L.hg; m[3] = L.ag; m[4] = w; m[5] = pen ? 1 : 0; if (L.et) m[6] = 1; } });
+  var out = { cup: true, eu: !!c.eu, name: cNames(c)[c.r], leg: leg, agg: agg, match: { h: h.id, a: a.id, hg: L.hg, ag: L.ag, events: L.ev, home: L.home, pen: pen, et: L.et ? 1 : 0, w: w, agg: agg, leg: leg, pk: PKr ? { k: PKr.k, hs: PKr.hs, as: PKr.as } : null }, prize: 0, inc: 0, att: 0, ties: c.ties, won: w === u.id, final: c.r === cLast(c), grp: grp, draw: (grp || leg === 1) && w < 0 };
   afterMatch(h, 1, 1, L.pl[h.id]); afterMatch(a, 1, 1, L.pl[a.id]);
   endBans(h, L.nb); endBans(a, L.nb);
   if (L.home && !c.tour) {
@@ -1332,7 +1334,7 @@ function tourEnd(state) {
   c.hist.forEach(function (h, ri) { h.ties.forEach(function (m) { [m[0], m[1]].forEach(function (id) { M[id] = (M[id] || 0) + 1; ST[id] = Math.max(ST[id] || 0, ri < 3 ? 0 : ri - 2); }); }); });
   ST[c.champ] = 4;
   var code = function (id) { return state.teams[id].nt; };
-  var res = { g: euTab(c).map(function (g) { return g.map(function (x) { return { c: code(x.id), sp: x.sp, tf: x.tf, ta: x.ta, pts: x.pts }; }); }), md: c.hist.map(function (h) { return { n: h.n, t: h.ties.map(function (m) { return [code(m[0]), code(m[1]), m[2], m[3], m[5] ? 1 : 0]; }) }; }), champ: code(c.champ) };
+  var res = { g: euTab(c).map(function (g) { return g.map(function (x) { return { c: code(x.id), sp: x.sp, tf: x.tf, ta: x.ta, pts: x.pts }; }); }), md: c.hist.map(function (h) { return { n: h.n, t: h.ties.map(function (m) { return [code(m[0]), code(m[1]), m[2], m[3], m[5] ? 1 : m[6] ? 2 : 0]; }) }; }), champ: code(c.champ) };
   var coach = null; if (T.cu !== undefined) { var st = ST[T.nt] || 0; coach = { code: code(T.nt), st: st, fired: st === 0 }; repAdd(state, [-5, 2, 5, 8, 15][st]); if (coach.fired) state.ntj = null; state.uid = T.cu; }
   state.teams.forEach(function (t) { if (t.lg <= 2) t.pl.forEach(function (p) { by[p.i] = [p, t]; }); });
   var rep = [], bonus = 0;
@@ -1357,7 +1359,7 @@ function tourInfo(state) {
   var T = state.tour; if (!T) return null;
   if (!T.on) return T;
   var c = T.c, code = function (id) { return state.teams[id].nt; };
-  return { on: true, kind: T.kind, y: T.y, mine: T.mine, nt: T.nt, cu: T.cu, r: c.r, out: c.out, nm: c.nm, tie: tourTie(state), g: euTab(c).map(function (g) { return g.map(function (x) { return { id: x.id, c: code(x.id), sp: x.sp, tf: x.tf, ta: x.ta, pts: x.pts }; }); }), md: c.hist.map(function (h) { return { n: h.n, t: h.ties.map(function (m) { return [code(m[0]), code(m[1]), m[2], m[3], m[5] ? 1 : 0]; }) }; }), next: c.r <= 5 ? c.ties.map(function (m) { return [code(m[0]), code(m[1])]; }) : [] };
+  return { on: true, kind: T.kind, y: T.y, mine: T.mine, nt: T.nt, cu: T.cu, r: c.r, out: c.out, nm: c.nm, tie: tourTie(state), g: euTab(c).map(function (g) { return g.map(function (x) { return { id: x.id, c: code(x.id), sp: x.sp, tf: x.tf, ta: x.ta, pts: x.pts }; }); }), md: c.hist.map(function (h) { return { n: h.n, t: h.ties.map(function (m) { return [code(m[0]), code(m[1]), m[2], m[3], m[5] ? 1 : m[6] ? 2 : 0]; }) }; }), next: c.r <= 5 ? c.ties.map(function (m) { return [code(m[0]), code(m[1])]; }) : [] };
 }
 function ntOffer(state, title) {
   if (state.ntj || state.nto || state.rep < 45) return;
@@ -2956,7 +2958,7 @@ function quickDisc(t) {
 }
 function moAdd(p, d) { var c = chr(p); if (c === 4) d *= 1.5; else if (c === 3 && d < 0) d *= 0.6; p.mo = Math.round(clamp((p.mo === undefined ? 6 : p.mo) + d, 1, 10) * 10) / 10; }
 var SHOUT = [['Nach vorne!', 'Angriff +8 %, Abwehr −5 %'], ['Ruhig halten', 'Abwehr +6 %, Angriff −6 %'], ['Härter rangehen', 'Mittelfeld +6 %, deutlich mehr Karten'], ['Alles nach vorne', 'Angriff +18 %, Abwehr −18 %'], ['Zeit schinden', 'ein Drittel weniger Chancen für beide, mehr Gelbe Karten']];
-function shoutInfo(state) { var L = state.live; if (!L) return null; return { seg: L.seg, from: L.seg * 15, to: L.seg * 15 + 15, can: L.seg >= 1 && L.seg <= 5 && !L.ban, cur: L.sh && L.sh.s === L.seg ? L.sh.k : -1, n: L.shN || 0, w: [1, 0.7, 0.4, 0.2][Math.min(3, L.shN || 0)], fin: L.seg === 5, ban: !!L.ban, pr: L.prN || 0 }; }
+function shoutInfo(state) { var L = state.live; if (!L) return null; return { seg: L.seg, from: L.seg * 15, to: L.seg * 15 + 15, can: L.seg >= 1 && L.seg <= liveEnd(L) - 1 && !L.ban, et: L.et ? 1 : 0, end: liveEnd(L), cur: L.sh && L.sh.s === L.seg ? L.sh.k : -1, n: L.shN || 0, w: [1, 0.7, 0.4, 0.2][Math.min(3, L.shN || 0)], fin: L.seg === liveEnd(L) - 1, ban: !!L.ban, pr: L.prN || 0 }; }
 function liveShout(state, k) {
   var L = state.live; if (!L || L.seg < 1) return 'Jetzt nicht möglich.';
   if (L.ban) return 'Du sitzt auf der Tribüne und kommst nicht mehr an die Mannschaft heran.';
@@ -2981,13 +2983,16 @@ function liveProtest(state, m, pn) {
   return { r: 'no' };
 }
 function liveCupC(state) { var L = state.live; return L.tour && state.tour ? state.tour.c : L.eu ? state.eu : state.cup; }
-function penDue(state) {
-  var L = state.live; if (!L || L.type !== 'cup' || L.seg < 6) return false;
+function koTied(state) {
+  var L = state.live; if (!L || L.type !== 'cup') return false;
   var c = liveCupC(state); if (!c || euGrp(c)) return false; var leg = euLeg(c);
   if (leg === 1) return false;
   if (leg === 2) { var f1 = euL1(c, L.h, L.a); return L.hg + (f1 ? f1[3] : 0) === L.ag + (f1 ? f1[2] : 0); }
   return L.hg === L.ag;
 }
+function liveEnd(L) { return L && L.et ? 8 : 6; }
+function penDue(state) { var L = state.live; if (!L || L.seg < liveEnd(L)) return false; return koTied(state); }
+function etGoals(h, a) { var d = clamp(tStr(h) - tStr(a), -25, 25); return [pois(0.42 * Math.exp(0.04 * d)), pois(0.42 * Math.exp(-0.04 * d))]; }
 function penCand(state) { var u = state.teams[state.uid]; return u.lu.map(function (id) { return findP(u, id); }).filter(function (p) { return !!p; }).map(function (p) { return { i: p.i, n: p.n, p: p.p, e: elf(p) }; }).sort(function (x, y) { return y.e - x.e; }); }
 function setPenOrder(state, ids) { if (state.live) state.live.pko = (ids || []).slice(0, 11); }
 function liveTalk(state, k) {
@@ -3439,7 +3444,7 @@ function liveSub(state, outId, inId) {
   if (outId != null && u.lu.indexOf(outId) < 0) return 'Dieser Spieler steht nicht auf dem Platz.';
   var o = outId != null ? findP(u, outId) : null;
   doSub(L, u, outId, p); L.need = null;
-  var e = { m: Math.min(90, L.seg * 15), h: L.home, k: 'sub', p: p.n, o: o ? o.n : '' }; L.ev.push(e); return e;
+  var e = { m: Math.min(L.et ? 120 : 90, L.seg * 15), h: L.home, k: 'sub', p: p.n, o: o ? o.n : '' }; L.ev.push(e); return e;
 }
 function liveDisc(state, L, t, isHome, m0, ev, auto) {
   var u = state.teams[state.uid], k = [0.6, 1, 1.6][t.ei] * (t.id === u.id && L._hard ? L._hard : 1), p, m;
@@ -3474,9 +3479,9 @@ function aiSub(state, L, t, isHome, m, ev) {
   if (b && eff(b) > eff(on)) { doSub(L, t, on.i, b); ev.push({ m: m, h: isHome, k: 'sub', p: b.n, o: on.n }); }
 }
 function liveNext(state, auto) {
-  var L = state.live; if (!L || L.seg >= 6) return { events: [], done: true };
+  var L = state.live; if (!L || L.seg >= liveEnd(L)) return { events: [], done: true };
   var u = state.teams[state.uid], h = state.teams[L.h], a = state.teams[L.a], m0 = L.seg * 15, ev = [];
-  [h, a].forEach(function (t) { if ((t.id !== u.id || auto) && (L.seg === 4 || L.seg === 5)) aiSub(state, L, t, t === h, m0 + 1, ev); });
+  [h, a].forEach(function (t) { if ((t.id !== u.id || auto) && (L.seg >= 4)) aiSub(state, L, t, t === h, m0 + 1, ev); });
   [h, a].forEach(function (t) { if (t.id !== u.id) aiLive(L, t, t === h, m0, ev); });
   if (L.seg >= 1 && L.wm !== undefined && Math.random() < 0.08) {
     var w0 = L.wx | 0, winter = L.wm === 11 || L.wm <= 1, w1 = w0 ? 0 : (winter && Math.random() < 0.5 ? 2 : 1);
@@ -3492,21 +3497,22 @@ function liveNext(state, auto) {
   liveDisc(state, L, h, true, m0, ev, auto); liveDisc(state, L, a, false, m0, ev, auto); delete L._hard;
   [h, a].forEach(function (t) { var loss = [9, 12, 16][t.ei] / 6 * fatMul(t) * [1, 1.1, 1.2][L.wx | 0]; t.lu.forEach(function (id) { var p = findP(t, id); if (p) p.t = Math.max(30, p.t - (p.p === 0 ? loss / 2 : loss) * (1.25 - 0.005 * p.at[6])); }); });
   ev.sort(function (x, y) { return x.m - y.m; }); L.ev = L.ev.concat(ev); L.seg++;
-  return { events: ev, done: L.seg >= 6 };
+  var etNow = false; if (L.seg === 6 && !L.et && koTied(state)) { L.et = 1; etNow = true; L.subs[L.h]++; L.subs[L.a]++; }
+  return { events: ev, done: L.seg >= liveEnd(L), et: etNow };
 }
 function aiLive(L, t, isHome, m0, ev) {
   if (!L.ai0) L.ai0 = { au: t.au, pr: t.pr, tp: t.tp };
   if (L.seg < 4) return;
   var d = isHome ? L.hg - L.ag : L.ag - L.hg, w = null, sk = t.co ? t.co.sk : 3;
-  if (d < 0 && t.au !== 2) w = { au: 2, tp: 2, pr: L.seg === 5 ? 2 : t.pr, t: ' stellt um und wirft alles nach vorn.' };
-  else if (d > 0 && L.seg === 5 && t.au !== 0) w = { au: 0, tp: 0, pr: 0, t: ' zieht sich zurück und verteidigt den Vorsprung.' };
+  if (d < 0 && t.au !== 2) w = { au: 2, tp: 2, pr: L.seg === liveEnd(L) - 1 ? 2 : t.pr, t: ' stellt um und wirft alles nach vorn.' };
+  else if (d > 0 && L.seg === liveEnd(L) - 1 && t.au !== 0) w = { au: 0, tp: 0, pr: 0, t: ' zieht sich zurück und verteidigt den Vorsprung.' };
   if (w && Math.random() < 0.2 + 0.1 * sk) { t.au = w.au; t.tp = w.tp; t.pr = w.pr; ev.push({ m: m0 + 1, h: isHome, k: 'tac', t: w.t }); }
 }
 function liveTact(state, k, v) {
   var L = state.live, u = state.teams[state.uid], cur = u[k] === undefined ? (k === 'ab' || k === 'md' ? 0 : 1) : u[k];
   if (cur === v) return 0;
   u[k] = v;
-  if (L && L.seg > 0 && L.seg < 6 && L.seg !== 3 && (k === 'pr' || k === 'ps' || k === 'ab' || k === 'md')) { L.dis = L.seg; return 2; }
+  if (L && L.seg > 0 && L.seg < liveEnd(L) && L.seg !== 3 && L.seg !== 6 && (k === 'pr' || k === 'ps' || k === 'ab' || k === 'md')) { L.dis = L.seg; return 2; }
   return 1;
 }
 function liveTactInfo(state) {
@@ -3525,6 +3531,7 @@ function finishLive(state) {
   state.live = null; return out;
 }
 function liveAuto(state) { while (!liveNext(state, true).done) { } return finishLive(state); }
+function liveOver(state) { var L = state.live; return !L || L.seg >= liveEnd(L); }
 
 function makeSchedule(ids) {
   var arr = shuffle(ids.slice()), n = arr.length, first = [];
@@ -3894,7 +3901,7 @@ function topScorers(state, lg, n) {
   all.sort(function (a, b) { return b.g - a.g; });
   return all.slice(0, n);
 }
-return { NTN: NTN, TOURST: TOURST, tourDue: tourDue, tourKind: tourKind, tourStart: tourStart, tourTie: tourTie, startTour: startTour, tourRest: tourRest, tourInfo: tourInfo, ntAnswer: ntAnswer, ACH: ACH, achState: achState, achNew: achNew, fcInfo: fcInfo, invInfo: invInfo, invList: invList, invBuy: invBuy, invSell: invSell, invBoost: invBoost, fgnLgsX: fgnLgs, clubVal: clubVal, mePct: mePct, meOwner: meOwner, meShareBuy: meShareBuy, meShareSell: meShareSell, meDraw: meDraw, mePut: mePut, meStep: meStep, shareWin: shareWin, meNet: meNet, meBuyList: meBuyList, meBuyClub: meBuyClub, MEOWN: MEOWN, MEEDU: MEEDU, me: me, meWage: meWage, meUpkeep: meUpkeep, meAsk: meAsk, meBuy: meBuy, meSell: meSell, meLearn: meLearn, deadline: deadline, dlList: dlList, pressDue: pressDue, pressAnswer: pressAnswer, rival: rival, setRival: setRival, isDerby: isDerby, resign: resign, fgnAge: fgnAge, fgnTopX: fgnTop, clubTeam: clubTeam, spFac: spFac, fjobInfo: fjobInfo, moveCountry: moveCountry, fgnJobs: fgnJobs, worldExport: worldExport, flTable: flTable, flInfo: flInfo, flScorers: flScorers, fgnReal: fgnReal, fgnApply: fgnApply, weeklyOffers: weeklyOffers, fgnLgs: fgnLgs, fgnClubs: fgnClubs, fgnOpen: fgnOpen, cupDate: cupDate, euName: euName, euGroups: euGroups, tCty: tCty, EUDRAW: EUDRAW, exportData: exportData, parseData: parseData, applyData: applyData, newGameCustom: newGameCustom, winText: winText, startFriendly: startFriendly, cupGoalR: cupGoalR, friendly: friendly, friendInfo: friendInfo, car: car, liveTalk: liveTalk, talkInfo: talkInfo, talkAnswer: talkAnswer, liveTact: liveTact, liveTactInfo: liveTactInfo, tableX: tableX, teamInfo: teamInfo, leagueStats: leagueStats, totoAuto: totoAuto, totoMult: totoMult, hallSquad: hallSquad, hallPrize: hallPrize, hallField: hallField, boardAmb: boardAmb, boardAsk: boardAsk, boardTalk: boardTalk, GRANT: GRANT, youthTrial: youthTrial, youthLoan: youthLoan, youthDrop: youthDrop, youthProj: youthProj, sponProj: sponProj, sponReneg: sponReneg, extOffer: extOffer, extDeal: extDeal, EXW: EXW, EXF: EXF, raise: raise, release: release, releaseCost: releaseCost, EXT: EXT, VIPB: VIPB, setOps: setOps, capEff: capEff, attExpect: attExpect, LGF: LGF, SECC: SECC, PITC: PITC, PPR: PPR, PPN: PPN, DEPO: DEPO, INVAMT: INVAMT, absWeek: absWeek, wageSum: wageSum, setPP: setPP, setGoalBonus: setGoalBonus, setIns: setIns, deposit: deposit, breakDep: breakDep, depSum: depSum, investor: investor, winOpen: winOpen, scoutCap: scoutCap, scoutFee: scoutFee, scoutAsk: scoutAsk, scoutTips: scoutTips, posCount: posCount, planInfo: planInfo, indInfo: indInfo, elfList: elfList, exList: exList, chr: chr, CHN: CHN, CHD: CHD, capInfo: capInfo, setCap: setCap, setPk: setPk, injOf: injOf, elfOf: elf, cdLeft: cdLeft, CDW: CDW, kitInfo: kitInfo, kitBuy: kitBuy, kitColor: kitColor, kitPlain: kitPlain, KITCOL: KITCOL, KITPAT: KITPAT, PREP: PREP, setPrep: setPrep, nextOpp: nextOpp, trainEvInfo: trainEvInfo, lifeInfo: lifeInfo, lifeAns: lifeAns, famTxt: famTxt, meFamTxt: meFamTxt, meBday: meBday, trainEv: trainEv, setPreset: setPreset, STAFFN: STAFFN, staffLv: staffLv, staffWage: staffWage, staffCost: staffCost, setStaff: setStaff, indMax: indMax, tactInfo: tactInfo, euTie: euTie, startEu: startEu, euLeg: euLeg, legName: legName, SHOUT: SHOUT, shoutInfo: shoutInfo, liveShout: liveShout, liveProtest: liveProtest, penDue: penDue, penCand: penCand, setPenOrder: setPenOrder, EUNAME: EUNAME, EUPRIZE: EUPRIZE, jobInfo: jobInfo, adSlots: adSlots, adSign: adSign, MN: MN, MUP: MUP, MCOST: MCOST, merchExpect: merchExpect, merchUpgrade: merchUpgrade, DKD: DKD, dkPreview: dkPreview, dkSell: dkSell, extraCost: extraCost, stadExtra: stadExtra, upkeepOf: upkeepOf, goalText: goalText, takeOver: takeOver, SESS: SESS, planFit: planFit, setPlan: setPlan, setInd: setInd, CAMP: CAMP, campCost: campCost, campGo: campGo, ATN: ATN, ATW: ATW, YCOST: YCOST, YUP: YUP, YMAX: YMAX, youthUpgrade: youthUpgrade, promote: promote, POS: POS, FORMATIONS: FORMATIONS, LEAGUES: LEAGUES, ROUNDS: ROUNDS, CTY: CTY, cfg: cfg, NL: NL, NT: NT, RN: RN, HN: HN, lgName: lgName, newGame: newGame, userTeam: userTeam, team: team, table: table, place: place, nextMatch: nextMatch, playRound: playRound, finishSeason: finishSeason, bestEleven: bestEleven, lineupValid: lineupValid, counts: counts, need: need, eff: eff, findP: findP, dateOf: dateOf, seasonLabel: seasonLabel, topScorers: topScorers, ensure: ensure, value: value, salary: salary, buy: buy, sell: sell, sellPrice: sellPrice, MAXSQUAD: MAXSQUAD, signSponsor: signSponsor, loanMax: loanMax, loanStep: loanStep, borrow: borrow, repay: repay, setPrice: setPrice, calEvents: calEvents, startBuild: startBuild, blocks: blocks, buildPlan: buildPlan, BMAX: BMAX, BUILDS: BUILDS, handgeld: handgeld, extend: extend, PRICE: PRICE, cupTie: cupTie, cupPlay: cupPlay, startRound: startRound, kfTable: kfTable, ntfInfo: ntfInfo, ntfStart: ntfStart, ntfQuick: ntfQuick, ntPlan: ntPlan, ntQuit: ntQuit, ntfPrep: ntfPrep, ntfKick: ntfKick, ntfAbort: ntfAbort, ntfPrepInfo: ntfPrepInfo, ntToggle: ntToggle, ntAutoPick: ntAutoPick, stadCond: stadCond, turfCare: turfCare, renovate: renovate, startCup: startCup, baseWage: baseWage, demand: demand, offer: offer, loanFee: loanFee, canLoanIn: canLoanIn, loanIn: loanIn, loanOut: loanOut, toggleList: toggleList, acceptOffer: acceptOffer, rejectOffer: rejectOffer, haggle: haggle, findTarget: findTarget, liveNext: liveNext, liveSub: liveSub, liveBench: liveBench, finishLive: finishLive, liveAuto: liveAuto, avail: avail, CUPNAME: CUPNAME, CUPPRIZE: CUPPRIZE, hallPlay: hallPlay, totoMatches: totoMatches, totoTip: totoTip, totoComplete: totoComplete, TOTOSTAKE: TOTOSTAKE, TOTOWIN: TOTOWIN };
+return { NTN: NTN, TOURST: TOURST, tourDue: tourDue, tourKind: tourKind, tourStart: tourStart, tourTie: tourTie, startTour: startTour, tourRest: tourRest, tourInfo: tourInfo, ntAnswer: ntAnswer, ACH: ACH, achState: achState, achNew: achNew, fcInfo: fcInfo, invInfo: invInfo, invList: invList, invBuy: invBuy, invSell: invSell, invBoost: invBoost, fgnLgsX: fgnLgs, clubVal: clubVal, mePct: mePct, meOwner: meOwner, meShareBuy: meShareBuy, meShareSell: meShareSell, meDraw: meDraw, mePut: mePut, meStep: meStep, shareWin: shareWin, meNet: meNet, meBuyList: meBuyList, meBuyClub: meBuyClub, MEOWN: MEOWN, MEEDU: MEEDU, me: me, meWage: meWage, meUpkeep: meUpkeep, meAsk: meAsk, meBuy: meBuy, meSell: meSell, meLearn: meLearn, deadline: deadline, dlList: dlList, pressDue: pressDue, pressAnswer: pressAnswer, rival: rival, setRival: setRival, isDerby: isDerby, resign: resign, fgnAge: fgnAge, fgnTopX: fgnTop, clubTeam: clubTeam, spFac: spFac, fjobInfo: fjobInfo, moveCountry: moveCountry, fgnJobs: fgnJobs, worldExport: worldExport, flTable: flTable, flInfo: flInfo, flScorers: flScorers, fgnReal: fgnReal, fgnApply: fgnApply, weeklyOffers: weeklyOffers, fgnLgs: fgnLgs, fgnClubs: fgnClubs, fgnOpen: fgnOpen, cupDate: cupDate, euName: euName, euGroups: euGroups, tCty: tCty, EUDRAW: EUDRAW, exportData: exportData, parseData: parseData, applyData: applyData, newGameCustom: newGameCustom, winText: winText, startFriendly: startFriendly, cupGoalR: cupGoalR, friendly: friendly, friendInfo: friendInfo, car: car, liveTalk: liveTalk, talkInfo: talkInfo, talkAnswer: talkAnswer, liveTact: liveTact, liveTactInfo: liveTactInfo, tableX: tableX, teamInfo: teamInfo, leagueStats: leagueStats, totoAuto: totoAuto, totoMult: totoMult, hallSquad: hallSquad, hallPrize: hallPrize, hallField: hallField, boardAmb: boardAmb, boardAsk: boardAsk, boardTalk: boardTalk, GRANT: GRANT, youthTrial: youthTrial, youthLoan: youthLoan, youthDrop: youthDrop, youthProj: youthProj, sponProj: sponProj, sponReneg: sponReneg, extOffer: extOffer, extDeal: extDeal, EXW: EXW, EXF: EXF, raise: raise, release: release, releaseCost: releaseCost, EXT: EXT, VIPB: VIPB, setOps: setOps, capEff: capEff, attExpect: attExpect, LGF: LGF, SECC: SECC, PITC: PITC, PPR: PPR, PPN: PPN, DEPO: DEPO, INVAMT: INVAMT, absWeek: absWeek, wageSum: wageSum, setPP: setPP, setGoalBonus: setGoalBonus, setIns: setIns, deposit: deposit, breakDep: breakDep, depSum: depSum, investor: investor, winOpen: winOpen, scoutCap: scoutCap, scoutFee: scoutFee, scoutAsk: scoutAsk, scoutTips: scoutTips, posCount: posCount, planInfo: planInfo, indInfo: indInfo, elfList: elfList, exList: exList, chr: chr, CHN: CHN, CHD: CHD, capInfo: capInfo, setCap: setCap, setPk: setPk, injOf: injOf, elfOf: elf, cdLeft: cdLeft, CDW: CDW, kitInfo: kitInfo, kitBuy: kitBuy, kitColor: kitColor, kitPlain: kitPlain, KITCOL: KITCOL, KITPAT: KITPAT, PREP: PREP, setPrep: setPrep, nextOpp: nextOpp, trainEvInfo: trainEvInfo, lifeInfo: lifeInfo, lifeAns: lifeAns, famTxt: famTxt, meFamTxt: meFamTxt, meBday: meBday, trainEv: trainEv, setPreset: setPreset, STAFFN: STAFFN, staffLv: staffLv, staffWage: staffWage, staffCost: staffCost, setStaff: setStaff, indMax: indMax, tactInfo: tactInfo, euTie: euTie, startEu: startEu, euLeg: euLeg, legName: legName, SHOUT: SHOUT, shoutInfo: shoutInfo, liveShout: liveShout, liveProtest: liveProtest, penDue: penDue, penCand: penCand, setPenOrder: setPenOrder, EUNAME: EUNAME, EUPRIZE: EUPRIZE, jobInfo: jobInfo, adSlots: adSlots, adSign: adSign, MN: MN, MUP: MUP, MCOST: MCOST, merchExpect: merchExpect, merchUpgrade: merchUpgrade, DKD: DKD, dkPreview: dkPreview, dkSell: dkSell, extraCost: extraCost, stadExtra: stadExtra, upkeepOf: upkeepOf, goalText: goalText, takeOver: takeOver, SESS: SESS, planFit: planFit, setPlan: setPlan, setInd: setInd, CAMP: CAMP, campCost: campCost, campGo: campGo, ATN: ATN, ATW: ATW, YCOST: YCOST, YUP: YUP, YMAX: YMAX, youthUpgrade: youthUpgrade, promote: promote, POS: POS, FORMATIONS: FORMATIONS, LEAGUES: LEAGUES, ROUNDS: ROUNDS, CTY: CTY, cfg: cfg, NL: NL, NT: NT, RN: RN, HN: HN, lgName: lgName, newGame: newGame, userTeam: userTeam, team: team, table: table, place: place, nextMatch: nextMatch, playRound: playRound, finishSeason: finishSeason, bestEleven: bestEleven, lineupValid: lineupValid, counts: counts, need: need, eff: eff, findP: findP, dateOf: dateOf, seasonLabel: seasonLabel, topScorers: topScorers, ensure: ensure, value: value, salary: salary, buy: buy, sell: sell, sellPrice: sellPrice, MAXSQUAD: MAXSQUAD, signSponsor: signSponsor, loanMax: loanMax, loanStep: loanStep, borrow: borrow, repay: repay, setPrice: setPrice, calEvents: calEvents, startBuild: startBuild, blocks: blocks, buildPlan: buildPlan, BMAX: BMAX, BUILDS: BUILDS, handgeld: handgeld, extend: extend, PRICE: PRICE, cupTie: cupTie, cupPlay: cupPlay, startRound: startRound, kfTable: kfTable, ntfInfo: ntfInfo, ntfStart: ntfStart, ntfQuick: ntfQuick, ntPlan: ntPlan, ntQuit: ntQuit, liveOver: liveOver, ntfPrep: ntfPrep, ntfKick: ntfKick, ntfAbort: ntfAbort, ntfPrepInfo: ntfPrepInfo, ntToggle: ntToggle, ntAutoPick: ntAutoPick, stadCond: stadCond, turfCare: turfCare, renovate: renovate, startCup: startCup, baseWage: baseWage, demand: demand, offer: offer, loanFee: loanFee, canLoanIn: canLoanIn, loanIn: loanIn, loanOut: loanOut, toggleList: toggleList, acceptOffer: acceptOffer, rejectOffer: rejectOffer, haggle: haggle, findTarget: findTarget, liveNext: liveNext, liveSub: liveSub, liveBench: liveBench, finishLive: finishLive, liveAuto: liveAuto, avail: avail, CUPNAME: CUPNAME, CUPPRIZE: CUPPRIZE, hallPlay: hallPlay, totoMatches: totoMatches, totoTip: totoTip, totoComplete: totoComplete, TOTOSTAKE: TOTOSTAKE, TOTOWIN: TOTOWIN };
 })();
 </script>
 
@@ -3980,7 +3987,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '17.11. 16:04';
+var BUILD = '17.11. 16:19';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -5007,7 +5014,7 @@ function tourCalc(G, md, upto) {
   md.slice(0, upto).forEach(function (d) { d.t.forEach(function (m) { var a = R[m[0]], b = R[m[1]]; if (!a || !b) return; a.sp++; b.sp++; a.tf += m[2]; a.ta += m[3]; b.tf += m[3]; b.ta += m[2]; if (m[2] > m[3]) a.pts += 3; else if (m[2] < m[3]) b.pts += 3; else { a.pts++; b.pts++; } }); });
   return G.map(function (g) { return g.map(function (x) { return R[x.c]; }).sort(function (x, y) { return y.pts - x.pts || (y.tf - y.ta) - (x.tf - x.ta) || y.tf - x.tf; }); });
 }
-function tourMd(d, hl) { return '<p class="lbl" style="margin:6px 0 0">' + esc(d.n.toUpperCase()) + '</p><div class="list">' + d.t.map(function (m) { var w = m[4] ? '*' : ''; return '<div class="tie' + (hl[m[0]] || hl[m[1]] ? ' me' : '') + '" style="display:grid;grid-template-columns:1fr 54px 1fr;align-items:center;padding:8px 6px;background:var(--panel);font-size:14px' + (hl[m[0]] || hl[m[1]] ? ';outline:2px solid var(--yellow);outline-offset:-2px' : '') + '"><span style="text-align:right">' + esc(natName(m[0])) + ' ' + flag(m[0]) + '</span><b style="text-align:center">' + (m.length > 2 ? m[2] + ':' + m[3] + w : '–') + '</b><span>' + flag(m[1]) + esc(natName(m[1])) + '</span></div>'; }).join('') + '</div>'; }
+function tourMd(d, hl) { return '<p class="lbl" style="margin:6px 0 0">' + esc(d.n.toUpperCase()) + '</p><div class="list">' + d.t.map(function (m) { var w = m[4] === 1 ? '*' : m[4] === 2 ? ' n.V.' : ''; return '<div class="tie' + (hl[m[0]] || hl[m[1]] ? ' me' : '') + '" style="display:grid;grid-template-columns:1fr 54px 1fr;align-items:center;padding:8px 6px;background:var(--panel);font-size:14px' + (hl[m[0]] || hl[m[1]] ? ';outline:2px solid var(--yellow);outline-offset:-2px' : '') + '"><span style="text-align:right">' + esc(natName(m[0])) + ' ' + flag(m[0]) + '</span><b style="text-align:center">' + (m.length > 2 ? m[2] + ':' + m[3] + w : '–') + '</b><span>' + flag(m[1]) + esc(natName(m[1])) + '</span></div>'; }).join('') + '</div>'; }
 function vTour() {
   var T = FM.tourInfo(state); if (!T) return sub('Turnier');
   var full = (T.kind === 'EM' ? 'Europameisterschaft ' : 'Weltmeisterschaft ') + T.y, hl = {}, h = '<div class="hdr"><div class="title grow">' + full + '</div></div>';
@@ -5034,7 +5041,7 @@ function vTour() {
     R.md.slice(3).reverse().forEach(function (d) { h += tourMd(d, hl); });
     R.g.forEach(function (g, i) { h += '<p class="lbl" style="margin:6px 0 0">GRUPPE ' + 'ABCD'.charAt(i) + '</p>' + tourTab(g, hl); });
     h += '<details class="inf" style="margin:0"><summary>Alle Gruppenspiele</summary>' + R.md.slice(0, 3).map(function (d) { return tourMd(d, hl); }).join('') + '</details>';
-    return h + '<p class="hint" style="margin:0">* nach Elfmeterschießen · farbig hervorgehoben: Nationen mit Spielern deines Vereins</p>' + done;
+    return h + '<p class="hint" style="margin:0">* nach Elfmeterschießen · n.V. = nach Verlängerung · farbig hervorgehoben: Nationen mit Spielern deines Vereins</p>' + done;
   }
   var pg = Math.min(ui.tpg || 0, 7), ttl = ['Die Nominierungen', '1. Gruppenspieltag', '2. Gruppenspieltag', '3. Gruppenspieltag', 'Viertelfinale', 'Halbfinale', 'Finale', 'Bilanz'][pg];
   h += '<div class="panel" style="text-align:center"><p class="lbl" style="margin:0">' + (pg + 1) + ' / 8 · ' + ttl.toUpperCase() + '</p></div>';
@@ -5074,7 +5081,7 @@ function euGrpHtml(T, gi) {
 function euMyGrp() { var g = state.eu.g || [], r = -1; g.forEach(function (ids, i) { if (ids.indexOf(state.uid) >= 0) r = i; }); return r; }
 function tieRow(x, pen) {
   var me = x[0] === state.uid || x[1] === state.uid;
-  return '<div class="res' + (me ? ' me' : '') + '">' + tm(x[0], 'r') + '<span class="sc">' + (x.length > 2 ? x[2] + ':' + x[3] + (x[5] ? '*' : '') : '–') + '</span>' + tm(x[1], 'l') + '</div>';
+  return '<div class="res' + (me ? ' me' : '') + '">' + tm(x[0], 'r') + '<span class="sc">' + (x.length > 2 ? x[2] + ':' + x[3] + (x[5] ? '*' : x[6] ? ' n.V.' : '') : '–') + '</span>' + tm(x[1], 'l') + '</div>';
 }
 function vCup() {
   var eu = ui.cupt === 'eu', c = eu ? state.eu : state.cup, h = sub('Pokal') + tabBar('cupt', [['cup', CUPN()], ['eu', EUN()]], ui.cupt), ct = eu ? FM.euTie(state) : FM.cupTie(state);
@@ -5109,7 +5116,7 @@ function vCup() {
     r.ties.forEach(function (x) { h += tieRow(x); });
     h += '</div>';
   });
-  h += inf('Ein Spiel pro Runde, der unterklassige Verein hat Heimrecht. Bei Unentschieden entscheidet das Elfmeterschießen (*).', 'Regeln');
+  h += inf('Ein Spiel pro Runde, der unterklassige Verein hat Heimrecht. Bei Unentschieden gibt es Verlängerung (zweimal 15 Minuten, n.V.), danach Elfmeterschießen (*).', 'Regeln');
   return h;
 }
 function vToto() {
@@ -5363,7 +5370,7 @@ function shoutBar() {
   if (!M || M.done || M.paused || M.pkWait || !I || I.seg < 1) { el.innerHTML = ''; return; }
   var h = '<div style="margin-top:8px;padding:8px;background:#0a3a3e;border:2px solid #16595f">', pr = M.prE && !I.ban ? '<button class="big warn sm" data-a="protest" style="margin:0 0 8px;width:100%">Reklamieren: Tor von ' + esc(M.prE.p) + '!</button>' : '';
   if (I.ban) return void (el.innerHTML = h + '<p class="hint" style="margin:0;text-align:center;color:#ff9a8f">Du sitzt auf der Tribüne: keine Zurufe und kein Eingreifen mehr. Wechsel bei Verletzungen macht der Co-Trainer mit dir.</p></div>');
-  if (I.seg > 5) return void (el.innerHTML = h + pr + '<p class="hint" style="margin:0;text-align:center">Die letzte Viertelstunde läuft – Zurufe kommen nicht mehr an.</p></div>');
+  if (I.seg >= I.end) return void (el.innerHTML = h + pr + '<p class="hint" style="margin:0;text-align:center">Die letzte Viertelstunde läuft – Zurufe kommen nicht mehr an.</p></div>');
   var btn = function (k) { var on = I.cur === k; return '<button class="chip' + (on ? ' on' : '') + '" data-a="shout" data-val="' + k + '"' + (I.cur >= 0 && !on ? ' disabled style="opacity:.4;flex:1;padding:8px 4px;font-size:11.5px"' : ' style="flex:1;padding:8px 4px;font-size:11.5px"') + '>' + FM.SHOUT[k][0] + '<small style="display:block;font-size:9px;font-weight:400;color:var(--mint);line-height:1.15;margin-top:2px">' + ['Angriff ▲<br>Abwehr ▼', 'Abwehr ▲<br>Angriff ▼', 'Mittelfeld ▲<br>mehr Karten', 'Angriff ▲▲<br>Abwehr ▼▼', 'weniger Chancen<br>Gelb-Risiko'][k] + '</small></button>'; };
   h += pr + '<p class="lbl" style="margin:0 0 6px;font-size:8px">ZURUF FÜR MINUTE ' + I.from + ' BIS ' + I.to + '</p><div style="display:flex;gap:6px">' + btn(0) + btn(1) + btn(2) + '</div>';
   if (I.fin) h += '<p class="lbl" style="margin:8px 0 6px;font-size:8px;color:#ffd84d">SCHLUSSPHASE</p><div style="display:flex;gap:6px">' + btn(3) + btn(4) + '</div>';
@@ -6193,12 +6200,12 @@ function startMatch() {
   M.unGoal = function (e) { for (var gi = M.goals.length - 1; gi >= 0; gi--) if (M.goals[gi].m === e.m && (M.goals[gi].rp || M.goals[gi].p) === e.p && M.goals[gi].h === e.h) { M.goals.splice(gi, 1); break; } if (e.h) M.hg = Math.max(0, M.hg - 1); else M.ag = Math.max(0, M.ag - 1); var sc0 = document.getElementById('mScore'); if (sc0) sc0.textContent = M.hg + ':' + M.ag; if (M.kfBar) M.kfBar(); };
   function finish() {
     if (M.pkWait) return;
-    if (!M.pkAsked && state.live && FM.penDue(state)) { M.pkAsked = true; M.pkWait = true; M.paused = false; M.prE = null; tick('Unentschieden – es gibt Elfmeterschießen. Wähle deine Schützen.', 'info'); matchPanel(); return; }
+    if (!M.pkAsked && state.live && FM.penDue(state)) { M.pkAsked = true; M.pkWait = true; M.paused = false; M.prE = null; tick('Auch die Verlängerung bringt keine Entscheidung – es gibt Elfmeterschießen. Wähle deine Schützen.', 'info'); matchPanel(); return; }
     M.done = true; M.paused = false; M.prE = null; matchPanel(); shoutBar();
     var R = FM.finishLive(state), m = R.match; M.res = R; persist();
     var mn = document.getElementById('mMin'); if (mn) mn.textContent = 'Abpfiff';
     var sc = document.getElementById('mScore'); if (sc) sc.textContent = m.hg + ':' + m.ag;
-    tick('Abpfiff! Endstand ' + m.hg + ':' + m.ag + '.', 'info');
+    tick('Abpfiff! Endstand ' + m.hg + ':' + m.ag + (m.et ? ' nach Verlängerung' : '') + '.', 'info');
     var PK = m.pen && m.pk && m.pk.k && m.pk.k.length ? m.pk : null;
     var penTick = function () { if (m.pen) tick('Elfmeterschießen' + (PK ? ' ' + PK.hs + ':' + PK.as : '') + '! ' + FM.team(state, m.w).n + ' behält die Nerven und kommt weiter.', 'goal' + (m.w === state.uid ? '' : ' opp')); };
     var endBtns = function () {
@@ -6241,7 +6248,7 @@ function startMatch() {
     var pkEnd = function () { M.pk = false; M.pkSkip = null; S.camSc = null; S.mode = 'idle'; S.wt = null; if (pe) pe.hidden = true; endShow(); };
     if (fast) return endShow();
     var bb = document.getElementById('mBtns'); if (bb) { bb.style.display = ''; bb.innerHTML = '<button class="big sec2" data-a="pkskip">Elfmeterschießen überspringen</button>'; }
-    tick('Unentschieden nach 90 Minuten – es gibt Elfmeterschießen!', 'info');
+    tick('Unentschieden nach 120 Minuten – es gibt Elfmeterschießen!', 'info');
     M.pkSkip = function () { pi = PK.k.length; pkEnd(); };
     var pkNext = function () {
       if (!M.pk) return;
@@ -6260,10 +6267,10 @@ function startMatch() {
   }
   function minute() {
     M.min++;
-    var mn = document.getElementById('mMin'); if (mn && M.min < 90) mn.textContent = M.min + '. Minute';
+    var mn = document.getElementById('mMin'); if (mn && M.min < (state.live && state.live.et ? 120 : 90)) mn.textContent = M.min + '. Minute';
   }
   M.pause = function (title) { M.paused = true; M.ptitle = title; ui.subOut = -1; matchPanel(); window.scrollTo(0, 0); };
-  M.resume = function () { if (M.ptitle === 'Halbzeit') SND.whistle(1); if (state.live) state.live.need = null; M.paused = false; M.last = 0; matchPanel(); };
+  M.resume = function () { if (M.ptitle === 'Halbzeit' || M.ptitle === 'Verlängerung') SND.whistle(1); if (state.live) state.live.need = null; M.paused = false; M.last = 0; matchPanel(); };
   M.finish = finish;
   M.skip = function () {
     if (M.done || M.pkWait) return;
@@ -6271,7 +6278,7 @@ function startMatch() {
     if (S.cur) { apply(S.cur); S.cur = null; }
     S.mode = 'idle'; S.camSc = null; S.scn = null; S.cap = null; S.pend.forEach(function (e) { simApply(S, e); }); S.pend = [];
     M.queue.forEach(any); M.queue = [];
-    while (state.live.seg < 6) FM.liveNext(state, true).events.forEach(any);
+    while (!FM.liveOver(state)) FM.liveNext(state, true).events.forEach(any);
     finish();
   };
   function frame(ts) {
@@ -6303,8 +6310,10 @@ function startMatch() {
         else { S.cur = e; startChance(S, e, function (ev) { S.cur = null; apply(ev); }); }
       }
       else if (M.min >= M.segEnd) {
-        if (state.live.seg >= 6) { finish(); return; }
-        if (state.live.seg === 3 && !M.htDone) { M.htDone = true; SND.whistle(2); tick('Halbzeit. Stand: ' + M.hg + ':' + M.ag + '.', 'info'); if (KF) tick('Konferenz zur Pause: ' + KF.ms.map(function (m, i) { return m.hn + ' ' + M.kfs[i][0] + ':' + M.kfs[i][1] + ' ' + m.an; }).join(' · '), 'info'); M.pause('Halbzeit'); }
+        if (FM.liveOver(state)) { finish(); return; }
+        if (state.live.seg === 6 && !M.etDone) { M.etDone = true; SND.whistle(2); tick('Unentschieden nach 90 Minuten – es gibt Verlängerung, zweimal 15 Minuten. Beide Mannschaften dürfen einmal zusätzlich wechseln.', 'info'); var etl = document.getElementById('mMin'); if (etl) etl.textContent = 'Verlängerung'; M.pause('Verlängerung'); }
+        else if (state.live.seg === 7 && !M.et2Done) { M.et2Done = true; SND.whistle(1); tick('Seitenwechsel in der Verlängerung. Stand: ' + M.hg + ':' + M.ag + '.', 'info'); loadSeg(); }
+        else if (state.live.seg === 3 && !M.htDone) { M.htDone = true; SND.whistle(2); tick('Halbzeit. Stand: ' + M.hg + ':' + M.ag + '.', 'info'); if (KF) tick('Konferenz zur Pause: ' + KF.ms.map(function (m, i) { return m.hn + ' ' + M.kfs[i][0] + ':' + M.kfs[i][1] + ' ' + m.an; }).join(' · '), 'info'); M.pause('Halbzeit'); }
         else loadSeg();
       }
       else { M.acc += dt; if (M.acc >= 95) { M.acc = 0; minute(); } }
@@ -6337,7 +6346,7 @@ function vCupResults() {
     if (mine && mine.length > 3) h += scoreCard(mine[0], mine[1], mine[2], mine[3], (R.grp ? (R.won ? 'SIEG' : R.draw ? 'UNENTSCHIEDEN' : 'NIEDERLAGE') + (R.grpEnd ? '<br>' + (R.grpOk ? 'VIERTELFINALE ERREICHT' : 'IN DER GRUPPE AUSGESCHIEDEN') : '') : R.won ? (R.final ? 'TITEL GEWONNEN!' : 'WEITER') : 'AUSGESCHIEDEN') + (m.pen ? ' · NACH ELFMETERSCHIESSEN' : ''));
     h += '<button class="big" data-a="tournext">Weiter</button>' + cupPaper(R, m) + absentHtml() + '<p class="lbl" style="margin:0">ALLE SPIELE DER RUNDE</p><div class="list">';
     R.ties.forEach(function (x) { h += tieRow(x); });
-    return h + '</div><p class="hint" style="margin:0">* nach Elfmeterschießen</p><button class="big" data-a="tournext">Weiter</button>';
+    return h + '</div><p class="hint" style="margin:0">* nach Elfmeterschießen · n.V. = nach Verlängerung</p><button class="big" data-a="tournext">Weiter</button>';
   }
   if (mine && mine.length > 3) h += scoreCard(mine[0], mine[1], mine[2], mine[3], (R.grp || R.leg === 1 ? (R.won ? 'SIEG' : R.draw ? 'UNENTSCHIEDEN' : 'NIEDERLAGE') + (R.leg === 1 ? '<br>HINSPIEL' : '') + (R.grpEnd ? '<br>' + (R.grpOk ? 'VIERTELFINALE ERREICHT' : 'IN DER GRUPPE AUSGESCHIEDEN') : '') : R.won ? (R.final ? (R.eu ? 'TITEL GEWONNEN!' : 'POKALSIEG!') : 'WEITER') : 'AUSGESCHIEDEN') + (R.agg ? '<br>GESAMT ' + R.agg[0] + ':' + R.agg[1] : '') + (m.pen ? '<br>NACH ELFMETERSCHIESSEN' : ''));
   h += (R.won && !R.final && !R.eu ? '<button class="big" data-a="go" data-v="draw">Zur Auslosung</button>' : '<button class="big" data-a="go" data-v="menu">Zurück ins Büro</button>');
@@ -6347,7 +6356,7 @@ function vCupResults() {
   h += absentHtml(); if (R.eu && state.eu.g && euMyGrp() >= 0 && (R.grp || R.grpEnd)) h += euGrpHtml(FM.euGroups(state), euMyGrp());
   h += '<p class="lbl" style="margin:0">ALLE SPIELE DER RUNDE</p><div class="list">';
   R.ties.forEach(function (x) { h += tieRow(x); });
-  h += '</div><p class="hint" style="margin:0">* nach Elfmeterschießen</p>' + (R.won && !R.final && !R.eu ? '<button class="big" data-a="go" data-v="draw">Zur Auslosung</button>' : '<button class="big" data-a="go" data-v="menu">Zurück ins Büro</button>');
+  h += '</div><p class="hint" style="margin:0">* nach Elfmeterschießen · n.V. = nach Verlängerung</p>' + (R.won && !R.final && !R.eu ? '<button class="big" data-a="go" data-v="draw">Zur Auslosung</button>' : '<button class="big" data-a="go" data-v="menu">Zurück ins Büro</button>');
   return h;
 }
 function seasonLabel(y) { return y + '/' + ((y + 1) % 100 < 10 ? '0' : '') + (y + 1) % 100; }
@@ -6571,12 +6580,12 @@ function hallStage(r, k) {
 function cupPaper(R, m) {
   var u = FM.userTeam(state), t = u.n, home = m.home, gf = home ? m.hg : m.ag, ga = home ? m.ag : m.hg, o = FM.team(state, home ? m.a : m.h), on = o ? o.n : 'den Gegner', NM = R.eu ? FM.EUNAME : FM.CUPNAME, idx = NM.indexOf(R.name), nx = NM[idx + 1] || '', sc = gf + ':' + ga, cupN = R.tour ? TNM() : R.eu ? EUN() : 'Pokal';
   var hl = R.final ? (R.won ? (R.eu ? 'EUROPAS BESTE! ' : 'POKALSIEGER! ') + t + ' holt den Pott' : t + ' verliert das Endspiel') : R.won ? [t + ' zieht ins ' + nx + ' ein', cupN + ': ' + t + ' wirft ' + on + ' raus', 'Weiter! ' + t + ' steht im ' + nx, t + ' nimmt die Hürde ' + on, 'Der Traum lebt: ' + t + ' steht im ' + nx, on + ' ausgeschaltet – ' + t + ' zieht ins ' + nx + ' ein'][(gf * 2 + ga + (state.season || 0)) % 6].replace('ins 2. Runde', 'in die 2. Runde').replace('im 2. Runde', 'in der 2. Runde') : [cupN + '-Aus für ' + t, t + ' scheitert an ' + on, 'Endstation ' + R.name + ': ' + t + ' ist raus', 'Ausgeträumt: ' + t + ' verabschiedet sich aus dem Wettbewerb', on + ' beendet die Reise von ' + t, 'Bitteres Ende für ' + t + ' gegen ' + on][(gf * 2 + ga + (state.season || 0)) % 6];
-  var lead = (m.pen ? 'Nach einem ' + sc + ' fällt die Entscheidung erst im Elfmeterschießen. ' : t + ' ' + (R.won ? 'gewinnt' : 'verliert') + ' ' + sc + ' gegen ' + on + '. ') + (R.att ? num(R.att) + ' Zuschauer sahen das Spiel. ' : '') + (R.prize ? 'Die Prämie von ' + money(R.prize) + ' ist sicher.' : '') + (coachN() ? ' Trainer ' + coachN() + ': „' + (R.final && R.won ? ['Diesen Abend vergisst hier keiner mehr.', 'Dafür arbeitet man ein Leben lang.', 'Heute feiern wir, morgen auch.'][(gf + ga) % 3] : R.won ? ['Im Pokal zählt nur das Weiterkommen.', 'Eine Runde weiter – mehr wollten wir nicht.', 'Wir freuen uns auf die Auslosung.', 'Das war ein echter Pokalfight.'][(gf + ga) % 4] : ['Der Traum ist vorbei, jetzt gilt es in der Liga.', 'Das Ausscheiden tut weh.', 'Wir haben es heute nicht verdient.', 'Schade, wir hatten uns mehr vorgenommen.'][(gf + ga) % 4]) + '“' : '');
+  var lead = (m.pen ? 'Nach einem ' + sc + ' nach Verlängerung fällt die Entscheidung erst im Elfmeterschießen. ' : t + ' ' + (R.won ? 'gewinnt' : 'verliert') + ' ' + sc + (m.et ? ' nach Verlängerung' : '') + ' gegen ' + on + '. ') + (R.att ? num(R.att) + ' Zuschauer sahen das Spiel. ' : '') + (R.prize ? 'Die Prämie von ' + money(R.prize) + ' ist sicher.' : '') + (coachN() ? ' Trainer ' + coachN() + ': „' + (R.final && R.won ? ['Diesen Abend vergisst hier keiner mehr.', 'Dafür arbeitet man ein Leben lang.', 'Heute feiern wir, morgen auch.'][(gf + ga) % 3] : R.won ? ['Im Pokal zählt nur das Weiterkommen.', 'Eine Runde weiter – mehr wollten wir nicht.', 'Wir freuen uns auf die Auslosung.', 'Das war ein echter Pokalfight.'][(gf + ga) % 4] : ['Der Traum ist vorbei, jetzt gilt es in der Liga.', 'Das Ausscheiden tut weh.', 'Wir haben es heute nicht verdient.', 'Schade, wir hatten uns mehr vorgenommen.'][(gf + ga) % 4]) + '“' : '');
   if (R.leg === 1) {
     hl = R.won ? t + ' legt im Hinspiel vor' : R.draw ? 'Alles offen nach dem Hinspiel' : t + ' muss im Rückspiel aufholen';
     lead = t + ' ' + (R.won ? 'gewinnt' : R.draw ? 'spielt' : 'verliert') + ' das Hinspiel ' + sc + ' gegen ' + on + '. ' + (R.att ? num(R.att) + ' Zuschauer sahen das Spiel. ' : '') + 'Die Entscheidung fällt im Rückspiel.';
   } else if (R.agg) {
-    lead = 'Rückspiel ' + sc + ', zusammen mit dem Hinspiel ' + (home ? R.agg[0] + ':' + R.agg[1] : R.agg[1] + ':' + R.agg[0]) + '. ' + (m.pen ? 'Die Entscheidung fällt erst im Elfmeterschießen. ' : '') + lead.replace(/^.*?\. /, '');
+    lead = 'Rückspiel ' + sc + ', zusammen mit dem Hinspiel ' + (home ? R.agg[0] + ':' + R.agg[1] : R.agg[1] + ':' + R.agg[0]) + '. ' + (m.pen ? 'Die Entscheidung fällt erst im Elfmeterschießen nach Verlängerung. ' : m.et ? 'Die Entscheidung fällt in der Verlängerung. ' : '') + lead.replace(/^.*?\. /, '');
   }
   if (R.grp) {
     hl = R.won ? [t + ' schlägt ' + on, cupN + ': Drei Punkte für ' + t, t + ' gewinnt gegen ' + on][(gf + ga) % 3] : R.draw ? ['Punkteteilung gegen ' + on, t + ' trennt sich ' + sc + ' von ' + on][(gf + ga) % 2] : [t + ' unterliegt ' + on, cupN + ': ' + on + ' zu stark für ' + t][(gf + ga) % 2];

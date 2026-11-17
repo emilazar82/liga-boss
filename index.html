@@ -1951,7 +1951,7 @@ function extOffer(state, id, years) {
   var p = findP(state.teams[state.uid], id); if (!p) return null;
   years = years || 2; var mo = p.mo === undefined ? 6 : p.mo;
   var w = Math.round(baseWage(p) * (1.1 - 0.03 * (mo - 6)) * (years === 1 ? 1.05 : years === 3 ? 0.97 : 1) * (p.a >= 31 ? 0.9 : 1) / 10) * 10;
-  var no = p.loan !== undefined ? 'Der Vertrag eines geliehenen Spielers kann nicht verlängert werden.' : p.nx === state.season ? p.n + ' fühlt sich nicht wertgeschätzt und verhandelt in dieser Saison nicht mehr. Läuft sein Vertrag aus, geht er.' : p.nbS === state.season && state.round < p.nbR ? p.n + ' ist nach deinem letzten Angebot verstimmt. In ' + (p.nbR - state.round) + (p.nbR - state.round === 1 ? ' Woche' : ' Wochen') + ' redet er wieder mit dir.' : p.c >= 3 ? 'Der Vertrag läuft noch lange genug.' : mo < 3 ? p.n + ' ist unzufrieden und will nicht verlängern. Mehr Einsätze und Siege heben die Moral.' : p.a >= 33 && years > 1 ? 'In seinem Alter unterschreibt er nur noch für ein Jahr.' : '';
+  var no = p.loan !== undefined ? 'Der Vertrag eines geliehenen Spielers kann nicht verlängert werden.' : p.nx === state.season ? p.n + ' fühlt sich nicht wertgeschätzt und verhandelt in dieser Saison nicht mehr. Läuft sein Vertrag aus, geht er.' : p.nbS === state.season && state.round < p.nbR ? p.n + ' ist nach deinem letzten Angebot verstimmt. In ' + (p.nbR - state.round) + (p.nbR - state.round === 1 ? ' Woche' : ' Wochen') + ' redet er wieder mit dir.' : p.c >= 3 ? 'Vertrag steht. Verlängern kannst du wieder, wenn er nur noch zwei Jahre oder kürzer läuft.' : mo < 3 ? p.n + ' ist unzufrieden und will nicht verlängern. Mehr Einsätze und Siege heben die Moral.' : p.a >= 33 && years > 1 ? 'In seinem Alter unterschreibt er nur noch für ein Jahr.' : '';
   return { wage: w, fee: Math.max(1000, Math.round(value(p) * 0.015 * years / 1000) * 1000), no: no };
 }
 var EXW = [0.8, 0.9, 1, 1.1], EXF = [0, 0.5, 1, 1.5];
@@ -3643,7 +3643,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '17.11. 07:07';
+var BUILD = '17.11. 08:35';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -4542,8 +4542,8 @@ function vContracts() {
       if (loan) det += '<p class="hint" style="margin:6px 0 0">Geliehen bis Saisonende.</p>';
       else {
         var yy = p.a >= 33 ? 1 : ui.cxy, O = FM.extOffer(state, p.i, yy);
-        det += '<p class="lbl" style="margin:10px 0 8px">VERLÄNGERN UM</p>' + tiles('cxy', [1, 2, 3].map(function (k) { var Ok = FM.extOffer(state, p.i, k), dis = p.a >= 33 && k > 1; return [k, k === 1 ? '1 Jahr' : k + ' Jahre', 'm_sign', dis || Ok.no ? sm('–') : sm(num(Ok.wage) + ' / Woche', Ok.wage > FM.salary(p) ? 1 : 0), dis]; }), yy, 'pk3');
-        if (O.no) det += '<p class="hint" style="margin:8px 0 0;color:#ffd84d">' + esc(O.no) + '</p>';
+        if (p.c < 3) det += '<p class="lbl" style="margin:10px 0 8px">VERLÄNGERN UM</p>' + tiles('cxy', [1, 2, 3].map(function (k) { var Ok = FM.extOffer(state, p.i, k), dis = p.a >= 33 && k > 1; return [k, k === 1 ? '1 Jahr' : k + ' Jahre', 'm_sign', dis || Ok.no ? sm('–') : sm(num(Ok.wage) + ' / Woche', Ok.wage > FM.salary(p) ? 1 : 0), dis]; }), yy, 'pk3');
+        if (O.no) det += '<p class="hint" style="margin:8px 0 0;color:' + (p.c >= 3 ? '#6df09a' : '#ffd84d') + '">' + esc(O.no) + '</p>';
         else {
           var wi = ui.cxw === undefined ? 2 : ui.cxw, fi = ui.cxf === undefined ? 2 : ui.cxf, D = FM.extDeal(state, p.i, yy, wi, fi), prc = Math.round(D.pr * 100);
           det += kv('Er verlangt pro Woche', money(O.wage) + ' <span style="color:' + (O.wage > FM.salary(p) ? '#ff9a8f' : '#6df09a') + '">(' + (O.wage >= FM.salary(p) ? '+' : '−') + num(Math.abs(O.wage - FM.salary(p))) + ')</span>') + kv('und als Handgeld', money(O.fee));

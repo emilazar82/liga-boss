@@ -2074,7 +2074,21 @@ function boardGoal(state) {
   if (u.lg === 0 && rank === 1 && mine - nxt >= 3) return 1;
   return clamp(rank - (rank <= 2 ? 0 : 1) + (rank >= NT(state) - 5 ? 1 : 0) - (state.inv ? 2 : 0), u.lg > 0 ? 3 : 1, rank >= NT(state) - 2 ? NT(state) - 2 : NT(state) - 3);
 }
-function goalText(lg, g, state) { var gn = state ? NT(state, lg) - 3 : 15, gl = state ? NL(state) - 1 : 2; return lg === 0 && g <= 1 ? 'Meisterschaft' : g >= gn && lg < gl ? 'Klassenerhalt (mindestens Platz ' + gn + ')' : lg > 0 && g <= 3 ? 'Aufstieg (Platz 1 bis 3)' : 'Platz ' + g + ' oder besser'; }
+function goalMid(state) {
+  var u = state.teams[state.uid], RNn = RN(state), r = state.round; if (r <= 0 || r >= RNn) return boardGoal(state);
+  var tb = table(state, u.lg), n = tb.length, pl = n, g0 = boardGoal(state), left = RNn - r, f = r / RNn;
+  tb.forEach(function (x, i) { if (x.id === u.id) pl = i + 1; });
+  var P = function (x) { return x && x.st ? x.st.pk : 0; }, me = tb[pl - 1], lo = u.lg > 0 ? 3 : 1, hi = n - 3;
+  var g = Math.round(g0 + (pl - g0) * f); if (pl > g0 && g >= pl && pl > lo) g = pl - (left >= 6 ? 1 : 0);
+  g = clamp(g, lo, hi);
+  while (g < hi && g < pl && P(tb[g - 1]) - P(me) > left * 1.4) g++;
+  if (u.lg === 0 && g <= 1 && pl > 1 && P(tb[0]) - P(me) > left) g = 2;
+  if (u.lg > 0 && g <= 3 && pl > 3 && P(tb[2]) - P(me) > left * 1.4) g = Math.min(hi, Math.max(4, pl - 1));
+  g = clamp(g, lo, hi);
+  if (pl > hi && P(tb[hi - 1]) - P(me) > left * 1.4) g = pl;
+  return g;
+}
+function goalText(lg, g, state) { var gn = state ? NT(state, lg) - 3 : 15, gl = state ? NL(state) - 1 : 2; return lg === 0 && g <= 1 ? 'Meisterschaft' : g >= gn + 2 ? 'Platz ' + g + ' oder besser' : g >= gn && lg < gl ? 'Klassenerhalt (mindestens Platz ' + gn + ')' : lg > 0 && g <= 3 ? 'Aufstieg (Platz 1 bis 3)' : 'Platz ' + g + ' oder besser'; }
 var GRANT = [1200000, 500000, 200000];
 function boardAmb(state, k) {
   var B = state.board, u = state.teams[state.uid]; if (B.amb) return 'Das Saisonziel ist für diese Saison schon verhandelt.';
@@ -2156,7 +2170,7 @@ function takeOver(state, tid) {
   state.sp = null; state.spo = makeOffers(u.lg); state.offers = []; state.neg = {}; state.led = newLedger();
   clubMeans(state, u); state.talks = []; if (state.me) { meNewClub(state); state.me.c0 = state.cash; state.me.put = 0; }
   state.youth = null; state.ads = null; state.merch = null; state.dk = { n: 0, set: state.round > 0 }; state.board = null; state.market = null; state.camp = null; state.toto = null; state.sacked = false; delete state.quit; state.jobs = []; state.fjobs = []; state.staff = null; state.scq = []; state.debts = []; state.fin = null; state.inv = null; state.fh = null; state.ph = null; delete old.coh; delete old.std;
-  ensure(state); delete state.bust; csRestore(state); if (state.me) state.me.c0 = meNet(state); carJoin(state); state.board.conf = 55; if (state.round === 0) state.nj = 1;
+  ensure(state); delete state.bust; csRestore(state); if (state.me) state.me.c0 = meNet(state); carJoin(state); state.board.conf = 55; if (state.round === 0) state.nj = 1; else { state.board.goal = goalMid(state); state.board.mid = state.round; }
   if (state.round >= RN(state)) state.over = true;
   state.spf = spFac(state); state.spo = makeOffers(u.lg, state.spf);
   if (state.cup) { state.cup.won = false; state.cup.out = !cupTie(state); if (state.cup.due && !cupTie(state)) cupPlay(state); }
@@ -4026,7 +4040,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '17.11. 19:34';
+var BUILD = '17.11. 20:53';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }

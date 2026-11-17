@@ -1815,7 +1815,7 @@ function renovate(state) {
 }
 function turfWear(state, L) {
   var st = state.stad; if (!st || !L.home || L.tour || st.turf === undefined) return;
-  st.turf = Math.round(clamp(st.turf - [3, 5, 7][L.wx | 0] * [1, 0.65, 0.4][sl(st, 'pit')] * (L.type === 'fr' ? 0.5 : 1), 5, 100) * 10) / 10;
+  st.turf = Math.round(clamp(st.turf - [3, 5, 7][L.wx | 0] * [1, 0.7, 0.5][sl(st, 'pit')] * (L.type === 'fr' ? 0.5 : 1), 5, 100) * 10) / 10;
 }
 function extraCost(state, kind) { return EXT[kind] ? EXT[kind][sl(state.stad, kind)] : undefined; }
 function stadExtra(state, kind) {
@@ -3380,7 +3380,7 @@ function roundFinish(state, L, h, a) {
   out.yups = youthWeek(state);
   var ycost = YCOST[state.youth.lvl - 1], scost = staffCost(state);
   refreshMarket(state);
-  if (state.stad && state.stad.turf !== undefined) state.stad.turf = Math.round(Math.min(100, state.stad.turf + [0.3, 0.8, 1.5][sl(state.stad, 'pit')]) * 10) / 10;
+  if (state.stad && state.stad.turf !== undefined) state.stad.turf = Math.round(Math.min(100, state.stad.turf + [0, 0.3, 0.6][sl(state.stad, 'pit')]) * 10) / 10;
   var sal = 0; u.pl.forEach(function (p) { sal += salary(p); });
   var st = state.stad, att = 0, inc = 0, hosp = 0, fine = 0, m = out.match, uplace = L.up, r = L.r, totoM = L.toto ? totoMatches(state) : null, totoTips = L.toto;
   if (m && m.home) {
@@ -3691,7 +3691,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '17.11. 10:31';
+var BUILD = '17.11. 12:34';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -4469,6 +4469,12 @@ var STGEO = [
   { r: 'y', a: 174.8, b: 447.3, i: 387.2, o: 520.6, L: [311, 498] },
   { c: 1, P1: [174.8, 390.9], Q1: [174.8, 494.3], F: [41.3, 494.3], Q2: [41.3, 372.1], P2: [131.6, 372.1], M: [153, 381], L: [78, 470] },
   { r: 'x', a: 172.9, b: 372.1, i: 142.8, o: 15, L: [38, 272] }];
+function turfSvg(st) {
+  var tf = st.turf === undefined ? 100 : st.turf; if (tf >= 92) return '';
+  var wv = 1 - tf / 100, TA = [0.08, 0.30, 0.60, 0.85], lo = wv >= TA[3] ? 3 : wv >= TA[2] ? 2 : wv >= TA[1] ? 1 : 0, hi = Math.min(3, lo + 1), tt = lo === 3 ? 1 : Math.max(0, (wv - TA[lo]) / (TA[hi] - TA[lo]));
+  function im(k, o) { return '<image href="' + TURFSRC[k - 1] + '" x="172" y="182" width="282" height="180" preserveAspectRatio="none" opacity="' + (Math.round(o * 0.82 * 100) / 100) + '"/>'; }
+  return (lo > 0 ? im(lo, 1) : '') + (hi > lo ? im(hi, tt) : '');
+}
 function stadMap(st, fill, sel) {
   var B = FM.blocks(state), MX = FM.BMAX, NM = 'ABCDEFGH', seatsL = +st.seats || 0, roofL = +st.roof || 0;
   function lp(a, b, t) { return [Math.round((a[0] + (b[0] - a[0]) * t) * 10) / 10, Math.round((a[1] + (b[1] - a[1]) * t) * 10) / 10]; }
@@ -4491,7 +4497,7 @@ function stadMap(st, fill, sel) {
     if (bd) top += '<image href="' + ICP.e_build + '" x="' + (g.L[0] - 24) + '" y="' + (g.L[1] + 12) + '" width="48" height="36" style="image-rendering:pixelated"/>';
     top += '<rect x="' + (g.L[0] - 13) + '" y="' + (g.L[1] - 13) + '" width="26" height="26" fill="' + (on ? '#ffd84d' : '#062f2c') + '" stroke="' + (on ? '#7a4b00' : '#f4efe1') + '" stroke-width="2"/><text x="' + g.L[0] + '" y="' + (g.L[1] + 6) + '" text-anchor="middle" font-size="16" font-weight="700" font-family="monospace" fill="' + (on ? '#062f2c' : '#f4efe1') + '">' + NM[i] + '</text></g>';
   });
-  var s = '<svg class="tpitch smap" style="background:rgb(26,68,67)" viewBox="0 0 624 530" role="img" aria-label="Stadion von oben mit acht Blöcken und ' + num(st.cap) + ' Plätzen"><defs>' + defs + '</defs><image href="' + STIMG.leer + '" width="624" height="530"/>' + body + top + '</svg>';
+  var s = '<svg class="tpitch smap" style="background:rgb(26,68,67)" viewBox="0 0 624 530" role="img" aria-label="Stadion von oben mit acht Blöcken und ' + num(st.cap) + ' Plätzen"><defs>' + defs + '</defs><image href="' + STIMG.leer + '" width="624" height="530"/>' + turfSvg(st) + body + top + '</svg>';
   var fac = [['light', 'Flutlicht'], ['board', 'Anzeigetafel'], ['vip', 'VIP-Logen'], ['cat', 'Imbiss'], ['park', 'Parkplätze'], ['heat', 'Rasenheizung']].filter(function (f) { return +st[f[0]] || st[f[0]] === true; });
   if (fac.length) s += '<div class="sfac">' + fac.map(function (f) { var lv = st[f[0]] === true ? 1 : +st[f[0]]; return '<span title="' + f[1] + '"><img alt="' + f[1] + '" src="' + ICP['e_' + f[0]] + '" width="40" height="30">' + (lv > 1 ? '<b>' + lv + '</b>' : '') + '</span>'; }).join('') + '</div>';
   return s;
@@ -4527,6 +4533,8 @@ function vStadium() {
   h += stadMap(st, f && f.att ? f.att / ce : E ? E.att / ce : 0.4, tab === 'bau' ? (ui.sblk == null ? 1 : ui.sblk) : -1);
   var fb = st.fans || 1, fillE = f && f.att ? f.att / ce : E ? E.att / ce : 0;
   h += '<div class="panel"><div class="rings">' + ring(fillE, fillE >= 0.98 ? '#6df09a' : '#ffd84d', tk(ce), 'Plätze · Auslastung') + ring(fb / 1.6, fb < 0.9 ? '#ff9a8f' : fb < 1.1 ? '#ffd84d' : '#6df09a', Math.round(fb * 100) + '%', 'Fanbasis') + ring(1, state.cash < 0 ? '#ff9a8f' : '#6df09a', tk(state.cash), 'Kasse') + '</div></div>';
+  var SC0 = FM.stadCond(state), tc0 = function (v) { return v >= 70 ? '#6df09a' : v >= 45 ? '#ffd84d' : '#ff9a8f'; };
+  h += '<div class="panel"><p class="lbl">ZUSTAND</p>' + meter('Rasen', SC0.turf / 100, tc0(SC0.turf), SC0.turf + ' %') + meter('Bausubstanz', SC0.cond / 100, tc0(SC0.cond), SC0.cond + ' %') + (tab === 'ops' ? '' : '<button class="big sec2 sm" style="margin-top:8px" data-a="stops">Pflegen und renovieren ›</button>') + '</div>';
   h += tabBar('stt', [['kasse', 'Spieltag'], ['bau', 'Ausbau'], ['ops', 'Betrieb']], tab);
   if (tab === 'kasse') {
     h += '<div class="panel"><p class="lbl">EINTRITTSPREIS</p><div class="row" style="align-items:center"><button class="big sec2" style="width:64px" data-a="price" data-val="-1" aria-label="Preis senken">−</button><div class="grow px" style="text-align:center;font-size:14px">' + st.price + ' DM</div><button class="big sec2" style="width:64px" data-a="price" data-val="1" aria-label="Preis erhöhen">+</button></div><div style="margin-top:10px">' + meter('Üblich ' + FM.PRICE[u.lg] + ' DM', st.price / (FM.PRICE[u.lg] * 2), st.price > FM.PRICE[u.lg] * 1.15 ? '#ff9a8f' : st.price < FM.PRICE[u.lg] * 0.9 ? '#6df09a' : '#ffd84d', st.price > FM.PRICE[u.lg] ? 'teuer' : st.price < FM.PRICE[u.lg] ? 'günstig' : 'üblich') + '</div>' + inf('Höhere Preise kosten sofort Zuschauer und lassen auf Dauer die Fanbasis schrumpfen, niedrigere lassen sie wachsen.');
@@ -4562,7 +4570,7 @@ function vStadium() {
     h += '</div><p class="hint" style="margin:6px 0 0">' + (FM.cdLeft(state, 'ext') ? 'Die Handwerker sind beschäftigt: Die nächste Einrichtung kannst du in ' + FM.cdLeft(state, 'ext') + (FM.cdLeft(state, 'ext') === 1 ? ' Woche' : ' Wochen') + ' beauftragen.' : 'Immer nur eine Einrichtung auf einmal: Nach jedem Bau dauert es ' + FM.CDW.ext + ' Wochen bis zur nächsten.') + '</p>' + inf(allInf);
   } else {
     var lf = FM.LGF[u.lg], SC = FM.stadCond(state), tcol = function (v) { return v >= 70 ? '#6df09a' : v >= 45 ? '#ffd84d' : '#ff9a8f'; };
-    h += '<div class="panel"><p class="lbl">RASEN</p>' + meter('Zustand', SC.turf / 100, tcol(SC.turf), SC.turf + ' %') + fx([[SC.turf >= 85 ? 'Bestens' : SC.turf >= 70 ? 'Gut bespielbar' : SC.turf >= 45 ? 'Abgenutzt' : SC.turf >= 30 ? 'Schlecht' : 'Ein Acker', SC.turf >= 70 ? 1 : 0], [SC.turf < 50 ? 'Verletzungsrisiko +' + Math.round((50 - SC.turf) / 60 * 100) + ' %' : 'Kein erhöhtes Verletzungsrisiko', SC.turf < 50 ? 0 : 1]]) + '<div class="row" style="margin-top:10px"><button class="big sec2 sm" data-a="turf" data-val="0"' + (SC.cd || SC.turf >= 95 || state.cash < SC.care ? ' disabled' : '') + '>Nachsaat +25 % · ' + tk(SC.care) + '</button><button class="big sec2 sm" data-a="turf" data-val="1"' + (SC.cd || state.cash < SC.neu ? ' disabled' : '') + '>Neuer Rasen · ' + tk(SC.neu) + '</button></div>' + (SC.cd ? '<p class="hint" style="margin:6px 0 0">Der Rasen wächst an: nächste Maßnahme in ' + SC.cd + (SC.cd === 1 ? ' Woche' : ' Wochen') + '.</p>' : '') + inf('Jedes Heimspiel kostet etwa 3 %, bei Regen 5 %, bei Schnee 7 %. Die Rasenpflege unten bremst das: ein Gärtner um ein Drittel, ein Profi-Team um mehr als die Hälfte, und der Rasen erholt sich jede Woche etwas. In der Sommerpause kommen 15 % dazu. Unter 50 % steigt das Verletzungsrisiko für beide Mannschaften. Den Zustand siehst du im Spielbild.') + '</div>';
+    h += '<div class="panel"><p class="lbl">RASEN</p>' + meter('Zustand', SC.turf / 100, tcol(SC.turf), SC.turf + ' %') + fx([[SC.turf >= 85 ? 'Bestens' : SC.turf >= 70 ? 'Gut bespielbar' : SC.turf >= 45 ? 'Abgenutzt' : SC.turf >= 30 ? 'Schlecht' : 'Ein Acker', SC.turf >= 70 ? 1 : 0], [SC.turf < 50 ? 'Verletzungsrisiko +' + Math.round((50 - SC.turf) / 60 * 100) + ' %' : 'Kein erhöhtes Verletzungsrisiko', SC.turf < 50 ? 0 : 1]]) + '<div class="row" style="margin-top:10px"><button class="big sec2 sm" data-a="turf" data-val="0"' + (SC.cd || SC.turf >= 95 || state.cash < SC.care ? ' disabled' : '') + '>Nachsaat +25 % · ' + tk(SC.care) + '</button><button class="big sec2 sm" data-a="turf" data-val="1"' + (SC.cd || state.cash < SC.neu ? ' disabled' : '') + '>Neuer Rasen · ' + tk(SC.neu) + '</button></div>' + (SC.cd ? '<p class="hint" style="margin:6px 0 0">Der Rasen wächst an: nächste Maßnahme in ' + SC.cd + (SC.cd === 1 ? ' Woche' : ' Wochen') + '.</p>' : '') + inf('Jedes Heimspiel kostet etwa 3 %, bei Regen 5 %, bei Schnee 7 %. Die Rasenpflege unten bremst das: ein Gärtner um knapp ein Drittel, ein Profi-Team um die Hälfte, und mit beiden erholt sich der Rasen jede Woche ein wenig. Ganz aufhalten lässt sich der Verschleiß nicht. In der Sommerpause kommen 15 % dazu. Unter 50 % steigt das Verletzungsrisiko für beide Mannschaften. Den Zustand siehst du im Spielbild.') + '</div>';
     h += '<div class="panel"><p class="lbl">BAUSUBSTANZ</p>' + meter('Zustand', SC.cond / 100, tcol(SC.cond), SC.cond + ' %') + fx([[SC.cond >= 80 ? 'Gepflegt' : SC.cond >= 60 ? 'In die Jahre gekommen' : SC.cond >= 40 ? 'Renovierungsbedürftig' : 'Marode', SC.cond >= 60 ? 1 : 0], [SC.attLoss ? 'Zuschauerinteresse −' + SC.attLoss + ' %' : 'Kein Zuschauerverlust', SC.attLoss ? 0 : 1], [SC.cond < 40 ? 'Verbandsstrafe am Saisonende: ' + tk(SC.fine) : 'Keine Auflagen vom Verband', SC.cond < 40 ? 0 : 1]]) + '<button class="big sec2 sm" style="margin-top:10px" data-a="reno"' + (SC.cdR || SC.cond >= 95 || state.cash < SC.reno ? ' disabled' : '') + '>' + (SC.cond >= 95 ? 'Keine Renovierung nötig' : SC.cdR ? 'Handwerker im Haus · noch ' + SC.cdR + ' Wo.' : (state.cash < SC.reno ? 'Zu teuer · ' : 'Renovieren · ') + tk(SC.reno)) + '</button>' + inf('Das Stadion verliert jede Saison etwa 6 % Substanz, mit Dach etwas weniger. Unter 60 % kommen weniger Zuschauer, unter 40 % verhängt der Verband am Saisonende eine Strafe. Eine Renovierung bringt es zurück auf 100 % und kostet umso mehr, je größer das Stadion und je schlechter der Zustand ist.') + '</div>';
     h += '<div class="panel"><p class="lbl">ORDNUNGSDIENST</p><div data-k="sec">' + tiles('sops', [[0, 'Minimal', 'e_sec', sm('kostenlos') + sm('volles Risiko', 1)], [1, 'Verstärkt', 'e_sec', sm(num(FM.SECC[1] * lf) + ' DM / Woche', 1) + sm('Risiko −60 %', 0)], [2, 'Stark', 'e_sec', sm(num(FM.SECC[2] * lf) + ' DM / Woche', 1) + sm('Risiko −90 %', 0)]], +st.sec || 0, 'pk3') + '</div>' + inf('Bei vollen Rängen und Topspielen kann es zu Ausschreitungen kommen. Dann verhängt der Verband eine Geldstrafe von ' + ['80 bis 160', '30 bis 60', '12 bis 24'][u.lg] + ' Tausend DM, und die Fanbasis leidet.') + '</div>';
     h += '<div class="panel"><p class="lbl">RASENPFLEGE</p><div data-k="pit">' + tiles('sops', [[0, 'Platzwart', 'e_pit', sm('kostenlos') + sm('Heimvorteil 4 %')], [1, 'Gärtner', 'e_pit', sm(num(FM.PITC[1] * lf) + ' DM / Woche', 1) + sm('Heimvorteil 5 %', 0)], [2, 'Profi-Team', 'e_pit', sm(num(FM.PITC[2] * lf) + ' DM / Woche', 1) + sm('Heimvorteil 6 %', 0)]], +st.pit || 0, 'pk3') + '</div>' + inf('Ein gepflegter Rasen kommt deinem Spiel zugute: Jede Stufe hebt den Heimvorteil um einen Prozentpunkt.') + '</div>';
@@ -6684,6 +6692,7 @@ app.addEventListener('click', function (ev) {
   if (a === 'speed') { ui.speed = ui.speed > 1 ? 1 : 2.5; b.textContent = ui.speed > 1 ? 'Normal' : 'Schneller'; return; }
   if (a === 'ntans') { var nyes = b.getAttribute('data-val') === '1', nn = state.nto; FM.ntAnswer(state, nyes); persist(); render(); return toast(nyes ? 'Du bist Nationaltrainer von ' + natName(nn) + '.' : 'Angebot abgelehnt.'); }
   if (a === 'turf' || a === 'reno') { var te = a === 'turf' ? FM.turfCare(state, +b.getAttribute('data-val')) : FM.renovate(state); if (te) return toast(te); persist(); var ytf = window.scrollY; render(); window.scrollTo(0, ytf); return toast(a === 'reno' ? 'Das Stadion ist renoviert.' : +b.getAttribute('data-val') ? 'Neuer Rasen verlegt.' : 'Nachsaat ausgebracht.'); }
+  if (a === 'stops') { ui.stt = 'ops'; render(); var zs = document.querySelector('[data-a=turf]'); if (zs) zs.scrollIntoView({ block: 'center' }); return; }
   if (a === 'kftab') { var KM = ui.match; if (KM && KM.kfBar) { KM.kfOpen = !KM.kfOpen; KM.kfBar(); } return; }
   if (a === 'mpause') { var MM = ui.match; if (state.live && state.live.ban) return toast('Du sitzt auf der Tribüne und kannst nicht mehr eingreifen.'); if (MM && MM.pause && !MM.done && !MM.paused) MM.wantPause = true; return; }
   if (a === 'shout') { if (!state.live) return; var sr = FM.liveShout(state, +b.getAttribute('data-val')); if (typeof sr === 'string') return toast(sr); tick('Du rufst von der Seitenlinie: „' + FM.SHOUT[sr.k][0] + '“ – gilt von der ' + sr.from + '. bis zur ' + sr.to + '. Minute' + (sr.w < 1 ? ', wirkt aber nur noch zu ' + Math.round(sr.w * 100) + ' %' : '') + '.', 'info'); persist(); return shoutBar(); }

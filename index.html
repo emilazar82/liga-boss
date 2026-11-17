@@ -3817,7 +3817,7 @@ function roundFinish(state, L, h, a) {
   return out;
 }
 function playRound(state) { startRound(state); return liveAuto(state); }
-function develop(t) {
+function develop(t, mine) {
   t.pl.forEach(function (p) { if (p.vf) { p.vf = Math.round((1 + (p.vf - 1) * 0.75) * 100) / 100; if (Math.abs(p.vf - 1) < 0.03) delete p.vf; } });
   var sum = 0; t.pl.forEach(function (p) { sum += p.s; });
   var avg = sum / t.pl.length;
@@ -3828,6 +3828,7 @@ function develop(t) {
     var keep = p.keep; delete p.keep; if (p.rel !== undefined) { delete p.rel; if (p.c !== undefined) { p.tl = 3; p.wl = 1; } }
     if (p.ret || (!keep && (p.a >= 36 || (p.a >= 34 && Math.random() < 0.3)))) {
       delete p.ret; delete p.by;
+      if (mine) { p.gone = 1; return; }
       var np = makePlayer(p.i, p.p, Math.round(0.5 * avg + 0.5 * (t.lg > 2 ? avg + 4 : lgBase(t.lg))) - 4, rnd(17, 19));
       p.n = np.n; p.a = np.a; p.s = np.s; p.at = np.at; p.ta = np.ta; p.vp = np.vp; delete p.w; delete p.it; if (p.c !== undefined) { p.c = 3; p.mo = 6; }
     }
@@ -3867,8 +3868,11 @@ function finishSeason(state) {
   u.pl.forEach(function (p) { p.c--; });
   sum.youth = 0;
   var mins = [2, 4, 4, 2];
+  var fillSquad = function () {
   for (var pos = 0; pos < 4; pos++) while (posCount(u, pos) < mins[pos]) { if (u.pl.length >= MAXSQUAD) { var wk = u.pl.filter(function (q) { return q.p !== pos && posCount(u, q.p) > mins[q.p] && q.loan === undefined; }).sort(function (a, b) { return a.s - b.s; })[0]; if (!wk) break; u.pl = u.pl.filter(function (q) { return q !== wk; }); u.lu = u.lu.filter(function (id) { return id !== wk.i; }); } var yp = makePlayer(state.nid++, pos, [68, 56, 44][sum.lg], rnd(17, 19)); yp.c = 3; u.pl.push(yp); sum.youth++; }
   while (u.pl.length < 14) { var yq = makePlayer(state.nid++, pick([1, 2, 3]), [68, 56, 44][sum.lg], rnd(17, 19)); yq.c = 3; u.pl.push(yq); sum.youth++; }
+  };
+  fillSquad();
   u.pl.forEach(function (p) { p.mo = Math.round(((p.mo === undefined ? 6 : p.mo) + 6) * 5) / 10; });
   var B = state.board, okGoal = sum.place <= B.goal;
   sum.goalBonus = 0; if (state.fin.goal && okGoal) { sum.goalBonus = wageSum(state) * 8; state.cash -= sum.goalBonus; state.led.prem += sum.goalBonus; }
@@ -3908,7 +3912,10 @@ function finishSeason(state) {
   Y.pl = Y.pl.filter(function (p) { return p.a < 19; });
   sum.yIn = youthIntake(state);
   sum.world = worldSummer(state, tabs, mv3);
-  state.teams.forEach(function (t) { develop(t); t.st = emptyStats(); if (t.id !== u.id) t.lu = bestEleven(t); });
+  state.teams.forEach(function (t) { develop(t, t.id === u.id); });
+  sum.ret = u.pl.filter(function (p) { return p.gone; }).map(function (p) { return { n: p.n, a: p.a - 1, p: p.p, s: p.s }; });
+  if (sum.ret.length) { var y0 = sum.youth; u.pl = u.pl.filter(function (p) { return !p.gone; }); u.lu = u.lu.filter(function (id) { return !!findP(u, id); }); sum.ret.forEach(function (x) { news(state, x.n + ' (' + x.a + ') beendet seine Karriere und verlässt ' + u.n + '.'); }); fillSquad(); if (u.cap !== undefined && !findP(u, u.cap)) delete u.cap; if (u.pkt !== undefined && !findP(u, u.pkt)) delete u.pkt; }
+  state.teams.forEach(function (t) { t.st = emptyStats(); if (t.id !== u.id) t.lu = bestEleven(t); });
   u.lu = u.lu.filter(function (id) { return !!findP(u, id); });
   if (state.wk0 !== undefined) state.wk0 += RN(state);
   state.season++; state.round = 0; state.over = false;
@@ -4040,7 +4047,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '17.11. 20:53';
+var BUILD = '17.11. 20:57';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -6925,6 +6932,7 @@ function vSeason() {
   if (s.fgr && s.fgr.length) h += '<div class="panel"><p class="lbl">' + lic('tabelle') + 'AUSLAND</p>' + s.fgr.map(function (x, xi) { return '<div style="margin-top:' + (xi ? 16 : 2) + 'px">' + cHead(x[0]) + '<div style="display:grid;grid-template-columns:' + (x[4] ? '1fr 1fr' : '1fr') + ';gap:8px">' + trophy('MEISTER', x[1], '') + (x[4] ? trophy('POKALSIEGER', x[4], '') : '') + '</div>' + (x[2].length ? '<p class="hint" style="margin:9px 0 5px;color:#6df09a">▲ Aufsteiger</p>' + cPills(x[2], '#6df09a') : '') + (x[3].length ? '<p class="hint" style="margin:9px 0 5px;color:#ff9a8f">▼ Absteiger</p>' + cPills(x[3], '#ff9a8f') : '') + '</div>'; }).join('') + '</div>';
   if (s.euq) h += '<div class="panel"><p class="lbl">' + lic('pokal') + esc(EUN().toUpperCase()) + ' NÄCHSTE SAISON</p>' + cHead(myCty) + cPills(s.euq) + (s.euqF ? s.euqF.map(function (x) { return '<div style="margin-top:14px">' + cHead(x[0]) + cPills(x[1]) + '</div>'; }).join('') : '') + '</div>';
   if (s.world && s.world.length) h += '<div class="panel"><p class="lbl">SOMMERPAUSE IN DEINER LIGA</p><div style="margin-top:-2px">' + s.world.map(worldRow).join('').replace('border-top:1px solid #16595f', 'border-top:0') + '</div><p class="hint" style="margin:8px 0 0"><span style="color:#6df09a">▲</span> Zugang · <span style="color:#ff9a8f">▼</span> Abgang · <span style="color:#ffd84d">⟳</span> Trainerwechsel</p></div>';
+  if (s.ret && s.ret.length) h += '<div class="panel" style="border-color:#c9a227"><p class="lbl">KARRIEREENDE</p><p style="margin:0 0 8px">' + (s.ret.length === 1 ? 'Ein Spieler hat seine Laufbahn beendet und gehört nicht mehr zum Kader:' : s.ret.length + ' Spieler haben ihre Laufbahn beendet und gehören nicht mehr zum Kader:') + '</p>' + s.ret.map(function (x) { return kv('<span class="pos p' + x.p + '">' + FM.POS[x.p] + '</span> ' + esc(x.n), x.a + ' Jahre · Stärke ' + x.s); }).join('') + '</div>';
   if ((s.back && s.back.length) || (s.left && s.left.length)) h += '<div class="panel"><p class="lbl">' + lic('vertraege') + 'KADER</p>' + (s.back && s.back.length ? '<p class="hint" style="margin:0 0 6px">Leihen beendet</p>' + names(s.back) : '') + (s.left && s.left.length ? '<p class="hint" style="margin:' + (s.back && s.back.length ? 10 : 0) + 'px 0 6px">Vertrag ausgelaufen</p>' + names(s.left) : '') + (s.youth ? '<p class="hint" style="margin:8px 0 0">' + s.youth + ' Nachwuchsspieler rücken in den Kader auf.</p>' : '') + '</div>';
   if ((s.yIn && s.yIn.length) || (s.yOut && s.yOut.length) || (s.yLoan && s.yLoan.length)) h += '<div class="panel"><p class="lbl">' + lic('jugend') + 'JUGEND</p>' + (s.yLoan && s.yLoan.length ? '<p class="hint" style="margin:0 0 6px">Leihen</p>' + names(s.yLoan) : '') + (s.yIn.length ? '<p class="hint" style="margin:8px 0 6px">Neu im Nachwuchs</p>' + names(s.yIn) : '') + (s.yOut.length ? '<p class="hint" style="margin:8px 0 6px">Zu alt geworden und gegangen</p>' + names(s.yOut) : '') + '</div>';
   h += inf('Über den Sommer altern die Spieler: Junge werden stärker, Ältere bauen ab, Routiniers werden durch Nachwuchs ersetzt.', 'Sommerpause');

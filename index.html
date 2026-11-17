@@ -4099,7 +4099,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '17.11. 22:45';
+var BUILD = '17.11. 22:46';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -4167,6 +4167,7 @@ function go(view) {
   if (state && (view === 'opening' || view === 'menu' || view === 'summer') && FM.tourDue(state) && state.round === 0 && !state.sacked) { FM.tourStart(state); ui.tpg = 0; persist(); view = 'tour'; }
   if (state && state.tour && state.tour.on && { tour: 1, lineup: 1, tactics: 1, match: 1, results: 1 }[view] !== 1) view = 'tour';
   if (state && state.ntfx && !state.live && { ntprep: 1, lineup: 1, tactics: 1, match: 1 }[view] !== 1) view = 'ntprep';
+  if (view !== 'lineup' && view !== 'tactics') ui.koBack = null;
   if (state && view === 'menu' && !ui.fsync && !(state.tour && state.tour.on)) { ui.fsync = true; syncForeign(); }
   if (state && view === 'menu') popScan();
   if (ui.dirty && view === 'menu') persist();
@@ -4335,6 +4336,7 @@ function vLineup() {
   var info = ui.lm === 'info';
   var h = sub('Aufstellung') + countsHtml(u) + tabBar('lm', [['set', 'Aufstellen'], ['info', 'Spielerwerte']], ui.lm);
   var lhint = info ? 'Spieler antippen, um seine Einzelwerte zu sehen. Gelb markierte Werte zählen auf seiner Position am meisten für die Stärke.' : 'Spieler antippen, um ihn in die Startelf zu nehmen oder herauszunehmen. Wie viele Abwehr-, Mittelfeld- und Sturmspieler du aufstellst, bestimmt dein System. Die gelbe Zahl zeigt die Gelben Karten der Saison; bei der fünften ist der Spieler ein Spiel gesperrt.';
+  if (ui.koBack && !state.ntfx) { var kok = FM.lineupValid(u); h += '<button class="big" data-a="' + ui.koBack + '"' + (kok ? '' : ' disabled') + '>' + (kok ? (ui.koBack === 'tourkick' ? 'Anpfiff' : 'Spieltag starten') : 'Spieltag starten · Startelf noch unvollständig') + '</button>'; }
   if (!info) h += '<button class="big sec2" data-a="best">Beste Elf aufstellen (' + u.fo + ')</button>';
   var CI = FM.capInfo(state);
   if (!info && CI.list.length) {
@@ -7093,7 +7095,7 @@ app.addEventListener('click', function (ev) {
   if (a === 'tourdone') { ui.tpg = 0; ui.match = null; persist(); return go(state.open ? 'opening' : state.pre ? 'summer' : 'menu'); }
   if (a === 'tournext') { FM.tourRest(state); ui.match = null; ui.tpg = 7; persist(); return go('tour'); }
   if (a === 'tourkick') {
-    if (!FM.lineupValid(u)) { toast('Die Startelf ist nicht vollständig.'); ui.lm = 'set'; return go('lineup'); }
+    if (!FM.lineupValid(u)) { toast('Die Startelf ist nicht vollständig.'); ui.lm = 'set'; go('lineup'); ui.koBack = 'tourkick'; return render(); }
     var LT = FM.startTour(state);
     ui.match = { h: LT.h, a: LT.a, home: LT.home, cup: true, eu: true, name: state.tour.c.nm[LT.r], res: null }; ui.subOut = -1; persist(); go('match'); return startMatch();
   }
@@ -7201,7 +7203,7 @@ app.addEventListener('click', function (ev) {
   if (a === 'fl') { ui.fl = +b.getAttribute('data-val'); return render(); }
   if (a === 'kickoff') {
     if (state.sacked) return go('sacked');
-    if (!FM.lineupValid(u)) { toast('Die Startelf ist nicht vollständig. Verletzte und gesperrte Spieler müssen ersetzt werden.'); ui.lm = 'set'; return go('lineup'); }
+    if (!FM.lineupValid(u)) { toast('Die Startelf ist nicht vollständig. Verletzte und gesperrte Spieler müssen ersetzt werden.'); ui.lm = 'set'; go('lineup'); ui.koBack = 'kickoff'; return render(); }
     if (!state.sp && state.spo) { toast('Vor dem Spiel fehlt noch ein Trikotsponsor.'); ui.spt = 'trikot'; return go('sponsors'); }
     var LV = state.cup.due && FM.cupTie(state) ? FM.startCup(state) : state.eu.due && FM.euTie(state) ? FM.startEu(state) : FM.startRound(state);
     ui.match = { h: LV.h, a: LV.a, home: LV.home, cup: LV.type === 'cup', eu: !!LV.eu, name: LV.type === 'cup' ? (LV.eu ? FM.EUNAME : FM.CUPNAME)[LV.r] + (LV.eu ? FM.legName(state.eu) : '') : '', res: null }; ui.subOut = -1; persist(); go('match'); return startMatch();

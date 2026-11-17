@@ -1377,7 +1377,7 @@ function applyCoaches(state, Ds) {
   var home = state.cty || 'de', n = 0, seen = {};
   (Ds || []).forEach(function (D) {
     if (!D || !D.lg) return; var c = D.cty || 'de', M = {}; D.lg.forEach(function (g) { (g || []).forEach(function (x) { if (x.co) M[x.n] = x.co; }); });
-    state.teams.forEach(function (t) { var tc = t.cty || (t.lg < 7 ? home : ''); if (tc !== c || t.id === state.uid || !M[t.n] || t.nt) return; if (t.co && t.co.ex) legFree(state, t.co.n); var own = t.co && t.co.own; t.co = { n: M[t.n], sk: t.co ? t.co.sk : 3, w: t.co ? t.co.w || 0 : 0 }; if (own) t.co.own = 1; if (!seen[c + '|' + t.n]) { seen[c + '|' + t.n] = 1; n++; } });
+    state.teams.forEach(function (t) { var tc = t.cty || (t.lg < 7 ? home : '*'); if ((tc !== c && !(tc === '*' && c !== home)) || t.id === state.uid || !M[t.n] || t.nt) return; if (t.co && t.co.ex) legFree(state, t.co.n); var own = t.co && t.co.own; t.co = { n: M[t.n], sk: t.co ? t.co.sk : 3, w: t.co ? t.co.w || 0 : 0 }; if (own) t.co.own = 1; if (!seen[c + '|' + t.n]) { seen[c + '|' + t.n] = 1; n++; } });
     if (c !== home && state.fgn && state.fgn[c]) state.fgn[c].forEach(function (o) { if (!M[o.n]) return; o.co = { n: M[o.n], sk: o.co ? o.co.sk : clamp(3 + Math.round((o.st - lgBase(Math.min(2, o.l || 0))) / 6) + rnd(-1, 1), 1, 5) }; if (!seen[c + '|' + o.n]) { seen[c + '|' + o.n] = 1; n++; } });
   });
   return n;
@@ -4099,7 +4099,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '17.11. 21:35';
+var BUILD = '17.11. 21:57';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }

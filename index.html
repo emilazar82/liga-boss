@@ -2418,6 +2418,9 @@ var LEV = {
   geb: { t: 'Geburtstag', q: ['{n} hat Geburtstag und hat Kuchen für die Kabine mitgebracht.', '{n} feiert Geburtstag. Die Mannschaft will anstoßen.'], o: [['Kabinenfeier erlauben', 'Mannschaftsmoral +0,4, Frische −2 für alle'], ['Kurz gratulieren', 'Moral +0,5 für ihn']] },
   lotto: { t: 'Glückspilz', q: ['{n} hat bei einem Preisausschreiben gewonnen und lädt die ganze Mannschaft zum Essen ein.'], o: [['Guten Appetit', 'Mannschaftsmoral +0,3']] },
   auto: { t: 'Autounfall', q: ['{n} hatte auf dem Weg zum Training einen Autounfall. Glück im Unglück: nur Prellungen.'], o: [['Gute Besserung', 'fällt kurz aus']] },
+  heim: { t: 'Heimweh', q: ['{n} hat Heimweh. Er vermisst Familie und Freunde in der Heimat.', '{n} wirkt bedrückt. Die Familie ist weit weg, das Telefon reicht ihm nicht mehr.'], o: [['Heimaturlaub geben', 'fehlt im nächsten Spiel, Moral +2'], ['Gespräch führen', '50 %: Moral +1, sonst Moral −1,5'], ['Familie einfliegen lassen', 'kostet den Verein {c}, Moral +2,5, er fehlt nicht']] },
+  haus: { t: 'Hausbau', q: ['{n} baut ein Haus. Zwischen Baustelle und Training bleibt wenig Schlaf.', '{n} steckt mitten im Hausbau – Handwerkertermine, Baumarkt, Ärger mit dem Estrich.'], o: [['Zwei Tage frei geben', 'Moral +1, Frische unverändert, Eingespieltheit −2'], ['Keine Extrawurst', 'Frische −8, Moral −0,5'], ['Den Platzwart helfen lassen', 'kostet den Verein {c}, Moral +1,5']] },
+  umzug: { t: 'Einzug', q: ['{n} ist ins neue Haus eingezogen und lädt die Mannschaft zur Einweihung ein.'], o: [['Hingehen', 'Mannschaftsmoral +0,3, Frische −1 für alle'], ['Absagen, Training geht vor', 'Moral −0,5 für ihn']] },
   cgeb: { t: 'Dein Geburtstag', q: ['Du hast Geburtstag! Die Mannschaft singt in der Kabine, der Vorstand überreicht dir einen Umschlag mit {c}.', 'Alles Gute zum Geburtstag! Vom Vorstand gibt es ein Geschenk: {c} für deine Privatkasse.'], o: [['Runde ausgeben', 'kostet dich {d} privat, Mannschaftsmoral +0,4'], ['Danke sagen', 'das Geld behältst du ganz']] },
   cverl: { t: 'Verlobt', q: ['Du hast dich verlobt. Die Mannschaft hat es natürlich sofort erfahren.'], o: [['Schön', 'Mannschaftsmoral +0,2']] },
   choch: { t: 'Deine Hochzeit', q: ['Deine Hochzeit steht an. Wie groß soll gefeiert werden?'], o: [['Großes Fest', 'kostet dich {c} privat, Ruf +1, Mannschaftsmoral +0,3'], ['Kleine Feier', 'kostet dich {d} privat']] },
@@ -2430,7 +2433,7 @@ var LEV = {
 };
 function lifeNew(state) {
   var u = state.teams[state.uid], M = me(state), n;
-  if (state.lev) { try { lifeAns(state, LEV[state.lev.k].o.length - 1); } catch (e0) { delete state.lev; } }
+  if (state.lev) { try { lifeAns(state, Math.min(1, LEV[state.lev.k].o.length - 1)); } catch (e0) { } delete state.lev; }
   var mf = meFam(state), bR = 3 + kitH(String(state.coach || 'x').length * 13 + 5, 311) % 26;
   function set(o) { o.n = state.levN = (state.levN || 0) + 1; o.v = kitH(o.n * 17 + (o.i | 0), 71) % 3; state.lev = o; }
   var lgF = [1, 0.5, 0.25][Math.min(2, u.lg)];
@@ -2457,7 +2460,13 @@ function lifeNew(state) {
   if (f === 2 && (p.kd | 0) < 4 && p.a <= 36) d.push('kind', 'kind', 'kind');
   if (f === 2 && Math.random() < 0.3) d.push('schei');
   d.push('geb', 'geb', 'trauer', 'lotto'); if (Math.random() < 0.4) d.push('auto');
-  p.lvS = state.season; set({ k: d[Math.floor(Math.random() * d.length)], i: p.i });
+  var homeN = CTYNAT[state.cty || 'de'];
+  if (p.nat && homeN && p.nat !== homeN && (p.m | 0) < 60) d.push('heim', 'heim', 'heim');
+  if (p.hs === 1) d.push('umzug', 'umzug', 'umzug'); else if (!p.hs && p.a >= 24 && f >= 1) d.push('haus', 'haus');
+  var kk = d[Math.floor(Math.random() * d.length)], ev = { k: kk, i: p.i };
+  if (kk === 'heim') ev.c = Math.max(500, r1000([8000, 4000, 2000][Math.min(2, u.lg)]));
+  if (kk === 'haus') ev.c = Math.max(500, r1000([6000, 3000, 1500][Math.min(2, u.lg)]));
+  p.lvS = state.season; set(ev);
 }
 function lifeInfo(state) {
   var e = state.lev; if (!e) return null; var D = LEV[e.k], u = state.teams[state.uid], p = e.i !== undefined ? findP(u, e.i) : null;
@@ -2479,6 +2488,9 @@ function lifeAns(state, o) {
     else if (k === 'schei') { p.fa = 3; if (o === 0) { out(p); moAdd(p, -1); x = p.n + ' nimmt sich eine Auszeit.'; } else { moAdd(p, -2.5); form(p, -1); x = p.n + ' stürzt sich in die Arbeit, ist aber nicht bei der Sache.'; } }
     else if (k === 'trauer') { if (o === 0) { out(p); moAdd(p, -0.5); x = p.n + ' fährt zu seiner Familie.'; } else if (Math.random() < 0.4) { moAdd(p, -1); form(p, 2); x = p.n + ' will für seine Familie spielen – und ist heiß wie nie.'; } else { moAdd(p, -2); x = p.n + ' ist mit den Gedanken woanders.'; } }
     else if (k === 'geb') { if (o === 0) { team(0.4); u.pl.forEach(function (q) { fresh(q, -2); }); x = 'Die Kabine feiert ' + p.n + '.'; } else { moAdd(p, 0.5); x = p.n + ' freut sich über die Glückwünsche.'; } }
+    else if (k === 'heim') { if (o === 0) { out(p); moAdd(p, 2); x = p.n + ' fliegt für ein paar Tage nach Hause.'; } else if (o === 1) { if (Math.random() < 0.5) { moAdd(p, 1); x = 'Das Gespräch hat ' + p.n + ' gutgetan.'; } else { moAdd(p, -1.5); x = p.n + ' fühlt sich nicht verstanden.'; } } else if (state.cash < e.c) { state.lev = e; return 'Dafür reicht die Kasse nicht.'; } else { state.cash -= e.c; state.led.staff += e.c; moAdd(p, 2.5); x = 'Die Familie von ' + p.n + ' ist da. Er blüht auf.'; } }
+    else if (k === 'haus') { p.hs = 1; if (o === 0) { moAdd(p, 1); u.coh = clamp((u.coh === undefined ? 50 : u.coh) - 2, 0, 100); x = p.n + ' kümmert sich zwei Tage um die Baustelle.'; } else if (o === 1) { fresh(p, -8); moAdd(p, -0.5); x = p.n + ' kommt übernächtigt zum Training.'; } else if (state.cash < e.c) { delete p.hs; state.lev = e; return 'Dafür reicht die Kasse nicht.'; } else { state.cash -= e.c; state.led.staff += e.c; moAdd(p, 1.5); x = 'Der Platzwart packt mit an. ' + p.n + ' ist dankbar.'; } }
+    else if (k === 'umzug') { p.hs = 2; if (o === 0) { team(0.3); u.pl.forEach(function (q) { fresh(q, -1); }); x = 'Schöner Abend bei ' + p.n + '.'; } else { moAdd(p, -0.5); x = p.n + ' ist enttäuscht.'; } }
     else if (k === 'lotto') { team(0.3); x = 'Die Mannschaft lässt es sich schmecken.'; }
     else if (k === 'auto') { p.inj = rnd(1, 2); p.injNew = true; delete p.injT; var ix2 = u.lu.indexOf(p.i); if (ix2 >= 0) u.lu.splice(ix2, 1); x = p.n + ' fällt ' + p.inj + (p.inj === 1 ? ' Woche' : ' Wochen') + ' aus.'; }
     return x;
@@ -3787,7 +3799,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '17.11. 13:48';
+var BUILD = '17.11. 13:56';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -4754,7 +4766,7 @@ function popScan() {
   var TE = FM.trainEvInfo(state);
   if (TE) { var tek = 'te' + TE.n; pk[tek] = 1; if (!old[tek] && !first) pop(TE.t, esc(TE.q), TE.o.map(function (o, k) { return [o[0], function () { var cur = FM.trainEvInfo(state); if (cur && cur.n === TE.n) { var tx = FM.trainEv(state, k); if (tx) toast(tx); } }, o[1]]; }), 'm_talk'); }
   var LE = FM.lifeInfo(state);
-  if (LE) { var lek = 'le' + LE.n; pk[lek] = 1; if (ui.levShown !== LE.n && !first) { ui.levShown = LE.n; pop(LE.t, esc(LE.q), LE.o.map(function (o, k) { return [o[0], function () { var cur = FM.lifeInfo(state); if (cur && cur.n === LE.n) { var tx = FM.lifeAns(state, k); persist(); if (tx) toast(tx); } }, o[1]]; }), LE.me ? 'm_sign' : 'm_talk'); } }
+  if (LE) { var lek = 'le' + LE.n; pk[lek] = 1; if (ui.levShown !== LE.n && !first) { ui.levShown = LE.n; pop(LE.t, esc(LE.q), LE.o.map(function (o, k) { return [o[0], function () { var cur = FM.lifeInfo(state); if (cur && cur.n === LE.n) { var tx = FM.lifeAns(state, k); persist(); if (tx) toast(tx); if (state.lev) ui.levShown = null; } }, o[1]]; }), LE.me ? 'm_sign' : 'm_talk'); } }
   var TI = FM.talkInfo(state), newT = TI.filter(function (t) { return !old['t' + t.p.i + t.k] && !first; }).length, shownT = 0;
   TI.forEach(function (t) {
     var key = 't' + t.p.i + t.k; pk[key] = 1; if (old[key] || first) return; if (shownT++) return;

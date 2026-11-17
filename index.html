@@ -962,7 +962,7 @@ function fgnJobs(state) {
   var u = state.teams[state.uid], mine = tStr(u), out = [];
   Object.keys(state.fgn).forEach(function (c) {
     var top = state.fgn[c].filter(function (o) { return !o.l; }).map(function (o) { return o.st; }).sort(function (a, b) { return b - a; })[5] || 99;
-    state.fgn[c].forEach(function (o) { var l = o.l || 0, need = l === 0 ? (o.st >= top ? 80 : 60) : l === 1 ? 40 : 5; if (need > state.rep) return; if (l < u.lg || (l === u.lg && o.st > mine + 2)) out.push({ c: c, n: o.n, l: l, st: Math.round(o.st) }); });
+    state.fgn[c].forEach(function (o) { var l = o.l || 0, need = l === 0 ? (o.st >= top ? 80 : 60) : l === 1 ? 40 : 5; if (need > state.rep) return; if (l < u.lg || (l === u.lg && o.st > mine + 2) || (state.rep >= 80 && l === 0 && u.lg === 0 && o.st >= top && o.st >= mine - 4)) out.push({ c: c, n: o.n, l: l, st: Math.round(o.st) }); });
   });
   return shuffle(out).slice(0, 1);
 }
@@ -3502,7 +3502,11 @@ function finishSeason(state) {
   if ((sum.lg === 0 && sum.place === 1) || (state.cup && state.cup.won) || (state.eu && state.eu.won) || recentTitle(state)) B.conf = Math.max(B.conf, 15); else if (sum.place <= B.goal + 3 && sum.move !== 'ab') B.conf = Math.max(B.conf, 8);
   if (B.conf <= 0) state.sacked = true;
   sum.boardBonus = 0; if (okGoal && !state.sacked) { sum.boardBonus = Math.round(GRANT[sum.lg] * (B.amb === 2 ? 0.3 : B.amb === 1 ? 0.05 : 0.15)); state.cash += sum.boardBonus; }
-  repAdd(state, (okGoal ? 5 : -4) + (sum.move === 'auf' ? 10 : sum.move === 'ab' ? -8 : 0) + (sum.lg === 0 && sum.place === 1 ? 15 : 0) + (state.cup && state.cup.won ? 8 : 0) + (state.eu && state.eu.won ? 20 : 0) + (state.sacked ? -10 : 0));
+  var rkS = 1; state.teams.forEach(function (x) { if (x.lg === u.lg && x.id !== u.id && tStr(x) > tStr(u)) rkS++; });
+  var rUp = (okGoal ? 5 : 0) + (sum.move === 'auf' ? 10 : 0) + (sum.lg === 0 && sum.place === 1 ? (rkS === 1 ? 6 : rkS <= 3 ? 10 : 15) : 0) + (state.cup && state.cup.won ? (sum.lg === 0 && rkS <= 3 ? 4 : 8) : 0) + (state.eu && state.eu.won ? (rkS === 1 ? 14 : 20) : 0);
+  var rDn = (okGoal ? 0 : -4) + (sum.move === 'ab' ? -8 : 0) + (state.sacked ? -10 : 0), rep0 = state.rep === undefined ? 20 : state.rep;
+  if (rUp > 0) rUp = Math.max(1, Math.round(rUp * clamp((110 - rep0) / 90, 0.15, 1)));
+  sum.repD = rUp + rDn; repAdd(state, rUp + rDn);
   var q = tabs[0].slice(0, (state.cty || 'de') === 'de' ? 4 : 3).map(function (t) { return t.id; }); state.euq = q;
   sum.euq = q.map(function (id) { return state.teams[id].n; }); sum.euChamp = state.eu && state.eu.champ !== undefined ? state.teams[state.eu.champ].n : '';
   if (!state.fgn) fgnInit(state, null);
@@ -3654,7 +3658,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '17.11. 08:53';
+var BUILD = '17.11. 09:00';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }

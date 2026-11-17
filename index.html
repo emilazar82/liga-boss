@@ -2085,10 +2085,10 @@ function goalMid(state) {
   if (u.lg === 0 && g <= 1 && pl > 1 && P(tb[0]) - P(me) > left) g = 2;
   if (u.lg > 0 && g <= 3 && pl > 3 && P(tb[2]) - P(me) > left * 1.4) g = Math.min(hi, Math.max(4, pl - 1));
   g = clamp(g, lo, hi);
-  if (pl > hi && P(tb[hi - 1]) - P(me) > left * 1.4) g = pl;
+  goalMid.hop = pl > hi && P(tb[hi - 1]) - P(me) > left * 1.4 ? 1 : 0;
   return g;
 }
-function goalText(lg, g, state) { var gn = state ? NT(state, lg) - 3 : 15, gl = state ? NL(state) - 1 : 2; return lg === 0 && g <= 1 ? 'Meisterschaft' : g >= gn + 2 ? 'Platz ' + g + ' oder besser' : g >= gn && lg < gl ? 'Klassenerhalt (mindestens Platz ' + gn + ')' : lg > 0 && g <= 3 ? 'Aufstieg (Platz 1 bis 3)' : 'Platz ' + g + ' oder besser'; }
+function goalText(lg, g, state) { var gn = state ? NT(state, lg) - 3 : 15, gl = state ? NL(state) - 1 : 2; return lg === 0 && g <= 1 ? 'Meisterschaft' : g >= gn && lg < gl ? 'Klassenerhalt (mindestens Platz ' + gn + ')' : lg > 0 && g <= 3 ? 'Aufstieg (Platz 1 bis 3)' : 'Platz ' + g + ' oder besser'; }
 var GRANT = [1200000, 500000, 200000];
 function boardAmb(state, k) {
   var B = state.board, u = state.teams[state.uid]; if (B.amb) return 'Das Saisonziel ist für diese Saison schon verhandelt.';
@@ -2170,7 +2170,7 @@ function takeOver(state, tid) {
   state.sp = null; state.spo = makeOffers(u.lg); state.offers = []; state.neg = {}; state.led = newLedger();
   clubMeans(state, u); state.talks = []; if (state.me) { meNewClub(state); state.me.c0 = state.cash; state.me.put = 0; }
   state.youth = null; state.ads = null; state.merch = null; state.dk = { n: 0, set: state.round > 0 }; state.board = null; state.market = null; state.camp = null; state.toto = null; state.sacked = false; delete state.quit; state.jobs = []; state.fjobs = []; state.staff = null; state.scq = []; state.debts = []; state.fin = null; state.inv = null; state.fh = null; state.ph = null; delete old.coh; delete old.std;
-  ensure(state); delete state.bust; csRestore(state); if (state.me) state.me.c0 = meNet(state); carJoin(state); state.board.conf = 55; if (state.round === 0) state.nj = 1; else { state.board.goal = goalMid(state); state.board.mid = state.round; }
+  ensure(state); delete state.bust; csRestore(state); if (state.me) state.me.c0 = meNet(state); carJoin(state); state.board.conf = 55; if (state.round === 0) state.nj = 1; else { goalMid.hop = 0; state.board.goal = goalMid(state); state.board.mid = state.round; if (goalMid.hop) state.board.hop = 1; }
   if (state.round >= RN(state)) state.over = true;
   state.spf = spFac(state); state.spo = makeOffers(u.lg, state.spf);
   if (state.cup) { state.cup.won = false; state.cup.out = !cupTie(state); if (state.cup.due && !cupTie(state)) cupPlay(state); }
@@ -2305,7 +2305,7 @@ function ensure(state) {
   if (!state.youth) { state.youth = { lvl: 1, pl: [] }; youthIntake(state); }
   state.youth.pl.forEach(function (p) { p.kn = 1; });
   if (!state.board) state.board = { conf: 60, goal: boardGoal(state), se: state.season };
-  if (state.board.se !== state.season) { state.board.goal = boardGoal(state); state.board.se = state.season; state.board.amb = 0; state.board.ask = 0; state.board.talk = 0; }
+  if (state.board.se !== state.season) { state.board.goal = boardGoal(state); state.board.se = state.season; state.board.amb = 0; state.board.ask = 0; state.board.talk = 0; delete state.board.hop; delete state.board.mid; }
   if (!state.ph) state.ph = [];
   if (!state.talks) state.talks = [];
   if (state.pre === undefined) state.pre = state.round === 0 ? { n: 0, log: [] } : null;
@@ -3874,11 +3874,11 @@ function finishSeason(state) {
   };
   fillSquad();
   u.pl.forEach(function (p) { p.mo = Math.round(((p.mo === undefined ? 6 : p.mo) + 6) * 5) / 10; });
-  var B = state.board, okGoal = sum.place <= B.goal;
+  var B = state.board, okGoal = sum.place <= B.goal && sum.move !== 'ab';
   sum.goalBonus = 0; if (state.fin.goal && okGoal) { sum.goalBonus = wageSum(state) * 8; state.cash -= sum.goalBonus; state.led.prem += sum.goalBonus; }
   state.fin.goal = 0; if (state.inv && state.inv.until <= state.season) state.inv = null;
   state.stad.fans = Math.round(clamp((state.stad.fans || 1) + (sum.move === 'auf' ? 0.05 : sum.move === 'ab' ? -0.08 : 0), 0.6, 1.5) * 1000) / 1000;
-  B.conf = Math.round(clamp(B.conf + (okGoal ? 10 : -(8 + 2 * (sum.place - B.goal))) + (sum.move === 'auf' ? 20 : sum.move === 'ab' ? (B.goal >= NT(state) - 2 ? -12 : -25) : 0) + (state.eu && state.eu.won ? 25 : 0) + (state.cup && state.cup.won ? 12 : 0), 0, 100));
+  B.conf = Math.round(clamp(B.conf + (B.hop && !okGoal ? -6 : (okGoal ? 10 : -(8 + 2 * Math.max(0, sum.place - B.goal))) + (sum.move === 'auf' ? 20 : sum.move === 'ab' ? (B.goal >= NT(state) - 2 ? -12 : -25) : 0)) + (state.eu && state.eu.won ? 25 : 0) + (state.cup && state.cup.won ? 12 : 0), 0, 100));
   if (meOwner(state)) B.conf = Math.max(B.conf, 30);
   if ((sum.lg === 0 && sum.place === 1) || (state.cup && state.cup.won) || (state.eu && state.eu.won) || recentTitle(state)) B.conf = Math.max(B.conf, 15); else if (sum.place <= B.goal + 3 && sum.move !== 'ab') B.conf = Math.max(B.conf, 8);
   if (B.conf <= 0) state.sacked = true;
@@ -4047,7 +4047,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '17.11. 20:57';
+var BUILD = '17.11. 21:00';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }

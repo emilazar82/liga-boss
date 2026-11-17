@@ -1183,7 +1183,7 @@ function tourInfo(state) {
 }
 function ntOffer(state, title) {
   if (state.ntj || state.nto || state.rep < 45) return;
-  if (title || state.rep >= 70 ? Math.random() < 0.6 : Math.random() < 0.12) state.nto = Math.random() < 0.7 ? CTYNAT[state.cty || 'de'] : pick(NTEU.slice(4, 20));
+  if (title || state.rep >= 70 ? true : Math.random() < 0.12) state.nto = Math.random() < 0.7 ? CTYNAT[state.cty || 'de'] : pick(NTEU.slice(4, 20));
 }
 function ntAnswer(state, yes) { if (!state.nto) return ''; var c = state.nto; delete state.nto; if (yes) { state.ntj = c; return NTN[c]; } return ''; }
 function tCty(state, id) { var t = team(state, id); return t ? (t.lg === 9 ? t.cty || '' : state.cty || 'de') : ''; }
@@ -3654,7 +3654,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '17.11. 08:44';
+var BUILD = '17.11. 08:53';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -4635,7 +4635,7 @@ function popScan() {
     ['Druck wegnehmen', function () { toast(FM.pressAnswer(state, 2)); }, 'Form einiger Spieler +1 · Fans etwas enttäuscht']], 'm_talk'); }
   var an2 = FM.achNew(state); if (an2.length) pop(an2.length > 1 ? 'Neue Erfolge' : 'Neuer Erfolg', an2.map(function (a) { return '★ <b>' + a[1] + '</b> – ' + a[2] + '.'; }).join('<br>'), [['OK'], ['Zur Ruhmeshalle', function () { go('fame'); }]], 'pokal');
   if (state.hall && state.hall.due) { pk['hall' + state.season] = 1; if (!old['hall' + state.season] && !first) pop('Winterpause', 'Die Einladung zum <b>Hallenturnier</b> liegt vor (Preisgeld bis ' + money(60000 * [4, 2, 1][u.lg]) + '), dazu das Angebot für ein <b>Trainingslager</b>. Beides geht nur jetzt: Mit dem nächsten Anpfiff ist die Winterpause vorbei.', [['Zum Hallenturnier', function () { go('hall'); }], ['Zum Trainingslager', function () { ui.trt = 'camp'; go('training'); }], ['Später']], 'pokal'); }
-  if (state.nto) { pk.nto = 1; if (!old.nto) { var nc = state.nto; pop('Nationaltrainer', flag(nc) + ' Der Verband von <b>' + esc(natName(nc)) + '</b> bietet dir an, die Nationalmannschaft bei Europa- und Weltmeisterschaften zu betreuen – zusätzlich zu deinem Verein.', [['Annehmen', function () { FM.ntAnswer(state, true); toast('Du bist Nationaltrainer von ' + natName(nc) + '.'); }], ['Ablehnen', function () { FM.ntAnswer(state, false); }]], 'pokal'); } }
+  if (state.nto) { pk.nto = 1; if (ui.ntoShown !== state.nto) { ui.ntoShown = state.nto; var nc = state.nto; pop('Nationaltrainer', flag(nc) + ' Der Verband von <b>' + esc(natName(nc)) + '</b> bietet dir an, die Nationalmannschaft bei Europa- und Weltmeisterschaften zu betreuen – zusätzlich zu deinem Verein.', [['Annehmen', function () { FM.ntAnswer(state, true); toast('Du bist Nationaltrainer von ' + natName(nc) + '.'); }], ['Ablehnen', function () { FM.ntAnswer(state, false); }]], 'pokal'); } }
   if (R && !R._ps) {
     R._ps = 1;
     if (!few) (R.broken || []).forEach(function (n) { pop('Kabine', '<b>' + esc(n) + '</b> ist sauer: Die versprochene Einsatzzeit blieb aus.', null, 'm_talk'); });
@@ -4835,6 +4835,7 @@ function vBoard() {
   h += '<button class="big sec2 sm" style="margin-top:10px" data-a="bask"' + (B.ask ? ' disabled' : '') + '>' + (B.ask ? 'In dieser Saison schon gefragt' : 'Um Geld bitten') + '</button>' + inf('Ab 50 Punkten Vertrauen schießt der Vorstand Geld zu. Darunter lehnt er ab, und es kostet trotzdem Vertrauen.') + '</div>';
   h += '<div class="panel">' + acard('m_talk', 'Aussprache suchen', 'Nur wenn dein Stuhl wackelt.') + fx([['Mit Glück: Vertrauen +15', 1], ['Mit Pech: Vertrauen −10', 0]]);
   h += '<button class="big sec2 sm" style="margin-top:10px" data-a="btalk"' + (B.talk || B.conf >= 30 ? ' disabled' : '') + '>' + (B.talk ? 'Schon geführt' : B.conf >= 30 ? 'Kein Anlass' : 'Aussprache suchen') + '</button>' + inf('Möglich bei Vertrauen unter 30, einmal pro Saison.') + '</div>';
+  if (state.nto) h += '<div class="panel"><p class="lbl">ANGEBOT ALS NATIONALTRAINER</p><p style="margin:0 0 10px">' + flag(state.nto) + ' Der Verband von <b>' + esc(natName(state.nto)) + '</b> möchte, dass du die Nationalmannschaft bei Europa- und Weltmeisterschaften betreust – zusätzlich zu deinem Verein.</p><div class="row"><button class="big" data-a="ntans" data-val="1">Annehmen</button><button class="big sec2" data-a="ntans" data-val="0">Ablehnen</button></div></div>';
   if (state.jobs.length || (state.fjobs || []).length) h += '<p class="lbl" style="margin:0">ANGEBOTE ANDERER VEREINE · ' + (state.jobx !== undefined ? 'NOCH ' + Math.max(1, state.jobx - state.round) + ' WOCHEN' : 'BIS ZUM 1. SPIELTAG') + '</p>' + jobsHtml() + '<p class="hint" style="margin:0">Bei einem Wechsel übernimmst du Kader, Kasse und Stadion des neuen Vereins. Dein alter Verein spielt ohne dich weiter.</p>';
   var rv = FM.rival(state);
   if (rv) h += '<div class="panel"><p class="lbl">RIVALE</p><div class="row" style="align-items:center;gap:10px">' + crest(rv.id, 38) + '<b class="grow" style="font-size:16px">' + esc(rv.n) + '</b></div><select data-f="rival" aria-label="Rivalen wählen" style="width:100%;margin-top:10px;min-height:44px;font-size:16px">' + FM.table(state, u.lg).filter(function (t) { return t.id !== u.id; }).sort(function (a, b) { return a.n < b.n ? -1 : 1; }).map(function (t) { return '<option value="' + t.id + '"' + (t.id === rv.id ? ' selected' : '') + '>' + esc(t.n) + '</option>'; }).join('') + '</select><p class="hint" style="margin:8px 0 0">Im Derby ist das Stadion voller. Ein Sieg hebt Moral, Fans und Vertrauen des Vorstands, eine Niederlage drückt alle drei. Spielt der Rivale in einer anderen Liga, gilt für die Saison ein Ersatzrivale.</p></div>';
@@ -6629,6 +6630,7 @@ app.addEventListener('click', function (ev) {
     ui.match = { h: LV.h, a: LV.a, home: LV.home, cup: LV.type === 'cup', eu: !!LV.eu, name: LV.type === 'cup' ? (LV.eu ? FM.EUNAME : FM.CUPNAME)[LV.r] + (LV.eu ? FM.legName(state.eu) : '') : '', res: null }; ui.subOut = -1; persist(); go('match'); return startMatch();
   }
   if (a === 'speed') { ui.speed = ui.speed > 1 ? 1 : 2.5; b.textContent = ui.speed > 1 ? 'Normal' : 'Schneller'; return; }
+  if (a === 'ntans') { var nyes = b.getAttribute('data-val') === '1', nn = state.nto; FM.ntAnswer(state, nyes); persist(); render(); return toast(nyes ? 'Du bist Nationaltrainer von ' + natName(nn) + '.' : 'Angebot abgelehnt.'); }
   if (a === 'kftab') { var KM = ui.match; if (KM && KM.kfBar) { KM.kfOpen = !KM.kfOpen; KM.kfBar(); } return; }
   if (a === 'mpause') { var MM = ui.match; if (state.live && state.live.ban) return toast('Du sitzt auf der Tribüne und kannst nicht mehr eingreifen.'); if (MM && MM.pause && !MM.done && !MM.paused) MM.wantPause = true; return; }
   if (a === 'shout') { if (!state.live) return; var sr = FM.liveShout(state, +b.getAttribute('data-val')); if (typeof sr === 'string') return toast(sr); tick('Du rufst von der Seitenlinie: „' + FM.SHOUT[sr.k][0] + '“ – gilt von der ' + sr.from + '. bis zur ' + sr.to + '. Minute' + (sr.w < 1 ? ', wirkt aber nur noch zu ' + Math.round(sr.w * 100) + ' %' : '') + '.', 'info'); persist(); return shoutBar(); }

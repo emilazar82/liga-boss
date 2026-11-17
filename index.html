@@ -4099,7 +4099,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '17.11. 22:32';
+var BUILD = '17.11. 22:45';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -6211,14 +6211,14 @@ function simDraw(M) {
     }
   });
   if (S.cap) {
-    var CP = S.cap, ch = 16 + CP.lines.length * 10, cw2 = 150, cx0 = Math.round(VW / 2 - cw2 / 2), cy0 = ((S.focus ? S.focus.y : S.by) * FH - oy) > VH / 2 ? 5 : VH - ch - 5;
+    var CP = S.cap, ch = 16 + CP.lines.length * 10, cw2 = 150, cex = (CP.card ? (CP.card === 'yr' ? 16 : 9) : 0) + (CP.cross ? 10 : 0), cfs = 7; c.font = "7px 'Press Start 2P', monospace"; var ctw = c.measureText(CP.title).width + cex; c.font = "600 8px 'Space Grotesk', system-ui, sans-serif"; var clw = 0; CP.lines.forEach(function (ln) { clw = Math.max(clw, c.measureText(ln.txt).width + (ln.ic ? 9 : 0)); }); cw2 = Math.min(VW - 8, Math.max(150, Math.ceil(Math.max(ctw, clw)) + 12)); if (ctw > cw2 - 12) cfs = Math.max(4.5, Math.floor(7 * (cw2 - 12 - cex) / (ctw - cex) * 2) / 2); var clf = clw > cw2 - 12 ? Math.max(5.5, Math.floor(8 * (cw2 - 12) / clw * 2) / 2) : 8; var cx0 = Math.round(VW / 2 - cw2 / 2), cy0 = ((S.focus ? S.focus.y : S.by) * FH - oy) > VH / 2 ? 5 : VH - ch - 5;
     c.fillStyle = 'rgba(11,22,34,.86)'; c.fillRect(cx0, cy0, cw2, ch);
     c.fillStyle = CP.col; c.fillRect(cx0, cy0, cw2, 1.5);
     var tx0 = cx0 + 6;
     if (CP.card) { if (CP.card !== 'r') { c.fillStyle = '#ffd84d'; c.fillRect(tx0, cy0 + 4, 5, 7); tx0 += 7; } if (CP.card !== 'y') { c.fillStyle = '#e0402f'; c.fillRect(tx0, cy0 + 4, 5, 7); tx0 += 7; } tx0 += 2; }
     if (CP.cross) { c.fillStyle = '#f4efe1'; c.fillRect(tx0, cy0 + 4, 7, 7); c.fillStyle = '#e0402f'; c.fillRect(tx0 + 3, cy0 + 5, 1.5, 5); c.fillRect(tx0 + 1, cy0 + 7, 5, 1.5); tx0 += 10; }
-    c.fillStyle = CP.col; c.font = "7px 'Press Start 2P', monospace"; c.textAlign = 'left'; c.textBaseline = 'middle'; c.fillText(CP.title, tx0, cy0 + 8);
-    c.font = "600 8px 'Space Grotesk', system-ui, sans-serif";
+    c.fillStyle = CP.col; c.font = cfs + "px 'Press Start 2P', monospace"; c.textAlign = 'left'; c.textBaseline = 'middle'; c.fillText(CP.title, tx0, cy0 + 8);
+    c.font = '600 ' + clf + "px 'Space Grotesk', system-ui, sans-serif";
     CP.lines.forEach(function (ln, i) {
       var ly = cy0 + 19 + i * 10, lx = cx0 + 6;
       if (ln.ic) { c.fillStyle = ln.ic === 'in' ? '#6df09a' : '#ff6a5a'; c.beginPath(); if (ln.ic === 'in') { c.moveTo(lx, ly + 2); c.lineTo(lx + 6, ly + 2); c.lineTo(lx + 3, ly - 3); } else { c.moveTo(lx, ly - 3); c.lineTo(lx + 6, ly - 3); c.lineTo(lx + 3, ly + 2); } c.fill(); lx += 9; }

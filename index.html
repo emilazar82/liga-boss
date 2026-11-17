@@ -536,7 +536,7 @@ td.tn{white-space:nowrap}td.tn .rk{display:inline-block;width:24px;text-align:ri
 .held{font-style:normal;font-size:13px;color:#ffd84d;margin-right:4px;flex:none}
 .res.tot span{white-space:normal;overflow:visible;text-overflow:clip;font-size:13px;line-height:1.2}.res.tot i{white-space:nowrap}
 .pl .nm.two{white-space:normal;padding:4px 0;line-height:1.25}.pl .nm.two .nn{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pl .nm.two .tg{display:block;white-space:nowrap;margin-top:2px}.pl .nm.two .tg .st{margin-left:0;margin-right:3px}
-.toast{left:5%!important;right:5%!important;transform:none!important;max-width:none!important;width:auto;line-height:1.35;pointer-events:none;opacity:.96}
+.toast{left:16px!important;right:16px!important;transform:none!important;max-width:420px!important;margin:0 auto;width:auto;line-height:1.35;pointer-events:none;opacity:1;display:flex;align-items:center;gap:11px;text-align:left;background:var(--panel)!important;border:3px solid var(--yellow)!important;padding:12px 13px!important;font-size:14.5px;box-shadow:0 12px 40px rgba(0,0,0,.6),inset 0 0 0 1px #052826;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:60;animation:toastIn .18s ease-out}.toast .ti{flex:none;width:24px;height:24px;display:grid;place-items:center;background:var(--yellow);color:#072c2f;font-family:var(--px,inherit);font-size:12px;line-height:1}.toast .tx{flex:1;min-width:0}@keyframes toastIn{from{transform:translateY(10px);opacity:0}to{transform:none;opacity:1}}@media (prefers-reduced-motion:reduce){.toast{animation:none}}
 @media (max-width:350px){.logo{font-size:18px!important}.plh{display:grid;grid-template-columns:30px minmax(0,1fr) 22px 28px 20px 34px!important;gap:4px;padding:0 5px!important;font-size:10px!important}.tfx{margin-left:0!important;margin-right:0!important}#app{padding:6px!important;gap:8px}.tsplit{grid-template-columns:minmax(0,1fr)!important}.tsplit .col:first-child{display:none}.pl{grid-template-columns:30px minmax(0,1fr) 22px 28px 20px 34px!important;font-size:13px!important;padding:0 5px!important}.pl .pos{font-size:10px}table{font-size:12px!important}td,th{padding-left:2px!important;padding-right:2px!important}.fmd i{width:5px!important;height:6px}.panel{padding-left:8px!important;padding-right:8px!important}.tabs button,.tbar2 button,.chips button,.chip{font-size:12px!important;padding-left:5px!important;padding-right:5px!important}.trr:not([style]),.trh:not([style]){grid-template-columns:32px minmax(0,1fr) 22px 26px 56px!important}.trr{font-size:13px!important}.trr[style*="62px 58px"],.trh[style*="62px 58px"]{grid-template-columns:30px minmax(0,1fr) 24px 50px 48px!important;padding-left:4px!important;padding-right:4px!important;font-size:12px!important}.pick{grid-template-columns:repeat(2,minmax(0,1fr))!important}.tabs button{font-size:11px!important;padding:2px 1px!important;overflow-wrap:anywhere}.mkr{font-size:13px!important}.big{font-size:11px}}
 </style>
 </head>
@@ -4099,7 +4099,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '17.11. 21:57';
+var BUILD = '17.11. 22:00';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -4108,7 +4108,7 @@ function money(n) { return (n < 0 ? '−' : '') + Math.abs(Math.round(n)).toLoca
 function num(n) { return Math.round(n).toLocaleString('de-DE'); }
 function toast(msg) {
   var old = document.querySelector('.toast'); if (old) old.remove();
-  var d = document.createElement('div'); d.className = 'toast'; d.setAttribute('role', 'status'); d.textContent = curFix(msg); document.body.appendChild(d);
+  var d = document.createElement('div'); d.className = 'toast'; d.setAttribute('role', 'status'); var ti = document.createElement('span'); ti.className = 'ti'; ti.setAttribute('aria-hidden', 'true'); ti.textContent = '!'; var tx = document.createElement('span'); tx.className = 'tx'; tx.textContent = curFix(msg); d.appendChild(ti); d.appendChild(tx); document.body.appendChild(d);
   clearTimeout(toastT); toastT = setTimeout(function () { d.remove(); }, Math.min(9000, Math.max(2600, String(msg).length * 65)));
 }
 

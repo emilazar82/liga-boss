@@ -3563,7 +3563,7 @@ function liveDisc(state, L, t, isHome, m0, ev, auto) {
     var e = { m: m, h: isHome, k: 'inj', it: injName(p.inj, p.i), rl: rl0 ? 1 : 0, p: p.n, id: p.i, w: p.inj }; ev.push(e);
     if (L.subs[t.id] > 0) {
       var bench = liveBench(state, t.id).sort(function (a, b) { return eff(b) - eff(a); });
-      if (t.id === u.id && !auto) { if (bench.length) { L.need = { pos: p.p, n: p.n }; e.need = true; } }
+      if (t.id === u.id && !auto) { if (bench.length) { L.need = { pos: p.p, n: p.n, i: p.i, a: p.a, s: p.s, it: e.it, w: e.w, m: m }; e.need = true; } }
       else {
         var b = bench.filter(function (x) { return x.p === p.p; })[0] || bench.filter(function (x) { return x.p > 0; })[0];
         if (b) { doSub(L, t, null, b); ev.push({ m: m, h: isHome, k: 'sub', p: b.n, o: p.n }); }
@@ -4099,7 +4099,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '17.11. 22:00';
+var BUILD = '17.11. 22:05';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -5529,16 +5529,17 @@ function matchPanel() {
   h += chips('mtab', [['sub', 'Wechsel · ' + left + ' übrig'], ['tac', 'Taktik']], tab);
   var bench = FM.liveBench(state, u.id).sort(function (a, b) { return a.p - b.p || FM.eff(b) - FM.eff(a); });
   if (tab === 'sub') {
-    if (need) h += '<p class="hint" style="margin:0">' + esc(need.n) + ' (' + FM.POS[need.pos] + ') muss raus. Wähle einen Ersatz oder spiele in Unterzahl weiter.</p>';
+    if (need) h += '<div style="border:3px solid #ff6a5a;background:#3a1512;padding:10px"><div class="row" style="align-items:center;gap:8px;margin-bottom:8px"><span style="flex:none;width:26px;height:26px;display:grid;place-items:center;background:#ff6a5a;color:#fff;font-family:var(--px);font-size:14px;line-height:1">+</span><b style="font-family:var(--px);font-size:11px;color:#ff9a8f;letter-spacing:.5px">VERLETZT · MUSS RAUS</b></div><div class="row" style="align-items:center;gap:10px"><span class="pos p' + need.pos + '">' + FM.POS[need.pos] + '</span><b class="grow" style="font-size:18px;min-width:0">' + esc(need.n) + '</b>' + (need.s ? '<span style="white-space:nowrap">Stärke <b>' + need.s + '</b></span>' : '') + '</div>' + (need.it || need.w ? '<p style="margin:6px 0 0;color:#ffd0ca;font-size:13.5px">' + (need.it ? 'Verdacht auf ' + esc(need.it) + ' · ' : '') + (need.w ? 'Pause etwa ' + need.w + (need.w === 1 ? ' Woche' : ' Wochen') : '') + (need.m ? ' · ' + need.m + '. Minute' : '') + '</p>' : '') + '<p class="hint" style="margin:8px 0 0;color:#f4efe1">Wähle unten einen Ersatz oder spiele in Unterzahl weiter. Spieler seiner Position stehen oben.</p></div>';
     else if (left > 0) {
       h += '<p class="lbl" style="margin:0">AUF DEM PLATZ · WER GEHT RAUS?</p><div class="list">';
       u.lu.map(function (id) { return FM.findP(u, id); }).sort(function (a, b) { return a.p - b.p; }).forEach(function (p) { h += row(p, 'mout', ui.subOut === p.i); });
       h += '</div>';
     } else h += '<p class="hint" style="margin:0">Das Wechselkontingent ist erschöpft.</p>';
     if (left > 0 && (need || ui.subOut >= 0)) {
-      h += '<p class="lbl" style="margin:0">BANK · WER KOMMT?</p><div class="list">';
+      h += '<p class="lbl" style="margin:0">' + (need ? 'BANK · WER KOMMT FÜR ' + esc(need.n.toUpperCase()) + '?' : 'BANK · WER KOMMT?') + '</p><div class="list">';
       if (!bench.length) h += '<p class="hint" style="margin:0">Es sitzt niemand mehr auf der Bank.</p>';
-      bench.forEach(function (p) { h += row(p, 'min', false); });
+      if (need) bench = bench.filter(function (p) { return p.p === need.pos; }).concat(bench.filter(function (p) { return p.p !== need.pos; }));
+      bench.forEach(function (p) { h += row(p, 'min', false).replace('class="pl', need && p.p === need.pos ? 'style="box-shadow:inset 4px 0 0 #6df09a" class="pl' : 'class="pl'); });
       h += '</div>';
     }
   } else {

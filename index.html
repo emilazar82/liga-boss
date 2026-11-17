@@ -3534,7 +3534,7 @@ function liveNext(state, auto) {
   simSeg(h, a, m0, L.type === 'cup', L.dis === L.seg ? u.id : -1, L.talk && L.seg >= 3 ? { id: u.id, f: L.talk.f } : null, mo, L.wx | 0).forEach(function (e) { if (e.g) { if (e.h) L.hg++; else L.ag++; } ev.push(e); });
   liveDisc(state, L, h, true, m0, ev, auto); liveDisc(state, L, a, false, m0, ev, auto); delete L._hard;
   [h, a].forEach(function (t) { var loss = [9, 12, 16][t.ei] / 6 * fatMul(t) * [1, 1.1, 1.2][L.wx | 0]; t.lu.forEach(function (id) { var p = findP(t, id); if (p) p.t = Math.max(30, p.t - (p.p === 0 ? loss / 2 : loss) * (1.25 - 0.005 * p.at[6])); }); });
-  if (!L.flz && Math.random() < 0.0075) { L.flz = 1; var ff = 0; if (L.home && L.type !== 'fr' && !L.ntf && !L.tour) { ff = [8000, 4000, 2000][Math.min(2, u.lg)]; state.cash -= ff; state.led.stad += ff; } ev.push({ m: m0 + rnd(3, 13), k: 'flz', h: L.home, fine: ff }); }
+  if (!L.flz && Math.random() < 0.0075) { L.flz = 1; var ff = 0, fm = 0; if (!L.ntf && !L.tour && h.lg < 7) { ff = [25000, 12000, 5000][Math.min(2, h.lg)]; if (L.home && h.id === u.id) { fm = 1; state.cash -= ff; state.led.stad += ff; news(state, 'Flitzer im Stadion: Der Verband verhängt ' + ff.toLocaleString('de-DE') + ' Ordnungsgeld gegen ' + h.n + ', weil die Ordner den Innenraum nicht gesichert haben.'); } } ev.push({ m: m0 + rnd(3, 13), k: 'flz', h: true, fine: ff, mine: fm, hn: h.n }); }
   ev.sort(function (x, y) { return x.m - y.m; }); L.ev = L.ev.concat(ev); L.seg++;
   var etNow = false; if (L.seg === 6 && !L.et && koTied(state)) { L.et = 1; etNow = true; L.subs[L.h]++; L.subs[L.a]++; }
   return { events: ev, done: L.seg >= liveEnd(L), et: etNow };
@@ -4026,7 +4026,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '17.11. 19:30';
+var BUILD = '17.11. 19:34';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -6241,7 +6241,7 @@ function startMatch() {
   M.stats = mStats; mStats();
   function note(e) {
     if (e.k === 'wx') { if (S) S.wx = e.w; tick(e.m + "' " + (e.w === 1 ? (e.w0 === 2 ? 'Der Schnee geht in Regen über.' : 'Es beginnt zu regnen – der Rasen wird rutschig.') : e.w === 2 ? (e.w0 === 1 ? 'Der Regen geht in Schnee über.' : 'Es fängt an zu schneien.') : e.w0 === 2 ? 'Der Schneefall hört auf, der Platz wird wieder besser bespielbar.' : 'Der Regen hört auf.'), 'info'); return; }
-    if (e.k === 'flz') { tick(e.m + "' " + ['Ein Flitzer in Herzchen-Unterhose stürmt den Platz! Zwei Ordner nehmen die Verfolgung auf.', 'Spielunterbrechung: Ein Fan in Unterhose dreht eine Ehrenrunde, die Ordner hinterher.', 'Was ist denn da los? Ein Flitzer schlägt Haken über den Rasen, das Stadion johlt.'][(e.m + M.n) % 3] + (e.fine ? ' Das kostet den Verein ' + num(e.fine) + ' Ordnungsgeld.' : ''), 'info'); return; }
+    if (e.k === 'flz') { tick(e.m + "' " + ['Ein Flitzer in Herzchen-Unterhose stürmt den Platz! Zwei Ordner nehmen die Verfolgung auf.', 'Spielunterbrechung: Ein Fan in Unterhose dreht eine Ehrenrunde, die Ordner hinterher.', 'Was ist denn da los? Ein Flitzer schlägt Haken über den Rasen, das Stadion johlt.'][(e.m + M.n) % 3] + (e.fine ? ' Der Verband bestraft ' + (e.mine ? 'deinen Verein' : e.hn) + ' als Gastgeber mit ' + num(e.fine) + ' Ordnungsgeld, weil die Ordner den Innenraum nicht im Griff hatten.' : ''), 'info'); return; }
     if (!M.mute && (e.k === 'y' || e.k === 'yr' || e.k === 'r')) SND.whistle(0);
     var sd = e.h ? 0 : 1; if (e.k === 'y') M.cnt.y[sd]++; else if (e.k === 'yr') { M.cnt.y[sd]++; M.cnt.r[sd]++; } else if (e.k === 'r') M.cnt.r[sd]++;
     mStats();

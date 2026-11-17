@@ -3534,6 +3534,7 @@ function liveNext(state, auto) {
   simSeg(h, a, m0, L.type === 'cup', L.dis === L.seg ? u.id : -1, L.talk && L.seg >= 3 ? { id: u.id, f: L.talk.f } : null, mo, L.wx | 0).forEach(function (e) { if (e.g) { if (e.h) L.hg++; else L.ag++; } ev.push(e); });
   liveDisc(state, L, h, true, m0, ev, auto); liveDisc(state, L, a, false, m0, ev, auto); delete L._hard;
   [h, a].forEach(function (t) { var loss = [9, 12, 16][t.ei] / 6 * fatMul(t) * [1, 1.1, 1.2][L.wx | 0]; t.lu.forEach(function (id) { var p = findP(t, id); if (p) p.t = Math.max(30, p.t - (p.p === 0 ? loss / 2 : loss) * (1.25 - 0.005 * p.at[6])); }); });
+  if (!L.flz && Math.random() < 0.0075) { L.flz = 1; var ff = 0; if (L.home && L.type !== 'fr' && !L.ntf && !L.tour) { ff = [8000, 4000, 2000][Math.min(2, u.lg)]; state.cash -= ff; state.led.stad += ff; } ev.push({ m: m0 + rnd(3, 13), k: 'flz', h: L.home, fine: ff }); }
   ev.sort(function (x, y) { return x.m - y.m; }); L.ev = L.ev.concat(ev); L.seg++;
   var etNow = false; if (L.seg === 6 && !L.et && koTied(state)) { L.et = 1; etNow = true; L.subs[L.h]++; L.subs[L.a]++; }
   return { events: ev, done: L.seg >= liveEnd(L), et: etNow };
@@ -4025,7 +4026,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '17.11. 19:03';
+var BUILD = '17.11. 19:21';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -5551,6 +5552,24 @@ function startScene(S, e, after) {
         [off ? 4.7 : 3.8, function () { simApply(S, e); S.own = V; endScene(S); if (after) after(); }]
       ]);
     });
+  } else if (e.k === 'flz') {
+    var wst = Math.random() < 0.5, ex0 = wst ? -0.06 : 1.06, sgn = wst ? 1 : -1, fy0 = 0.3 + Math.random() * 0.4;
+    var FZ = { x: ex0, y: fy0, fr: 0, mv: false, spd: 2.5, key: 'flz', run: { x: 0.5 - sgn * 0.2, y: 0.28 } };
+    var O1 = { x: ex0, y: fy0 - 0.05, fr: 0, mv: false, spd: 2.05, key: 'ord', run: { x: ex0, y: fy0 - 0.05 } }, O2 = { x: ex0, y: fy0 + 0.05, fr: 0, mv: false, spd: 1.95, key: 'ord', run: { x: ex0, y: fy0 + 0.05 } };
+    S.ex.push(FZ, O1, O2); S.own = null; S.focus = FZ; S.pl.forEach(function (p) { p.run = { x: p.x, y: p.y }; }); ref.run = { x: ref.x, y: ref.y };
+    S.cap = { title: 'FLITZER!', col: '#ffd84d', lines: [{ txt: 'Die Ordner sind unterwegs' }] }; try { SND.whistle(0); } catch (eF) { }
+    var stp = [], wp = [[0.5 - sgn * 0.05, 0.72], [0.5 + sgn * 0.12, 0.3], [0.5 + sgn * 0.22, 0.66], [0.5 + sgn * 0.02, 0.5]];
+    wp.forEach(function (w, i) { stp.push([0.9 + i * 0.95, function () { FZ.run = { x: w[0], y: w[1] }; }]); });
+    for (var ct = 0.5; ct < 4.9; ct += 0.25) (function (t0) { stp.push([t0, function () { if (!(O1.slipT && S.t - O1.slipT < 1)) O1.run = { x: FZ.x, y: FZ.y }; if (!(O2.slipT && S.t - O2.slipT < 1.1)) O2.run = { x: FZ.x, y: FZ.y + 0.03 }; else O2.run = { x: O2.x, y: O2.y }; }]); })(ct);
+    stp.push([2.3, function () { O2.slipT = S.t; O2.run = { x: O2.x, y: O2.y }; S.cap = { title: 'AUSGERUTSCHT', col: '#f4efe1', lines: [{ txt: 'Ein Ordner liegt auf der Nase' }] }; }]);
+    stp.push([3.4, function () { S.cap = { title: 'FLITZER!', col: '#ffd84d', lines: [{ txt: 'Er schlägt Haken' }] }; }]);
+    stp.push([4.75, function () { FZ.run = { x: FZ.x, y: FZ.y }; FZ.bow = 1; S.cap = { title: 'FLITZER!', col: '#ffd84d', lines: [{ txt: 'Er winkt ins Publikum' }] }; O1.spd = 3; O2.spd = 2.6; }]);
+    stp.push([5.0, function () { O1.run = { x: FZ.x - 0.012, y: FZ.y }; O2.run = { x: FZ.x + 0.012, y: FZ.y }; }]);
+    stp.push([5.9, function () { FZ.caught = 1; S.cap = { title: 'ERWISCHT', col: '#6df09a', lines: [{ txt: 'Die Ordner führen ihn ab' }] }; }]);
+    stp.push([6.4, function () { var ey = FZ.y; FZ.spd = O1.spd = O2.spd = 1.7; FZ.run = { x: ex0, y: ey }; O1.run = { x: ex0 + sgn * 0.016, y: ey - 0.015 }; O2.run = { x: ex0 - sgn * 0.016, y: ey + 0.015 }; S.focus = null; }]);
+    stp.push([8.4, fin]);
+    stp.sort(function (a, b) { return a[0] - b[0]; });
+    runScene(S, stp);
   } else if (e.k === 'off') {
     var oP = simFind(S, T, e.p) || nearest(mates(S, T, 3), S.bx, S.by) || nearest(mates(S, T, 1), S.bx, S.by); if (!oP) return fin();
     var oX = T ? 0.2 : 0.8, oY = 0.3 + Math.random() * 0.4;
@@ -6073,6 +6092,23 @@ function simDraw(M) {
       return;
     }
     if (X < -40 || X > VW + 40 || Y < -8 || Y > VH + 30) return;
+    if (p.key === 'flz' || p.key === 'ord') {
+      var fz = p.key === 'flz', lf = p.mv ? Math.floor(p.fr) % 4 : 0, la = lf === 1 ? 2 : 0, lb = lf === 3 ? 2 : 0, skin = '#e8b48c';
+      if (!fz && p.slipT && S.t - p.slipT < 1) { c.fillStyle = 'rgba(0,0,0,.2)'; c.fillRect(X - 9, Y, 18, 2); c.fillStyle = '#232c38'; c.fillRect(X - 9, Y - 4, 7, 4); c.fillStyle = '#ff8a1e'; c.fillRect(X - 2, Y - 5, 7, 5); c.fillStyle = '#ffe14d'; c.fillRect(X, Y - 5, 1, 5); c.fillStyle = skin; c.fillRect(X + 5, Y - 5, 4, 4); return; }
+      c.fillStyle = 'rgba(0,0,0,.2)'; c.fillRect(X - 5, Y - 1, 10, 2);
+      c.fillStyle = fz ? skin : '#232c38'; c.fillRect(X - 3, Y - 7, 2, 7 - la); c.fillRect(X + 1, Y - 7, 2, 7 - lb);
+      if (fz) { c.fillStyle = '#f4efe1'; c.fillRect(X - 3, Y - 10, 6, 4); c.fillStyle = '#e0402f'; c.fillRect(X - 2, Y - 9, 1, 1); c.fillRect(X + 1, Y - 9, 1, 1); c.fillRect(X, Y - 8, 1, 1); c.fillStyle = '#f4efe1'; c.fillRect(X - 3, Y, 2, 1); c.fillRect(X + 1, Y, 2, 1); }
+      c.fillStyle = fz ? skin : '#ff8a1e'; c.fillRect(X - 3, Y - 16, 6, fz ? 6 : 9);
+      if (!fz) { c.fillStyle = '#ffe14d'; c.fillRect(X - 3, Y - 12, 6, 1); }
+      c.fillStyle = skin; c.fillRect(X - 2, Y - 20, 4, 4);
+      c.fillStyle = fz ? '#5a3a22' : '#232c38'; c.fillRect(X - 2, Y - 21, 4, fz ? 1 : 2);
+      if (fz) { c.fillStyle = '#e0402f'; c.fillRect(X - 3, Y - 16, 6, 1); c.fillRect(X + 3, Y - 16, 1, 4); }
+      c.fillStyle = fz ? skin : '#ff8a1e';
+      if (fz && !p.caught) { var wv = Math.floor(S.t * 8) % 2; c.fillRect(X - 5, Y - 21 + wv, 2, 6); c.fillRect(X + 3, Y - 20 - wv, 2, 5); }
+      else if (fz) { c.fillRect(X - 5, Y - 15, 2, 5); c.fillRect(X + 3, Y - 15, 2, 5); }
+      else { var sw = lf % 2; c.fillRect(X - 5, Y - 15, 2, 4 + sw); c.fillRect(X + 3, Y - 15, 2, 5 - sw); c.fillStyle = skin; c.fillRect(X - 5, Y - 11 + sw, 2, 1); c.fillRect(X + 3, Y - 10 - sw, 2, 1); }
+      return;
+    }
     var im = GFX[p.key || 'td_' + (p.l === 0 ? 'k' : '') + (p.kit ? 'b' : 'a')], ok = im && im.complete && im.naturalWidth;
     var AC = p.act || (p.down ? { a: 'hurt', t0: 0 } : null), A2 = AC ? { push: 0, kick: 4, elbow: 8, pull: 12 }[AC.a] : undefined, sh2 = AC && (A2 !== undefined || AC.a === 'fallf' || AC.a === 'hurtf' || AC.a === 'upf');
     var acI = GFX[(sh2 ? 'ac2_' : 'ac_') + (p.kit ? 'b' : 'a')];
@@ -6219,6 +6255,7 @@ function startMatch() {
   M.stats = mStats; mStats();
   function note(e) {
     if (e.k === 'wx') { if (S) S.wx = e.w; tick(e.m + "' " + (e.w === 1 ? (e.w0 === 2 ? 'Der Schnee geht in Regen über.' : 'Es beginnt zu regnen – der Rasen wird rutschig.') : e.w === 2 ? (e.w0 === 1 ? 'Der Regen geht in Schnee über.' : 'Es fängt an zu schneien.') : e.w0 === 2 ? 'Der Schneefall hört auf, der Platz wird wieder besser bespielbar.' : 'Der Regen hört auf.'), 'info'); return; }
+    if (e.k === 'flz') { tick(e.m + "' " + ['Ein Flitzer in Herzchen-Unterhose stürmt den Platz! Zwei Ordner nehmen die Verfolgung auf.', 'Spielunterbrechung: Ein Fan in Unterhose dreht eine Ehrenrunde, die Ordner hinterher.', 'Was ist denn da los? Ein Flitzer schlägt Haken über den Rasen, das Stadion johlt.'][(e.m + M.n) % 3] + (e.fine ? ' Das kostet den Verein ' + num(e.fine) + ' Ordnungsgeld.' : ''), 'info'); return; }
     if (!M.mute && (e.k === 'y' || e.k === 'yr' || e.k === 'r')) SND.whistle(0);
     var sd = e.h ? 0 : 1; if (e.k === 'y') M.cnt.y[sd]++; else if (e.k === 'yr') { M.cnt.y[sd]++; M.cnt.r[sd]++; } else if (e.k === 'r') M.cnt.r[sd]++;
     mStats();

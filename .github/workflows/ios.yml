@@ -68,6 +68,8 @@ jobs:
           SIZE=$(stat -f%z shots/start.png)
           echo "Bildschirmfoto: $SIZE Bytes"
           if xcrun simctl spawn "$UDID" launchctl list | grep -q de.trainerbank.app; then echo "App läuft."; else echo "App läuft nicht mehr (Absturz?)."; exit 1; fi
+          sips -s format jpeg -s formatOptions 60 -Z 700 shots/start.png --out shots/klein.jpg >/dev/null
+          echo "BILD-ANFANG"; base64 -i shots/klein.jpg | fold -w 200; echo "BILD-ENDE"
           if [ "$SIZE" -lt 60000 ]; then echo "Das Bild ist fast einfarbig: Das Spiel wurde vermutlich nicht geladen."; exit 1; fi
 
       - name: Bildschirmfoto bereitstellen

@@ -4033,12 +4033,26 @@ var SND = (function () {
     mSrc = ac.createBufferSource(); mGain = ac.createGain(); mSrc.buffer = buf.music; mSrc.loop = true; mSrc.loopStart = 1; mSrc.loopEnd = 17;
     mGain.gain.value = 0.0001; mGain.gain.linearRampToValueAtTime(mVol, ac.currentTime + 0.8); mSrc.connect(mGain); mGain.connect(master); mSrc.start(0, 1);
   }
-  try { document.addEventListener('visibilitychange', function () { if (!ac) return; try { if (document.hidden) ac.suspend(); else if (prefs.snd) ac.resume(); } catch (eV) { } }); } catch (eW) { }
+  // Nach dem Zurückholen aus dem Hintergrund (vor allem iPhone) bleibt der Ton sonst stumm
+  function rebuild() { try { if (ac && ac.close) ac.close(); } catch (eC) { } ac = null; master = null; mSrc = null; mGain = null; cSrc = null; cGain = null; if (!ctx()) return; if (wantMusic) musicOn(); if (wantCrowd) crowdOn(); }
+  function wake(gesture) {
+    if (!ac || !prefs.snd || document.hidden) return;
+    try {
+      if (ac.state !== 'running') { var a0 = ac, p = a0.state === 'interrupted' && a0.suspend ? a0.suspend().then(function () { return a0.resume(); }) : a0.resume(); if (p && p.catch) p.catch(function () { }); }
+      if (gesture) setTimeout(function () { if (ac && prefs.snd && !document.hidden && ac.state !== 'running') rebuild(); }, 900);
+    } catch (eV) { }
+  }
+  try {
+    document.addEventListener('visibilitychange', function () { if (!ac) return; try { if (document.hidden) ac.suspend(); else { wake(); setTimeout(wake, 400); } } catch (eV) { } });
+    window.addEventListener('pageshow', function () { wake(); }); window.addEventListener('focus', function () { wake(); });
+    ['pointerdown', 'touchend', 'keydown'].forEach(function (ev) { document.addEventListener(ev, function () { if (ac && ac.state !== 'running') wake(true); }, true); });
+    window.TBWake = function () { wake(); setTimeout(wake, 400); };
+  } catch (eW) { }
   function ctx() {
     if (!prefs.snd) return null;
     if (!ac) { try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e0) { }
       try { var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null; ac = new AC(); master = ac.createGain(); master.gain.value = 0.8; master.connect(ac.destination); } catch (e) { ac = null; return null; } }
-    if (ac.state === 'suspended') { try { ac.resume(); } catch (e2) { } }
+    if (ac.state !== 'running' && ac.state !== 'closed') { try { var pr = ac.resume(); if (pr && pr.catch) pr.catch(function () { }); } catch (e2) { } }
     if (!loading) { loading = true; Object.keys(SNDSRC).forEach(function (k) {
       try { var bin = atob(SNDSRC[k]), ab = new ArrayBuffer(bin.length), u8 = new Uint8Array(ab); for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
         ac.decodeAudioData(ab, function (b) { buf[k] = b; if (k === 'crowd' && wantCrowd) crowdOn(); if (k === 'music' && wantMusic) musicOn(); }, function () { }); } catch (e3) { }
@@ -4099,7 +4113,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '17.11. 22:46';
+var BUILD = '18.11. 15:46';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -5478,7 +5492,7 @@ function vOptions() {
 }
 function vMatch() {
   var I = ui.match, hn = FM.team(state, I.h).n, an = FM.team(state, I.a).n;
-  return '<div class="mtop"><div class="stad"><div class="crowd"></div><div class="wall">' + adStrip() + '<div id="mPk" class="pkb" hidden></div><canvas id="mPitch" width="368" height="224" role="img" aria-label="Spielfeld mit Spielszenen"></canvas><div id="mFin" class="fin" hidden></div></div><div class="sbd"><div class="tm">' + tm(I.h, 'r') + '<span class="sc" id="mScore">0:0</span>' + tm(I.a, 'l') + '</div><div style="display:flex;justify-content:space-between;gap:10px;font-size:10.5px;color:#9fd6cf;padding:0 8px 3px;line-height:1.2"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (coachOf(I.h) ? 'Tr. ' + esc(coachOf(I.h)) : '') + '</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right">' + (coachOf(I.a) ? 'Tr. ' + esc(coachOf(I.a)) : '') + '</span></div><div class="sbr"><span id="mStH"></span><span class="mn" id="mMin">' + (I.fr ? (I.ntf ? 'Länderspiel' : 'Testspiel') : I.cup ? (I.eu ? (I.name.indexOf('Gruppe') === 0 ? '' : EUN() + ' · ') : 'Pokal · ') + I.name : 'Anpfiff') + '</span><span id="mStA"></span></div></div><div class="crowd lo"></div></div><div id="mKf"></div><div id="mBtns" class="row"><button class="big sec2 sm" data-a="mpause">Eingreifen</button><button class="big sec2 sm" data-a="speed" id="mSpeed">' + (ui.speed > 1 ? 'Normal' : 'Schneller') + '</button><button class="big sec2 sm" data-a="skip">Abpfiff</button></div><div id="mSh"></div></div><div id="mPanel"></div><div class="ticker" id="mTicker" aria-live="polite"></div>';
+  return '<div class="mtop"><div class="stad"><div class="crowd"></div><div class="wall">' + adStrip() + '<div id="mPk" class="pkb" hidden></div><canvas id="mPitch" width="368" height="224" role="img" aria-label="Spielfeld mit Spielszenen"></canvas><div id="mFin" class="fin" hidden></div></div><div class="sbd"><div class="tm">' + tm(I.h, 'r') + '<span class="sc" id="mScore">0:0</span>' + tm(I.a, 'l') + '</div><div style="display:flex;justify-content:space-between;gap:10px;font-size:10.5px;color:#9fd6cf;padding:0 8px 3px;line-height:1.2"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (coachOf(I.h) ? 'Tr. ' + esc(coachOf(I.h)) : '') + '</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right">' + (coachOf(I.a) ? 'Tr. ' + esc(coachOf(I.a)) : '') + '</span></div><div class="sbr"><span id="mStH"></span><span class="mn" id="mMin">' + (I.fr ? (I.ntf ? 'Länderspiel' : 'Testspiel') : I.cup ? (I.eu ? (I.name.indexOf('Gruppe') === 0 ? '' : EUN() + ' · ') : 'Pokal · ') + I.name : 'Anpfiff') + '</span><span id="mStA"></span></div>' + l1Line(I) + '</div><div class="crowd lo"></div></div><div id="mKf"></div><div id="mBtns" class="row"><button class="big sec2 sm" data-a="mpause">Eingreifen</button><button class="big sec2 sm" data-a="speed" id="mSpeed">' + (ui.speed > 1 ? 'Normal' : 'Schneller') + '</button><button class="big sec2 sm" data-a="skip">Abpfiff</button></div><div id="mSh"></div></div><div id="mPanel"></div><div class="ticker" id="mTicker" aria-live="polite"></div>';
 }
 function shoutBar() {
   var M = ui.match, el = document.getElementById('mSh'); if (!el) return;
@@ -6262,7 +6276,7 @@ function startMatch() {
     if (e.pb) tpl = 'Pfosten! Der Ball springt zurück – Nachschuss: ' + tpl; else if (e.pr2) tpl = 'Der Torwart hält den Elfmeter, aber der Nachschuss: ' + tpl; else if (e.ke) tpl = 'Torwartfehler! ' + tpl;
     if (e.ct) tpl = e.g ? ['{p} läuft allein auf den Torwart zu und schiebt eiskalt ein – {s} für {t}.', 'Blitzschnell umgeschaltet! {p} vollendet den Gegenstoß zum {s} für {t}.', 'Ein langer Ball, {p} ist durch und trifft – {s} für {t}.'][(e.m + M.n) % 3] : ['{p} ({t}) ist nach einem langen Ball frei durch, scheitert aber am Torwart.', '{t} schaltet schnell um, doch {p} verzieht im Laufduell.', '{p} ({t}) läuft allein aufs Tor zu und vergibt.'][(e.m + M.n) % 3];
     tick(e.m + "' " + (e.ct ? 'Konter! ' : e.sp === 'pen' ? 'Elfmeter! ' : e.sp === 'corner' ? 'Ecke. ' : e.sp === 'fk' ? 'Freistoß. ' : '') + tpl.replace('{t}', tn).replace('{p}', e.p).replace('{s}', M.hg + ':' + M.ag) + (e.g && e.ex ? ' Ausgerechnet gegen seinen alten Verein!' : ''), e.g ? 'goal' + (e.h === M.home ? '' : ' opp') : '');
-    var sc = document.getElementById('mScore'); if (sc) sc.textContent = M.hg + ':' + M.ag;
+    var sc = document.getElementById('mScore'); if (sc) sc.textContent = M.hg + ':' + M.ag; aggUpd(M.hg, M.ag);
     if (KF && e.g) kfBar();
   }
   var KF = state.live && state.live.kf ? state.live.kf : null;
@@ -6336,14 +6350,14 @@ function startMatch() {
   function any(e) { if (e.k === 'tac') note(e); else if (e.k) { note(e); simApply(S, e); } else apply(e); }
   M.note = function (e) { note(e); if (e.k === 'tac') return; if (fast) simApply(S, e); else S.pend.push(e); };
   function loadSeg() { var r = FM.liveNext(state); M.queue = r.events.slice(); M.segEnd = state.live.seg * 15; persist(); shoutBar(); }
-  M.unGoal = function (e) { for (var gi = M.goals.length - 1; gi >= 0; gi--) if (M.goals[gi].m === e.m && (M.goals[gi].rp || M.goals[gi].p) === e.p && M.goals[gi].h === e.h) { M.goals.splice(gi, 1); break; } if (e.h) M.hg = Math.max(0, M.hg - 1); else M.ag = Math.max(0, M.ag - 1); var sc0 = document.getElementById('mScore'); if (sc0) sc0.textContent = M.hg + ':' + M.ag; if (M.kfBar) M.kfBar(); };
+  M.unGoal = function (e) { for (var gi = M.goals.length - 1; gi >= 0; gi--) if (M.goals[gi].m === e.m && (M.goals[gi].rp || M.goals[gi].p) === e.p && M.goals[gi].h === e.h) { M.goals.splice(gi, 1); break; } if (e.h) M.hg = Math.max(0, M.hg - 1); else M.ag = Math.max(0, M.ag - 1); var sc0 = document.getElementById('mScore'); if (sc0) sc0.textContent = M.hg + ':' + M.ag; aggUpd(M.hg, M.ag); if (M.kfBar) M.kfBar(); };
   function finish() {
     if (M.pkWait) return;
     if (!M.pkAsked && state.live && FM.penDue(state)) { M.pkAsked = true; M.pkWait = true; M.paused = false; M.prE = null; tick('Auch die Verlängerung bringt keine Entscheidung – es gibt Elfmeterschießen. Wähle deine Schützen.', 'info'); matchPanel(); return; }
     M.done = true; M.paused = false; M.prE = null; matchPanel(); shoutBar();
     var R = FM.finishLive(state), m = R.match; M.res = R; persist();
     var mn = document.getElementById('mMin'); if (mn) mn.textContent = 'Abpfiff';
-    var sc = document.getElementById('mScore'); if (sc) sc.textContent = m.hg + ':' + m.ag;
+    var sc = document.getElementById('mScore'); if (sc) sc.textContent = m.hg + ':' + m.ag; aggUpd(m.hg, m.ag);
     tick('Abpfiff! Endstand ' + m.hg + ':' + m.ag + (m.et ? ' nach Verlängerung' : '') + '.', 'info');
     var PK = m.pen && m.pk && m.pk.k && m.pk.k.length ? m.pk : null;
     var penTick = function () { if (m.pen) tick('Elfmeterschießen' + (PK ? ' ' + PK.hs + ':' + PK.as : '') + '! ' + FM.team(state, m.w).n + ' behält die Nerven und kommt weiter.', 'goal' + (m.w === state.uid ? '' : ' opp')); };
@@ -6591,6 +6605,9 @@ function vPrivate() {
 }
 function ntfPlay() { var r = FM.ntfPrep(state); if (r.err) return toast(r.err); ui.pops = []; persist(); go('ntprep'); }
 function ntRow(p, extra) { return '<div class="pl" style="grid-template-columns:34px 1fr 30px 34px;cursor:default;' + (p.mine ? 'background:rgba(255,216,77,.16);box-shadow:inset 4px 0 0 #ffd84d' : '') + '"><span><span class="pos p' + p.p + '">' + FM.POS[p.p] + '</span></span><span class="nm' + (p.mine || extra ? ' two' : '') + '"><span class="nn">' + esc(p.n) + '</span>' + (p.mine ? '<span class="tg"><span class="st yel" style="padding:0 5px">dein Spieler</span></span>' : extra ? '<span class="tg" style="color:var(--mint);font-size:11px">' + extra + '</span>' : '') + '</span><span>' + (p.a || '') + '</span><span><b>' + p.s + '</b></span></div>'; }
+function l1Of(I) { var c = state.eu, r = null; if (!I || !I.eu || !c) return null; var L = c.leg === 2 && c.l1 ? c.l1 : (c.hist && c.hist.length && c.hist[c.hist.length - 1].l1) || []; L.forEach(function (m) { if (m[0] === I.a && m[1] === I.h && m.length > 3) r = [m[3], m[2]]; }); return r; }
+function l1Line(I) { var f = l1Of(I); if (!f) return ''; var w = f[0] > f[1] ? FM.team(state, I.h) : f[1] > f[0] ? FM.team(state, I.a) : null; return '<div style="display:flex;justify-content:space-between;gap:10px;font-size:10.5px;color:#f4d35e;padding:3px 8px 4px;line-height:1.2;border-top:1px solid #1d3a38"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Hinspiel ' + (w ? Math.max(f[0], f[1]) + ':' + Math.min(f[0], f[1]) + ' für ' + esc(w.n) : f[0] + ':' + f[1]) + '</span><span style="white-space:nowrap">Gesamt <b id="mAgg" data-h="' + f[0] + '" data-a="' + f[1] + '">' + f[0] + ':' + f[1] + '</b></span></div>'; }
+function aggUpd(hg, ag) { var e = document.getElementById('mAgg'); if (e) e.textContent = (hg + (+e.getAttribute('data-h'))) + ':' + (ag + (+e.getAttribute('data-a'))); }
 function coachOf(id) { var t = FM.team(state, id); if (!t) return ''; if (id === state.uid) return coachN() || ''; return t.co ? t.co.n : ''; }
 function vClubs() {
   var M = FM.me(state), u = FM.userTeam(state), tab = ui.clt === 'buy' ? 'buy' : 'mine', h = sub('Meine Vereine'), NOSW = '';

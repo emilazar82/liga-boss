@@ -58,6 +58,13 @@ final class GameViewController: UIViewController, WKNavigationDelegate, WKUIDele
         cfg.userContentController.add(WeakHandler(self), name: "tb")
 
         web = WKWebView(frame: .zero, configuration: cfg)
+
+        // Zurück aus dem Hintergrund: Tonsitzung wieder aktivieren und das Spiel den Ton aufwecken lassen
+        NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification,
+                                               object: nil, queue: .main) { [weak self] _ in
+            try? AVAudioSession.sharedInstance().setActive(true)
+            self?.web.evaluateJavaScript("window.TBWake && window.TBWake()", completionHandler: nil)
+        }
         web.navigationDelegate = self
         web.uiDelegate = self
         web.isOpaque = false

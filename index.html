@@ -1215,7 +1215,7 @@ function ntUserTeam(state, id, clubId, mine) {
 function ntSave(state, A) { var K = ntK(state); if (!K) return; K.tac = {}; ['fo', 'au', 'ei', 'pr', 'ps', 'tp', 'ab', 'md'].forEach(function (q) { K.tac[q] = A[q]; }); K.lu = A.lu.map(function (id) { var p = findP(A, id); return p ? p.n : ''; }); }
 var NTFR = [5, 11, 21, 27];
 function ntPlan(state) {
-  var code = state.ntj, out = { rep: state.rep || 0, coach: !!code, res: (state.ntl || []).slice(0, 8) };
+  var code = state.ntj, out = { rep: state.rep || 0, coach: !!code, res: (state.ntl || []).slice(0, 8), pat: state.ntb ? { l: state.ntb.l, nw: state.ntb.nw } : { l: 0, nw: 0 } };
   var y = state.season, ty = y; while (!tourKind(ty) && ty < y + 5) ty++; out.tour = { kind: tourKind(ty), y: ty + 1, now: ty === y };
   if (!code) return out;
   out.code = code; out.name = ntNmN(code); out.str = ntStr(code); out.pending = ntfInfo(state);
@@ -1228,7 +1228,7 @@ function ntPlan(state) {
   out.squad = out.pool.filter(function (o) { return o.on; });
   return out;
 }
-function ntQuit(state) { if (!state.ntj || state.ntfx || (state.tour && state.tour.on)) return 'Jetzt nicht möglich.'; var n = ntNmN(state.ntj); state.ntj = null; delete state.ntf; repAdd(state, -2); news(state, 'Du bist als Nationaltrainer von ' + n + ' zurückgetreten.'); return ''; }
+function ntQuit(state) { if (!state.ntj || state.ntfx || (state.tour && state.tour.on)) return 'Jetzt nicht möglich.'; var n = ntNmN(state.ntj); state.ntj = null; delete state.ntb; delete state.ntq; delete state.ntf; repAdd(state, -2); news(state, 'Du bist als Nationaltrainer von ' + n + ' zurückgetreten.'); return ''; }
 function ntfNew(state) {
   if (!state.ntj || (state.tour && state.tour.on) || state.ntfx) return;
   if (state.ntf) { try { ntfQuick(state); } catch (e0) { delete state.ntf; } }
@@ -1251,6 +1251,18 @@ function ntfDone(state, X, gf, ga, played, injMap) {
   var g = { opp: f.opp, n: ntNmN(f.opp), h: f.home, gf: gf, ga: ga, s: state.season, r: state.round, rp: rp, pl: back };
   (state.ntl = state.ntl || []).unshift(g); if (state.ntl.length > 12) state.ntl.length = 12;
   news(state, 'Länderspiel: ' + (f.home ? ntNmN(state.ntj) + ' – ' + g.n : g.n + ' – ' + ntNmN(state.ntj)) + ' ' + (f.home ? gf + ':' + ga : ga + ':' + gf) + '.');
+  // Der Verband verliert die Geduld: 4 Niederlagen in Folge oder 6 Länderspiele ohne Sieg kosten das Amt
+  var nb = state.ntb || (state.ntb = { l: 0, nw: 0 }), cn = ntNmN(state.ntj);
+  if (gf > ga) { nb.l = 0; nb.nw = 0; } else { nb.nw++; nb.l = gf < ga ? nb.l + 1 : 0; }
+  if (nb.l >= 4 || nb.nw >= 6) {
+    var why = nb.l >= 4 ? 'nach ' + nb.l + ' Niederlagen in Folge' : 'nach ' + nb.nw + ' Länderspielen ohne Sieg';
+    state.ntj = null; delete state.ntb; repAdd(state, -3); g.fired = 1;
+    news(state, 'Der Verband von ' + cn + ' trennt sich ' + why + ' von dir als Nationaltrainer.');
+    state.ntq = { k: 'fire', n: cn, why: why };
+  } else if (nb.l === 3 || nb.nw === 5) {
+    g.warn = 1; news(state, 'Der Verband von ' + cn + ' wird ungeduldig: Das nächste Länderspiel entscheidet über deine Zukunft als Nationaltrainer.');
+    state.ntq = { k: 'warn', n: cn, why: nb.l === 3 ? '3 Niederlagen in Folge' : '5 Länderspiele ohne Sieg' };
+  }
   delete state.ntf; return g;
 }
 function ntfAbort(state) { var x = state.ntfx; if (!x || state.live) return; state.uid = x.cu; state.teams.length = Math.min(x.a, x.b); delete state.ntfx; }
@@ -1339,7 +1351,7 @@ function tourEnd(state) {
   ST[c.champ] = 4;
   var code = function (id) { return state.teams[id].nt; };
   var res = { g: euTab(c).map(function (g) { return g.map(function (x) { return { c: code(x.id), sp: x.sp, tf: x.tf, ta: x.ta, pts: x.pts }; }); }), md: c.hist.map(function (h) { return { n: h.n, t: h.ties.map(function (m) { return [code(m[0]), code(m[1]), m[2], m[3], m[5] ? 1 : m[6] ? 2 : 0]; }) }; }), champ: code(c.champ) };
-  var coach = null; if (T.cu !== undefined) { var st = ST[T.nt] || 0; coach = { code: code(T.nt), st: st, fired: st === 0 }; repAdd(state, [-5, 2, 5, 8, 15][st]); if (coach.fired) state.ntj = null; state.uid = T.cu; }
+  var coach = null; if (T.cu !== undefined) { var st = ST[T.nt] || 0; coach = { code: code(T.nt), st: st, fired: st === 0 }; repAdd(state, [-5, 2, 5, 8, 15][st]); if (coach.fired) state.ntj = null; delete state.ntb; state.uid = T.cu; }
   state.teams.forEach(function (t) { if (t.lg <= 2) t.pl.forEach(function (p) { by[p.i] = [p, t]; }); });
   var rep = [], bonus = 0;
   T.c.g.forEach(function (g) { g.forEach(function (id) {
@@ -1369,7 +1381,7 @@ function ntOffer(state, title) {
   if (state.ntj || state.nto || state.rep < 45) return;
   if (title || state.rep >= 70 ? true : Math.random() < 0.12) state.nto = Math.random() < 0.7 ? CTYNAT[state.cty || 'de'] : pick(NTEU.slice(4, 20));
 }
-function ntAnswer(state, yes) { if (!state.nto) return ''; var c = state.nto; delete state.nto; if (yes) { state.ntj = c; return NTN[c]; } return ''; }
+function ntAnswer(state, yes) { if (!state.nto) return ''; var c = state.nto; delete state.nto; if (yes) { state.ntj = c; delete state.ntb; return NTN[c]; } return ''; }
 function tCty(state, id) { var t = team(state, id); return t ? (t.lg === 9 ? t.cty || '' : state.cty || 'de') : ''; }
 function euTie(state) { return state.eu ? withEu(state, function () { return cupTie(state); }) : null; }
 function startEu(state) { var L = withEu(state, function () { return startCup(state); }); L.eu = true; return L; }
@@ -4132,7 +4144,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '18.11. 17:01';
+var BUILD = '18.11. 17:10';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -5109,6 +5121,7 @@ function popScan() {
   var TE = FM.trainEvInfo(state);
   if (TE) { var tek = 'te' + TE.n; pk[tek] = 1; if (!old[tek] && !first) pop(TE.t, esc(TE.q), TE.o.map(function (o, k) { return [o[0], function () { var cur = FM.trainEvInfo(state); if (cur && cur.n === TE.n) { var tx = FM.trainEv(state, k); if (tx) toast(tx); } }, o[1]]; }), 'm_talk'); }
   var NF = FM.ntfInfo(state);
+  if (state.ntq && !first && !state.live) { var NQ = state.ntq; delete state.ntq; persist(); if (NQ.k === 'fire') pop('Als Nationaltrainer entlassen', 'Der Verband von <b>' + esc(NQ.n) + '</b> trennt sich ' + NQ.why + ' von dir.<br><span class="hint">Deinen Verein trainierst du weiter. Mit gutem Ruf kann wieder ein Verband anfragen.</span>', [['Verstanden', null]]); else pop('Der Verband wird ungeduldig', '<b>' + esc(NQ.n) + '</b>: ' + NQ.why + '.<br>Geht auch das nächste Länderspiel ' + (NQ.why.indexOf('Niederlagen') >= 0 ? 'verloren' : 'nicht an dich') + ', bist du dein Amt los.', [['Verstanden', null]]); return; }
   if (state.sonq && !first && !state.live) { var SQ = state.sonq; delete state.sonq; persist(); pop('Nachwuchs mit großem Namen', '<b>' + esc(SQ.fa) + '</b>' + (SQ.own ? ', Legende deines Vereins,' : ', früher bei ' + esc(SQ.c) + ',') + ' steht mit seinem ' + SQ.ra + ' im Büro:<br><b>' + esc(SQ.n) + '</b>, ' + SQ.a + ' Jahre, ' + FM.POS[SQ.p] + '.<br><span class="hint">Er trainiert ab sofort in deiner Jugend. Auf seiner Spielerkarte steht die Herkunft.</span>', [['OK'], ['Zur Jugend', function () { go('youth'); }]], 'jugend'); }
   if (NF && ui.ntfShown !== NF.n && !first && !state.live) { ui.ntfShown = NF.n; pop('Länderspiel', 'Länderspielpause. Der Verband hat ein Freundschaftsspiel angesetzt:<br><b>' + flag(NF.home ? NF.me : NF.opp) + ' ' + esc(NF.home ? NF.meN : NF.oppN) + ' – ' + flag(NF.home ? NF.opp : NF.me) + ' ' + esc(NF.home ? NF.oppN : NF.meN) + '</b><br><span class="hint">Stärke: ' + esc(NF.meN) + ' ' + NF.sMe + ', ' + esc(NF.oppN) + ' ' + NF.sOpp + '. Deine Vereinsspieler im Kader kommen etwas müder zurück.</span>', [['Selbst coachen', function () { ntfPlay(); }, 'du sitzt auf der Bank'], ['Co-Trainer schicken', function () { var g = FM.ntfQuick(state); persist(); if (g) toast('Länderspiel: ' + (g.h ? g.gf + ':' + g.ga : g.ga + ':' + g.gf) + ' gegen ' + g.n + '.'); }, 'Ergebnis wird berechnet']], 'm_sign'); }
   var LE = FM.lifeInfo(state);
@@ -6708,9 +6721,9 @@ function vNat() {
   var nx = false, dcard = function (top, mid, t1, t2, st, hot) { return '<div style="display:grid;grid-template-columns:58px 1fr auto;gap:10px;align-items:center;padding:8px;margin-top:6px;background:#062f2c;border:2px solid ' + (hot ? '#ffd84d' : '#16595f') + ';opacity:' + (st === 'vorbei' ? '.55' : '1') + '"><div style="text-align:center;background:#f4efe1;color:#0b1622;border-bottom:4px solid #c8102e;padding:3px 0"><div style="font-size:10px;font-weight:700;letter-spacing:.5px">' + top + '</div><div style="font-family:var(--px);font-size:16px;line-height:1.3">' + mid + '</div></div><div><b style="display:block">' + t1 + '</b><span class="hint" style="font-size:12px">' + t2 + '</span></div><span class="st ' + (hot ? 'yel' : 'bnn') + '" style="padding:2px 7px;' + (st ? '' : 'display:none') + '">' + st + '</span></div>'; };
   h += '<div class="panel"><p class="lbl">TERMINE DIESE SAISON</p>' + P.dates.map(function (d) { var q = d.dt.split(', ')[1].split(' '), hot = !d.done && !nx; if (hot) nx = true; return dcard(q[1].slice(0, 3).toUpperCase() + ' ' + q[2].slice(2), q[0].replace('.', ''), 'Länderspiel', d.dt.split(',')[0] + ' · nach dem ' + d.md + '. Spieltag', d.done ? 'vorbei' : hot ? 'als Nächstes' : '', hot); }).join('') + dcard('SOMMER', String(P.tour.y).slice(2), P.tour.kind === 'EM' ? 'Europameisterschaft' : 'Weltmeisterschaft', P.tour.now ? 'direkt nach dieser Saison' : 'Sommer ' + P.tour.y, P.tour.now ? 'Turnier' : '', false) + '<p class="hint" style="margin:8px 0 0">Der Gegner wird erst in der Länderspielpause ausgelost.</p></div>';
   if (P.coach) {
-    var vn = P.res.length, vp = vn ? P.res.reduce(function (q, g) { return q + (g.gf > g.ga ? 3 : g.gf === g.ga ? 1 : 0); }, 0) / (vn * 3) : 0.5;
-    var vt = !vn ? 'Noch kein Urteil. Der Verband wartet deine ersten Spiele ab.' : vp >= 0.6 ? 'Der Verband steht voll hinter dir.' : vp >= 0.35 ? 'Der Verband ist zufrieden, erwartet aber mehr.' : 'Der Verband ist unruhig. Die Ergebnisse stimmen nicht.';
-    h += '<div class="panel"><p class="lbl">RÜCKHALT IM VERBAND</p>' + meter('Stimmung', vp, vp >= 0.6 ? '#6df09a' : vp >= 0.35 ? '#ffd84d' : '#ff9a8f', !vn ? 'offen' : vp >= 0.6 ? 'gut' : vp >= 0.35 ? 'mittel' : 'schlecht') + '<p style="margin:10px 0 0">' + vt + '</p><p class="hint" style="margin:8px 0 0;font-size:12.5px">Die Stimmung ergibt sich aus den letzten ' + (vn || 8) + ' Länderspielen. Über dein Amt entscheidet aber nur das Turnier: Scheiterst du dort in der Vorrunde, wirst du entlassen. Testspiele kosten dich den Job nicht.</p></div>';
+    var pl = P.pat.l, pw = P.pat.nw, vp = Math.max(0.04, 1 - Math.max(pl / 4, pw / 6)), crit = pl >= 3 || pw >= 5;
+    var vt = crit ? 'Der Verband hat dir ein Ultimatum gestellt. Das nächste Länderspiel entscheidet.' : vp >= 0.7 ? 'Der Verband steht voll hinter dir.' : vp >= 0.45 ? 'Der Verband ist zufrieden, erwartet aber mehr.' : 'Der Verband ist unruhig. Die Ergebnisse stimmen nicht.';
+    h += '<div class="panel"><p class="lbl">RÜCKHALT IM VERBAND</p>' + meter('Geduld', vp, crit ? '#ff9a8f' : vp >= 0.7 ? '#6df09a' : vp >= 0.45 ? '#ffd84d' : '#ff9a8f', crit ? 'kritisch' : vp >= 0.7 ? 'gut' : vp >= 0.45 ? 'mittel' : 'schlecht') + '<p style="margin:10px 0 0">' + vt + '</p>' + kv('Niederlagen in Folge', pl + ' von 4') + kv('Länderspiele ohne Sieg', pw + ' von 6') + '<p class="hint" style="margin:8px 0 0;font-size:12.5px">Bei 4 Niederlagen in Folge oder 6 Länderspielen ohne Sieg entlässt dich der Verband. Ein Sieg setzt beides zurück. Auch ein Turnier-Aus in der Vorrunde kostet das Amt.</p></div>';
   }
   h += '<div class="panel"><p class="lbl">LETZTE LÄNDERSPIELE</p>' + (P.res.length ? P.res.map(function (g) { return kv(flag(g.opp) + ' <span class="hint">' + (g.h ? 'Heim' : 'Auswärts') + ' gegen</span> ' + esc(g.n), '<b style="white-space:nowrap;color:' + (g.gf > g.ga ? '#6df09a' : g.gf < g.ga ? '#ff9a8f' : '#ffd84d') + '">' + (g.gf > g.ga ? 'Sieg ' : g.gf < g.ga ? 'Niederlage ' : 'Remis ') + g.gf + ':' + g.ga + '</b>'); }).join('') + '<p class="hint" style="margin:8px 0 0;font-size:12.5px">Ergebnisse aus Sicht deiner Nationalelf: eigene Tore zuerst.</p>' : '<p class="hint" style="margin:0">Noch keine.</p>') + '</div>';
   var PN = ['Tor', 'Abwehr', 'Mittelfeld', 'Sturm'], nMine = P.squad.filter(function (p) { return p.mine; }).length;

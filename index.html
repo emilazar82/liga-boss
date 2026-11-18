@@ -4143,7 +4143,7 @@ var SND = (function () {
   }
   // Nach dem Zurückholen aus dem Hintergrund bleibt der Ton auf dem iPhone sonst stumm, obwohl der
   // Audio-Kontext sich als laufend meldet. Deshalb wird er dort beim Zurückkommen neu aufgebaut.
-  var IOS = false, frontT = null, builtAt = 0, builtCt = 0;
+  var IOS = false, frontT = null, builtAt = 0, builtCt = 0, rbTries = 0;
   try { IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || !!(window.TBApp && window.TBApp.ios) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); } catch (eI) { }
   function rebuild() {
     try { if (ac && ac.close) ac.close(); } catch (eC) { }
@@ -4165,12 +4165,13 @@ var SND = (function () {
     if (!ac || !prefs.snd) return;
     if (!IOS) { wake(); setTimeout(wake, 400); return; }
     if (frontT) clearTimeout(frontT);
+    rbTries = 0;
     frontT = setTimeout(function () { frontT = null; if (ac && prefs.snd && !document.hidden) rebuild(); }, ms);
   }
   try {
     document.addEventListener('visibilitychange', function () { if (!ac) return; try { if (document.hidden) { if (frontT) { clearTimeout(frontT); frontT = null; } ac.suspend(); } else front(350); } catch (eV) { } });
     window.addEventListener('pageshow', function (e) { if (e && e.persisted) front(350); });
-    ['pointerdown', 'touchend', 'keydown'].forEach(function (ev) { document.addEventListener(ev, function () { if (!ac || !prefs.snd || frontT) return; if (IOS && builtAt && !alive()) rebuild(); else if (ac.state !== 'running') wake(true); }, true); });
+    ['pointerdown', 'touchend', 'keydown'].forEach(function (ev) { document.addEventListener(ev, function () { if (!ac || !prefs.snd || frontT) return; if (IOS && builtAt && !alive()) { if (rbTries < 3 && Date.now() - builtAt > 4000) { rbTries++; rebuild(); } } else if (ac.state !== 'running' && Date.now() - builtAt > 1500) wake(true); }, true); });
     window.TBWake = function () { front(150); };
   } catch (eW) { }
   function ctx() {
@@ -4238,7 +4239,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '18.11. 18:33';
+var BUILD = '18.11. 20:55';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -5654,6 +5655,7 @@ function shoutBar() {
 function pkPicker() {
   var M = ui.match, bt = document.getElementById('mBtns'), sh = document.getElementById('mSh'); if (!bt) return;
   if (sh) sh.innerHTML = '';
+  var mt = document.querySelector('.mtop'); if (mt) mt.style.position = 'static';
   var C = FM.penCand(state); if (!M.pkSel) M.pkSel = C.slice(0, 5).map(function (p) { return p.i; });
   var h = '<div style="width:100%"><p class="lbl" style="margin:0 0 6px">ELFMETERSCHIESSEN · DEINE SCHÜTZEN</p><p class="hint" style="margin:0 0 8px">Tippe die Spieler in der Reihenfolge an, in der sie antreten sollen. Die Zahl rechts ist der Elfmeterwert.</p><div class="list">';
   C.forEach(function (p) { var k = M.pkSel.indexOf(p.i); h += '<button class="trr" data-a="pkpick" data-id="' + p.i + '" style="grid-template-columns:30px minmax(0,1fr) 40px' + (k >= 0 ? ';border-color:#ffd84d' : '') + '"><span style="font-family:var(--px);font-size:11px;color:#ffd84d">' + (k >= 0 ? (k + 1) + '.' : '') + '</span><span class="nm"><span class="pos p' + p.p + '">' + FM.POS[p.p] + '</span> ' + esc(p.n) + '</span><b>' + p.e + '</b></button>'; });
@@ -6472,7 +6474,7 @@ function startMatch() {
   M.cnt = M.cnt || { y: [0, 0], r: [0, 0] };
   function mStats() {
     var L = state.live;
-    [0, 1].forEach(function (k) { var el = document.getElementById(k ? 'mStA' : 'mStH'); if (!el) return; var tid = k ? M.a : M.h, su = L && L.subs ? 3 - L.subs[tid] : (M.cnt.su ? M.cnt.su[k] : 0); if (L && L.subs) { M.cnt.su = M.cnt.su || [0, 0]; M.cnt.su[k] = su; } el.innerHTML = '<i class="cy"></i>' + M.cnt.y[k] + ' <i class="cr"></i>' + M.cnt.r[k] + ' <i class="cs">⇄</i>' + su; });
+    [0, 1].forEach(function (k) { var el = document.getElementById(k ? 'mStA' : 'mStH'); if (!el) return; var tid = k ? M.a : M.h, su = L && L.subs ? Math.max(0, (L.et ? 4 : 3) - L.subs[tid]) : (M.cnt.su ? M.cnt.su[k] : 0); if (L && L.subs) { M.cnt.su = M.cnt.su || [0, 0]; M.cnt.su[k] = su; } el.innerHTML = '<i class="cy"></i>' + M.cnt.y[k] + ' <i class="cr"></i>' + M.cnt.r[k] + ' <i class="cs">⇄</i>' + su; });
   }
   M.stats = mStats; mStats();
   function note(e) {
@@ -7431,7 +7433,7 @@ app.addEventListener('click', function (ev) {
     persist(); return shoutBar();
   }
   if (a === 'pkpick') { var KM = ui.match, kid = +b.getAttribute('data-id'), kx = KM.pkSel.indexOf(kid); if (kx >= 0) KM.pkSel.splice(kx, 1); else if (KM.pkSel.length < 5) KM.pkSel.push(kid); else return toast('Fünf Schützen sind gewählt. Tippe erst einen an, um ihn herauszunehmen.'); return pkPicker(); }
-  if (a === 'pkgo') { var GM2 = ui.match; if (!GM2 || !GM2.pkWait) return; FM.setPenOrder(state, GM2.pkSel); GM2.pkWait = false; return GM2.finish(); }
+  if (a === 'pkgo') { var GM2 = ui.match; if (!GM2 || !GM2.pkWait) return; FM.setPenOrder(state, GM2.pkSel); GM2.pkWait = false; var mt2 = document.querySelector('.mtop'); if (mt2) mt2.style.position = ''; window.scrollTo(0, 0); return GM2.finish(); }
   if (a === 'mresume') { if (ui.match && ui.match.resume) ui.match.resume(); return; }
   if (a === 'mout') { var oid = +b.getAttribute('data-id'); ui.subOut = ui.subOut === oid ? -1 : oid; return matchPanel(); }
   if (a === 'min') {

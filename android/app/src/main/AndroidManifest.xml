@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Bewusst keine Berechtigungen: Das Spiel läuft ohne Internet und greift auf nichts außerhalb der App zu. -->
+    <!-- Einzige Berechtigung: Die App fragt die Projektseite nach einer neueren Spieldatei. Das Spiel selbst läuft ohne Internet. -->
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
         android:allowBackup="false"

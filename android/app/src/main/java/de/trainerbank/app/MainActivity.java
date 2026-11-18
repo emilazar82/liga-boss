@@ -29,7 +29,8 @@ import java.nio.charset.StandardCharsets;
 
 /**
  * Schlanke Hülle um das Spiel: Die HTML-Datei liegt in der App (assets/index.html)
- * und läuft in einem WebView. Es gibt keinen Netzwerkzugriff.
+ * und läuft in einem WebView. Die App fragt nur die Projektseite nach einer neueren
+ * Spieldatei (siehe GameUpdater); ohne Netz läuft die vorhandene Fassung.
  */
 public class MainActivity extends ComponentActivity {
 
@@ -39,6 +40,8 @@ public class MainActivity extends ComponentActivity {
     private WebView web;
     private ValueCallback<Uri[]> pendingChooser;
     private String pendingSave;
+    private String pendingUpdate;
+    private GameUpdater updater;
 
     private ActivityResultLauncher<Intent> pickFile;
     private ActivityResultLauncher<Intent> createFile;
@@ -47,6 +50,7 @@ public class MainActivity extends ComponentActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        updater = new GameUpdater(this);
 
         // Datei auswählen (Spielstand laden, eigene Daten laden)
         pickFile = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
@@ -118,9 +122,20 @@ public class MainActivity extends ComponentActivity {
                 // Die App bleibt bei der eigenen Spieldatei; alles andere wird nicht geladen.
                 return !START_URL.equals(request.getUrl().toString());
             }
+
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                announceUpdate();
+            }
         });
 
         web.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onConsoleMessage(android.webkit.ConsoleMessage m) {
+                android.util.Log.i("Trainerbank", String.valueOf(m.message()));
+                return true;
+            }
+
             @Override
             public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback, FileChooserParams params) {
                 if (pendingChooser != null) pendingChooser.onReceiveValue(null);
@@ -148,17 +163,39 @@ public class MainActivity extends ComponentActivity {
             }
         });
 
-        if (savedInstanceState != null) {
-            web.restoreState(savedInstanceState);
+        loadGame();
+        checkUpdate(true, false);
+    }
+
+    /**
+     * Lädt das Spiel in der neuesten vorhandenen Fassung. Eine nachgeladene Fassung läuft unter derselben
+     * Adresse wie die mitgelieferte, damit der Spielstand (localStorage, IndexedDB) derselbe bleibt.
+     */
+    private void loadGame() {
+        String html = updater.newerHtml();
+        if (html != null) {
+            web.loadDataWithBaseURL(START_URL, html, "text/html", "UTF-8", null);
         } else {
             web.loadUrl(START_URL);
         }
     }
 
-    @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-        web.saveState(outState);
+    /** Fragt die Projektseite nach einer neueren Spieldatei; notify meldet auch "nichts Neues". */
+    private void checkUpdate(boolean force, boolean notify) {
+        updater.check(force, build -> {
+            if (web == null) return;
+            if (build != null) {
+                pendingUpdate = build;
+                announceUpdate();
+            } else if (notify) {
+                web.evaluateJavascript("window.TBNoUpdate&&window.TBNoUpdate()", null);
+            }
+        });
+    }
+
+    private void announceUpdate() {
+        if (pendingUpdate == null || web == null) return;
+        web.evaluateJavascript("window.TBUpdate&&window.TBUpdate(" + org.json.JSONObject.quote(pendingUpdate) + ")", null);
     }
 
     @Override
@@ -171,6 +208,7 @@ public class MainActivity extends ComponentActivity {
     protected void onResume() {
         super.onResume();
         web.onResume();
+        checkUpdate(false, false);
     }
 
     @Override
@@ -178,12 +216,23 @@ public class MainActivity extends ComponentActivity {
         if (web != null) {
             ((ViewGroup) web.getParent()).removeView(web);
             web.destroy();
+            web = null;
         }
         super.onDestroy();
     }
 
     /** Brücke zum Spiel: window.TBApp */
     private class Bridge {
+        @JavascriptInterface
+        public void checkUpdate() {
+            runOnUiThread(() -> MainActivity.this.checkUpdate(true, true));
+        }
+
+        @JavascriptInterface
+        public void reload() {
+            runOnUiThread(() -> { pendingUpdate = null; loadGame(); });
+        }
+
         @JavascriptInterface
         public void saveFile(String name, String json) {
             pendingSave = json;

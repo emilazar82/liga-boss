@@ -4238,7 +4238,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '18.11. 18:03';
+var BUILD = '18.11. 18:33';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -5326,6 +5326,8 @@ var INAPP = false; try { INAPP = !!window.TBApp; } catch (eA) { }
 var APPUPD = false;
 try { window.TBUpdate = function (b) { if (!b || b === BUILD) return; NEWV = String(b); APPUPD = true; ui.updw = false; if (ui.view === 'start' || ui.view === 'menu' || ui.view === 'options') render(); };
   window.TBNoUpdate = function () { ui.updw = false; if (ui.view === 'start' || ui.view === 'options') render(); toast('Du hast die aktuelle Version (Stand ' + BUILD + ').'); }; } catch (eT) { }
+// Kontrollzeile für den Gerätetest der Apps: zeigt, ob der Speicher nach einer Aktualisierung derselbe ist
+try { if (window.TBApp) { var tbP = localStorage.getItem('tb-probe'); localStorage.setItem('tb-probe', '1'); console.log('TBPROBE had=' + (tbP ? 1 : 0) + ' build=' + BUILD); } } catch (eP) { }
 function appUpd() { try { return !!(window.TBApp && window.TBApp.checkUpdate); } catch (e) { return false; } }
 try {
   window.tbSaved = function (ok) { toast(ok ? 'Spielstand als Datei gesichert.' : 'Sichern abgebrochen.'); };
@@ -7280,7 +7282,7 @@ app.addEventListener('click', function (ev) {
   if (a === 'svfile') { if (!state) return; persist(); try { var sj = JSON.stringify({ app: 'trainerbank', ts: Date.now(), state: state }); if (INAPP) { window.TBApp.saveFile('trainerbank-spielstand-' + state.season + '-spieltag-' + state.round + '.json', sj); return; } var sb = new Blob([sj], { type: 'application/json' }), su = URL.createObjectURL(sb), sa = document.createElement('a'); sa.href = su; sa.download = 'trainerbank-spielstand-' + state.season + '-spieltag-' + state.round + '.json'; document.body.appendChild(sa); sa.click(); setTimeout(function () { sa.remove(); URL.revokeObjectURL(su); }, 2000); toast('Spielstand als Datei gesichert.'); } catch (e8) { toast('Das Sichern als Datei geht hier nicht.'); } return; }
   if (a === 'ldno') { ui.ldp = null; return render(); }
   if (a === 'ldyes') { var LD = ui.ldp; ui.ldp = null; if (!LD) return render(); ui.pops = []; ui.match = null; saved = { ts: Date.now(), state: LD.state }; SND.jingle(); enter(LD.state); persist(); return toast('Spielstand geladen.'); }
-  if (a === 'update') { persist(); location.replace(location.pathname + '?v=' + Date.now()); return; }
+  if (a === 'update') { persist(); try { if (window.TBApp && window.TBApp.reload) { window.TBApp.reload(); return; } } catch (eR) { } location.replace(location.pathname + '?v=' + Date.now()); return; }
   if (a === 'pop') { var PP = ui.pops.shift(), PB = PP && PP.b[+b.getAttribute('data-val')]; if (PB && PB[1]) PB[1](); persist(); return render(); }
   if (a === 'tourpg') { ui.tpg = +b.getAttribute('data-val'); render(); return window.scrollTo(0, 0); }
   if (a === 'tourdone') { ui.tpg = 0; ui.match = null; persist(); return go(state.open ? 'opening' : state.pre ? 'summer' : 'menu'); }

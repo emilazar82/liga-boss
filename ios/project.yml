@@ -1,0 +1,49 @@
+# Xcode-Projekt wird beim Bau aus dieser Datei erzeugt (XcodeGen).
+name: Trainerbank
+options:
+  bundleIdPrefix: de.trainerbank
+  deploymentTarget:
+    iOS: "15.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  Trainerbank:
+    type: application
+    platform: iOS
+    sources:
+      - path: Trainerbank
+        excludes:
+          - "web"
+          - "Info.plist"
+      - path: Trainerbank/web
+        type: folder
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: de.trainerbank.app
+        PRODUCT_NAME: Trainerbank
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        GENERATE_INFOPLIST_FILE: NO
+        ENABLE_BITCODE: NO
+    info:
+      path: Trainerbank/Info.plist
+      properties:
+        CFBundleDisplayName: Trainerbank
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        CFBundleDevelopmentRegion: de
+        CFBundleLocalizations: [de]
+        LSRequiresIPhoneOS: true
+        UIRequiresFullScreen: true
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UIStatusBarStyle: UIStatusBarStyleLightContent
+        UIViewControllerBasedStatusBarAppearance: true
+        UILaunchScreen:
+          UIColorName: LaunchBG
+        ITSAppUsesNonExemptEncryption: false
+        LSApplicationCategoryType: public.app-category.sports-games

@@ -15,3 +15,10 @@ android/build/
 android/app/build/
 *.jks
 *.keystore
+ios/Trainerbank/web/index.html
+ios/Trainerbank/Info.plist
+ios/*.xcodeproj/
+ios/build/
+*.p8
+*.p12
+*.mobileprovision

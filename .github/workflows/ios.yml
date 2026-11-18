@@ -1,0 +1,149 @@
+name: iOS-App bauen
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ios/**'
+      - '.github/workflows/ios.yml'
+  workflow_dispatch:
+    inputs:
+      store:
+        description: 'Signierte Store-Datei bauen (braucht die Apple-Secrets)'
+        type: boolean
+        default: false
+      upload:
+        description: 'Store-Datei zu App Store Connect (TestFlight) hochladen'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    env:
+      TB_BUILD: ${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Werkzeuge
+        run: |
+          brew install xcodegen
+          xcodebuild -version
+
+      - name: Spiel in die App legen
+        run: |
+          cp index.html ios/Trainerbank/web/index.html
+          rm -f ios/Trainerbank/web/.gitkeep
+          ls -la ios/Trainerbank/web
+
+      - name: Xcode-Projekt erzeugen
+        working-directory: ios
+        run: xcodegen generate
+
+      - name: Test-App bauen (Simulator, ohne Signatur)
+        working-directory: ios
+        run: |
+          set -o pipefail
+          xcodebuild -project Trainerbank.xcodeproj -scheme Trainerbank -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO \
+            MARKETING_VERSION="1.0.$TB_BUILD" CURRENT_PROJECT_VERSION="$TB_BUILD" build | tail -40
+          ls build/Build/Products/Debug-iphonesimulator/Trainerbank.app/web
+
+      - name: Im Simulator starten und Bildschirmfoto machen
+        working-directory: ios
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; c=[x for k in sorted(d,reverse=True) if 'iOS' in k for x in d[k] if x['name'].startswith('iPhone')]; print(c[0]['udid'] if c else '')")
+          if [ -z "$UDID" ]; then echo "Kein iPhone-Simulator gefunden."; exit 1; fi
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl install "$UDID" build/Build/Products/Debug-iphonesimulator/Trainerbank.app
+          xcrun simctl launch "$UDID" de.trainerbank.app
+          sleep 25
+          mkdir -p shots
+          xcrun simctl io "$UDID" screenshot shots/start.png
+          SIZE=$(stat -f%z shots/start.png)
+          echo "Bildschirmfoto: $SIZE Bytes"
+          if xcrun simctl spawn "$UDID" launchctl list | grep -q de.trainerbank.app; then echo "App läuft."; else echo "App läuft nicht mehr (Absturz?)."; exit 1; fi
+          if [ "$SIZE" -lt 60000 ]; then echo "Das Bild ist fast einfarbig: Das Spiel wurde vermutlich nicht geladen."; exit 1; fi
+
+      - name: Bildschirmfoto bereitstellen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trainerbank-ios-simulator
+          path: ios/shots
+          if-no-files-found: ignore
+
+      - name: Apple-Schlüssel bereitstellen
+        id: key
+        if: github.event_name == 'workflow_dispatch' && (inputs.store || inputs.upload)
+        env:
+          P8: ${{ secrets.TB_ASC_KEY_P8_BASE64 }}
+          KEY_ID: ${{ secrets.TB_ASC_KEY_ID }}
+          ISSUER: ${{ secrets.TB_ASC_ISSUER_ID }}
+          TEAM: ${{ secrets.TB_IOS_TEAM_ID }}
+        run: |
+          if [ -z "$P8" ] || [ -z "$KEY_ID" ] || [ -z "$ISSUER" ] || [ -z "$TEAM" ]; then
+            echo "Apple-Secrets fehlen: TB_ASC_KEY_P8_BASE64, TB_ASC_KEY_ID, TB_ASC_ISSUER_ID, TB_IOS_TEAM_ID."
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/keys"
+          echo "$P8" | base64 -d > "$RUNNER_TEMP/keys/AuthKey_$KEY_ID.p8"
+          echo "TB_KEY_PATH=$RUNNER_TEMP/keys/AuthKey_$KEY_ID.p8" >> "$GITHUB_ENV"
+          echo "vorhanden=ja" >> "$GITHUB_OUTPUT"
+
+      - name: Store-Datei bauen (signiertes Archiv)
+        if: steps.key.outputs.vorhanden == 'ja'
+        working-directory: ios
+        env:
+          KEY_ID: ${{ secrets.TB_ASC_KEY_ID }}
+          ISSUER: ${{ secrets.TB_ASC_ISSUER_ID }}
+          TEAM: ${{ secrets.TB_IOS_TEAM_ID }}
+        run: |
+          set -o pipefail
+          xcodebuild -project Trainerbank.xcodeproj -scheme Trainerbank -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath build/Trainerbank.xcarchive archive \
+            CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM="$TEAM" \
+            MARKETING_VERSION="1.0.$TB_BUILD" CURRENT_PROJECT_VERSION="$TB_BUILD" \
+            -allowProvisioningUpdates -authenticationKeyPath "$TB_KEY_PATH" \
+            -authenticationKeyID "$KEY_ID" -authenticationKeyIssuerID "$ISSUER" | tail -40
+
+      - name: Store-Datei exportieren${{ inputs.upload && ' und hochladen' || '' }}
+        if: steps.key.outputs.vorhanden == 'ja'
+        working-directory: ios
+        env:
+          KEY_ID: ${{ secrets.TB_ASC_KEY_ID }}
+          ISSUER: ${{ secrets.TB_ASC_ISSUER_ID }}
+          TEAM: ${{ secrets.TB_IOS_TEAM_ID }}
+          DEST: ${{ inputs.upload && 'upload' || 'export' }}
+        run: |
+          set -o pipefail
+          cat > build/ExportOptions.plist <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>$DEST</string>
+            <key>teamID</key><string>$TEAM</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+          </dict>
+          </plist>
+          PLIST
+          xcodebuild -exportArchive -archivePath build/Trainerbank.xcarchive \
+            -exportOptionsPlist build/ExportOptions.plist -exportPath build/export \
+            -allowProvisioningUpdates -authenticationKeyPath "$TB_KEY_PATH" \
+            -authenticationKeyID "$KEY_ID" -authenticationKeyIssuerID "$ISSUER" | tail -40
+
+      - name: Store-Datei bereitstellen
+        if: steps.key.outputs.vorhanden == 'ja' && !inputs.upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: trainerbank-store-ipa
+          path: ios/build/export/*.ipa
+          if-no-files-found: ignore

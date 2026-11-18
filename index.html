@@ -4033,8 +4033,19 @@ var SND = (function () {
     mSrc = ac.createBufferSource(); mGain = ac.createGain(); mSrc.buffer = buf.music; mSrc.loop = true; mSrc.loopStart = 1; mSrc.loopEnd = 17;
     mGain.gain.value = 0.0001; mGain.gain.linearRampToValueAtTime(mVol, ac.currentTime + 0.8); mSrc.connect(mGain); mGain.connect(master); mSrc.start(0, 1);
   }
-  // Nach dem Zurückholen aus dem Hintergrund (vor allem iPhone) bleibt der Ton sonst stumm
-  function rebuild() { try { if (ac && ac.close) ac.close(); } catch (eC) { } ac = null; master = null; mSrc = null; mGain = null; cSrc = null; cGain = null; if (!ctx()) return; if (wantMusic) musicOn(); if (wantCrowd) crowdOn(); }
+  // Nach dem Zurückholen aus dem Hintergrund bleibt der Ton auf dem iPhone sonst stumm, obwohl der
+  // Audio-Kontext sich als laufend meldet. Deshalb wird er dort beim Zurückkommen neu aufgebaut.
+  var IOS = false, frontT = null, builtAt = 0, builtCt = 0;
+  try { IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || !!(window.TBApp && window.TBApp.ios) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); } catch (eI) { }
+  function rebuild() {
+    try { if (ac && ac.close) ac.close(); } catch (eC) { }
+    ac = null; master = null; mSrc = null; mGain = null; cSrc = null; cGain = null;
+    if (!ctx()) return;
+    builtAt = Date.now(); builtCt = ac.currentTime;
+    try { if (wantMusic) musicOn(); if (wantCrowd) crowdOn(); }
+    catch (eB) { mSrc = null; cSrc = null; buf = {}; loading = false; ctx(); }   // Puffer neu laden, falls der neue Kontext die alten nicht nimmt
+  }
+  function alive() { return !!ac && ac.state === 'running' && (Date.now() - builtAt < 400 || ac.currentTime > builtCt + 0.05); }
   function wake(gesture) {
     if (!ac || !prefs.snd || document.hidden) return;
     try {
@@ -4042,11 +4053,17 @@ var SND = (function () {
       if (gesture) setTimeout(function () { if (ac && prefs.snd && !document.hidden && ac.state !== 'running') rebuild(); }, 900);
     } catch (eV) { }
   }
+  function front(ms) {
+    if (!ac || !prefs.snd) return;
+    if (!IOS) { wake(); setTimeout(wake, 400); return; }
+    if (frontT) clearTimeout(frontT);
+    frontT = setTimeout(function () { frontT = null; if (ac && prefs.snd && !document.hidden) rebuild(); }, ms);
+  }
   try {
-    document.addEventListener('visibilitychange', function () { if (!ac) return; try { if (document.hidden) ac.suspend(); else { wake(); setTimeout(wake, 400); } } catch (eV) { } });
-    window.addEventListener('pageshow', function () { wake(); }); window.addEventListener('focus', function () { wake(); });
-    ['pointerdown', 'touchend', 'keydown'].forEach(function (ev) { document.addEventListener(ev, function () { if (ac && ac.state !== 'running') wake(true); }, true); });
-    window.TBWake = function () { wake(); setTimeout(wake, 400); };
+    document.addEventListener('visibilitychange', function () { if (!ac) return; try { if (document.hidden) { if (frontT) { clearTimeout(frontT); frontT = null; } ac.suspend(); } else front(350); } catch (eV) { } });
+    window.addEventListener('pageshow', function (e) { if (e && e.persisted) front(350); });
+    ['pointerdown', 'touchend', 'keydown'].forEach(function (ev) { document.addEventListener(ev, function () { if (!ac || !prefs.snd || frontT) return; if (IOS && builtAt && !alive()) rebuild(); else if (ac.state !== 'running') wake(true); }, true); });
+    window.TBWake = function () { front(150); };
   } catch (eW) { }
   function ctx() {
     if (!prefs.snd) return null;
@@ -4113,7 +4130,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '18.11. 15:58';
+var BUILD = '18.11. 16:12';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }

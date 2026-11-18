@@ -22,7 +22,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-15
+    runs-on: macos-26
     env:
       TB_BUILD: ${{ github.run_number }}
     steps:
@@ -31,6 +31,10 @@ jobs:
       - name: Werkzeuge
         run: |
           brew install xcodegen
+          ls -d /Applications/Xcode*.app
+          # Apple nimmt Uploads nur noch mit Xcode 26 oder neuer an
+          X=$(ls -d /Applications/Xcode_26*.app /Applications/Xcode_27*.app 2>/dev/null | grep -vi beta | sort -V | tail -1)
+          if [ -n "$X" ]; then sudo xcode-select -s "$X"; fi
           xcodebuild -version
 
       - name: Spiel in die App legen

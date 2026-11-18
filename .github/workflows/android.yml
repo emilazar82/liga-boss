@@ -69,6 +69,13 @@ jobs:
           name: trainerbank-test-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
 
+      - name: Store-Datei bereitstellen
+        if: steps.key.outputs.vorhanden == 'ja'
+        uses: actions/upload-artifact@v4
+        with:
+          name: trainerbank-store-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
+
       # Gerätetest im Emulator: Startet die App, legt dann eine neuere Spieldatei in die App und prüft,
       # dass sie geladen wird und der Spielstand-Speicher derselbe bleibt.
       - name: Emulator vorbereiten
@@ -80,15 +87,11 @@ jobs:
       - name: Gerätetest (Aktualisierung behält den Spielstand)
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 34
+          api-level: 33
+          ram-size: 4096M
+          heap-size: 512M
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
           arch: x86_64
           target: google_apis
           disable-animations: true
           script: bash android/geraetetest.sh
-
-      - name: Store-Datei bereitstellen
-        if: steps.key.outputs.vorhanden == 'ja'
-        uses: actions/upload-artifact@v4
-        with:
-          name: trainerbank-store-aab
-          path: android/app/build/outputs/bundle/release/app-release.aab

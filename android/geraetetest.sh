@@ -12,8 +12,8 @@ adb logcat -c
 adb shell am start -n $PKG/.MainActivity >/dev/null
 P1=$(probe); echo "   $P1"
 case "$P1" in *"had=0"*) ;; *) echo "FEHLER: erster Start meldet nicht had=0"; exit 1;; esac
-sleep 3
-adb shell am force-stop $PKG
+sleep 2
+adb shell am force-stop $PKG || { sleep 5; adb wait-for-device; adb shell am force-stop $PKG; }
 
 echo "== 2. Neuere Spieldatei in die App legen (wie nach einem Download)"
 sed "s/var BUILD = '[^']*'/var BUILD = 'GERAETETEST'/" index.html > /tmp/idx.html

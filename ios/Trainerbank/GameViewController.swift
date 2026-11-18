@@ -3,7 +3,8 @@ import WebKit
 import AVFoundation
 
 /// Schlanke Hülle um das Spiel: Die HTML-Datei liegt in der App (web/index.html)
-/// und läuft in einem WKWebView. Es gibt keinen Netzwerkzugriff.
+/// und läuft in einem WKWebView. Die App fragt nur die Projektseite nach einer neueren
+/// Spieldatei (siehe GameUpdater); ohne Netz läuft die vorhandene Fassung.
 final class GameViewController: UIViewController, WKNavigationDelegate, WKUIDelegate,
                                 WKScriptMessageHandler, UIDocumentPickerDelegate {
 
@@ -13,6 +14,7 @@ final class GameViewController: UIViewController, WKNavigationDelegate, WKUIDele
 
     private var web: WKWebView!
     private var pendingSaveURL: URL?
+    private var pendingUpdate: String?
 
     override var preferredStatusBarStyle: UIStatusBarStyle { .lightContent }
     override var supportedInterfaceOrientations: UIInterfaceOrientationMask { .portrait }
@@ -40,6 +42,9 @@ final class GameViewController: UIViewController, WKNavigationDelegate, WKUIDele
           },
           haptic: function (kind) {
             window.webkit.messageHandlers.tb.postMessage({ a: 'haptic', kind: String(kind || '') });
+          },
+          checkUpdate: function () {
+            window.webkit.messageHandlers.tb.postMessage({ a: 'upd' });
           }
         };
         """
@@ -64,6 +69,7 @@ final class GameViewController: UIViewController, WKNavigationDelegate, WKUIDele
                                                object: nil, queue: .main) { [weak self] _ in
             try? AVAudioSession.sharedInstance().setActive(true)
             self?.web.evaluateJavaScript("window.TBWake && window.TBWake()", completionHandler: nil)
+            self?.checkUpdate()
         }
         web.navigationDelegate = self
         web.uiDelegate = self
@@ -89,6 +95,34 @@ final class GameViewController: UIViewController, WKNavigationDelegate, WKUIDele
         ])
 
         web.load(URLRequest(url: Self.startURL))
+        checkUpdate(force: true)
+    }
+
+    // MARK: Aktualisierung der Spieldatei
+
+    /// Fragt die Projektseite nach einer neueren Spieldatei. Liegt eine vor, wird sie geladen und das Spiel
+    /// bietet den Neustart an. `notify` meldet dem Spiel auch, wenn es nichts Neues gibt.
+    private func checkUpdate(force: Bool = false, notify: Bool = false) {
+        GameUpdater.shared.check(force: force) { [weak self] build in
+            guard let self = self else { return }
+            if let build = build {
+                self.pendingUpdate = build
+                self.announceUpdate()
+            } else if notify {
+                self.web.evaluateJavaScript("window.TBNoUpdate && window.TBNoUpdate()", completionHandler: nil)
+            }
+        }
+    }
+
+    private func announceUpdate() {
+        guard let build = pendingUpdate,
+              let json = try? JSONSerialization.data(withJSONObject: [build]),
+              let arg = String(data: json, encoding: .utf8) else { return }
+        web.evaluateJavaScript("window.TBUpdate && window.TBUpdate(\(arg)[0])", completionHandler: nil)
+    }
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        announceUpdate()
     }
 
     // MARK: Navigation – die App bleibt bei der eigenen Spieldatei
@@ -149,6 +183,8 @@ final class GameViewController: UIViewController, WKNavigationDelegate, WKUIDele
             } else {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
             }
+        case "upd":
+            checkUpdate(force: true, notify: true)
         default:
             break
         }
@@ -202,9 +238,16 @@ final class BundleSchemeHandler: NSObject, WKURLSchemeHandler {
         let ext = (name as NSString).pathExtension
         let base = (name as NSString).deletingPathExtension
         // Nur Dateien direkt aus web/ – keine Unterordner, kein Zugriff nach außen.
-        guard !name.contains(".."),
-              let file = Bundle.main.url(forResource: base, withExtension: ext, subdirectory: "web"),
-              let data = try? Data(contentsOf: file) else {
+        // Die Spieldatei selbst kommt in der neuesten vorhandenen Fassung (geladen oder mitgeliefert).
+        let found: Data?
+        if name == "index.html" {
+            found = GameUpdater.shared.indexData()
+        } else if !name.contains(".."), let file = Bundle.main.url(forResource: base, withExtension: ext, subdirectory: "web") {
+            found = try? Data(contentsOf: file)
+        } else {
+            found = nil
+        }
+        guard let data = found else {
             return task.didFailWithError(URLError(.fileDoesNotExist))
         }
         let mime: String
@@ -228,6 +271,100 @@ final class BundleSchemeHandler: NSObject, WKURLSchemeHandler {
     }
 
     func webView(_ webView: WKWebView, stop task: WKURLSchemeTask) {}
+}
+
+/// Hält das Spiel aktuell: prüft auf der Projektseite, ob eine neuere Spieldatei vorliegt, lädt sie und
+/// legt sie in der App ab. Ohne Netz läuft die zuletzt geladene oder die mitgelieferte Fassung.
+/// Übertragen wird dabei nichts außer der Abfrage selbst.
+final class GameUpdater {
+    static let shared = GameUpdater()
+
+    private static let base = URL(string: "https://emilazar82.github.io/trainerbank/")!
+    private struct Stamp: Codable { let b: String; let t: Double }   // version.json, z. B. {"b":"18.11. 17:26","t":1795019202}
+
+    private let dir: URL
+    private var busy = false
+    private var lastCheck = Date.distantPast
+
+    private init() {
+        let root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        dir = root.appendingPathComponent("web", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    }
+
+    private var cachedFile: URL { dir.appendingPathComponent("index.html") }
+    private var stampFile: URL { dir.appendingPathComponent("stamp.json") }
+
+    private func read(_ url: URL) -> Stamp? {
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        return try? JSONDecoder().decode(Stamp.self, from: data)
+    }
+
+    private var bundled: Stamp? {
+        guard let url = Bundle.main.url(forResource: "version", withExtension: "json", subdirectory: "web") else { return nil }
+        return read(url)
+    }
+
+    private var cached: Stamp? {
+        FileManager.default.fileExists(atPath: cachedFile.path) ? read(stampFile) : nil
+    }
+
+    private var current: Double { max(cached?.t ?? 0, bundled?.t ?? 0) }
+
+    /// Die Spieldatei, die ausgeliefert wird: die geladene, wenn sie neuer ist als die mitgelieferte.
+    func indexData() -> Data? {
+        if let c = cached, c.t > (bundled?.t ?? 0), let data = try? Data(contentsOf: cachedFile) {
+            return data
+        }
+        guard let file = Bundle.main.url(forResource: "index", withExtension: "html", subdirectory: "web") else { return nil }
+        return try? Data(contentsOf: file)
+    }
+
+    /// Prüft höchstens einmal pro Stunde (außer mit `force`). `done` läuft auf dem Hauptthread und bekommt
+    /// den Stand der neu geladenen Fassung oder nil.
+    func check(force: Bool, done: @escaping (String?) -> Void) {
+        if busy || (!force && Date().timeIntervalSince(lastCheck) < 3600) { return done(nil) }
+        busy = true
+        lastCheck = Date()
+        let session = URLSession(configuration: .ephemeral)
+        let have = current
+        let versionReq = URLRequest(url: Self.base.appendingPathComponent("version.json"),
+                                    cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
+        session.dataTask(with: versionReq) { [weak self] data, resp, _ in
+            guard let self = self else { return }
+            guard let data = data, (resp as? HTTPURLResponse)?.statusCode == 200 else {
+                return self.finish(nil, retrySoon: true, done)   // kein Netz: bald noch einmal versuchen
+            }
+            guard let remote = try? JSONDecoder().decode(Stamp.self, from: data), remote.t > have else {
+                return self.finish(nil, retrySoon: false, done)
+            }
+            let htmlReq = URLRequest(url: Self.base.appendingPathComponent("index.html"),
+                                     cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 60)
+            session.dataTask(with: htmlReq) { html, resp2, _ in
+                // Nur eine vollständige Spieldatei mit genau dem angekündigten Stand wird übernommen.
+                guard let html = html, (resp2 as? HTTPURLResponse)?.statusCode == 200, html.count > 500_000,
+                      html.range(of: Data("var BUILD = '\(remote.b)'".utf8)) != nil,
+                      html.range(of: Data("<script id=\"logic\">".utf8)) != nil else {
+                    return self.finish(nil, retrySoon: true, done)
+                }
+                do {
+                    try html.write(to: self.cachedFile, options: .atomic)
+                    try data.write(to: self.stampFile, options: .atomic)
+                    self.finish(remote.b, retrySoon: false, done)
+                } catch {
+                    self.finish(nil, retrySoon: true, done)
+                }
+            }.resume()
+        }.resume()
+    }
+
+    private func finish(_ build: String?, retrySoon: Bool, _ done: @escaping (String?) -> Void) {
+        DispatchQueue.main.async {
+            self.busy = false
+            if retrySoon { self.lastCheck = Date().addingTimeInterval(-3300) }   // in fünf Minuten noch einmal
+            done(build)
+        }
+    }
 }
 
 /// Verhindert, dass der WebView den Controller dauerhaft festhält.

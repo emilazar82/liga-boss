@@ -4237,7 +4237,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '18.11. 17:26';
+var BUILD = '18.11. 17:54';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -5321,6 +5321,11 @@ function vTour() {
 }
 var NEWV = '';
 var INAPP = false; try { INAPP = !!window.TBApp; } catch (eA) { }
+// iPhone-App: Die Hülle lädt eine neuere Spieldatei selbst und meldet sie hier an.
+var APPUPD = false;
+try { window.TBUpdate = function (b) { if (!b || b === BUILD) return; NEWV = String(b); APPUPD = true; ui.updw = false; if (ui.view === 'start' || ui.view === 'menu' || ui.view === 'options') render(); };
+  window.TBNoUpdate = function () { ui.updw = false; if (ui.view === 'start' || ui.view === 'options') render(); toast('Du hast die aktuelle Version (Stand ' + BUILD + ').'); }; } catch (eT) { }
+function appUpd() { try { return !!(window.TBApp && window.TBApp.checkUpdate); } catch (e) { return false; } }
 try {
   window.tbSaved = function (ok) { toast(ok ? 'Spielstand als Datei gesichert.' : 'Sichern abgebrochen.'); };
   window.tbBack = function () {
@@ -5329,8 +5334,8 @@ try {
     return false;
   };
 } catch (eB) { }
-function updHtml() { return INAPP ? '' : NEWV ? '<div class="panel" style="border-color:var(--yellow)"><p style="margin:0 0 8px;font-size:15px"><b>Neue Version verfügbar</b> (Stand ' + esc(NEWV) + '). Dein Spielstand bleibt erhalten.</p><button class="big" data-a="update">Neue Version laden</button></div>' : ''; }
-function updBtn() { return NEWV || INAPP ? '' : '<div style="text-align:center"><button class="big sec2 sm" style="width:auto;padding:0 18px;min-height:38px;font-size:13px" data-a="updcheck">' + (ui.updw ? 'Prüfe …' : 'Auf Updates prüfen') + '</button></div>'; }
+function updHtml() { return INAPP && !APPUPD ? '' : NEWV ? '<div class="panel" style="border-color:var(--yellow)"><p style="margin:0 0 8px;font-size:15px"><b>' + (APPUPD ? 'Neue Version geladen' : 'Neue Version verfügbar') + '</b> (Stand ' + esc(NEWV) + '). Dein Spielstand bleibt erhalten.</p><button class="big" data-a="update">Neue Version laden</button></div>' : ''; }
+function updBtn() { return NEWV || (INAPP && !appUpd()) ? '' : '<div style="text-align:center"><button class="big sec2 sm" style="width:auto;padding:0 18px;min-height:38px;font-size:13px" data-a="updcheck">' + (ui.updw ? 'Prüfe …' : 'Auf Updates prüfen') + '</button></div>'; }
 function updManual() {
   if (ui.updw) return; ui.updw = true; render();
   var done = function (msg) { ui.updw = false; render(); if (msg) toast(msg); };
@@ -7253,7 +7258,7 @@ app.addEventListener('click', function (ev) {
   if (a === 'prefsnd') { prefs.snd = +b.getAttribute('data-val') === 1; if (!prefs.snd) { SND.crowd(false); SND.music(false); } try { localStorage.setItem('ligaboss-prefs', JSON.stringify(prefs)); } catch (e7) { } render(); if (prefs.snd) { SND.unlock(); setTimeout(function () { SND.whistle(1); }, 500); } return; }
   if (a === 'prefpw') { prefs.pw = +b.getAttribute('data-val') === 1 ? 1 : 0; try { localStorage.setItem('ligaboss-prefs', JSON.stringify(prefs)); } catch (e7) { } return render(); }
   if (a === 'preftour') { prefs.tour = +b.getAttribute('data-val') === 1; try { localStorage.setItem('ligaboss-prefs', JSON.stringify(prefs)); } catch (e7) { } return render(); }
-  if (a === 'updcheck') return updManual();
+  if (a === 'updcheck') { if (appUpd()) { ui.updw = true; render(); window.TBApp.checkUpdate(); setTimeout(function () { if (ui.updw) { ui.updw = false; render(); toast('Die Prüfung hat nicht geantwortet. Bist du online?'); } }, 20000); return; } return updManual(); }
   if (a === 'kst') { ui.kst = b.getAttribute('data-val'); return render(); }
   if (a === 'kcol') { var KS = ui.ksel || (ui.ksel = {}); KS[b.getAttribute('data-p')] = b.getAttribute('data-val'); var yk = window.scrollY; render(); return window.scrollTo(0, yk); }
   if (a === 'kcolbuy') { var ek = FM.kitColor(state, ui.ksel.sh, ui.ksel.ho); if (ek) return toast(ek); ui.ksel = null; persist(); render(); return toast('Der neue Trikotsatz ist da.'); }

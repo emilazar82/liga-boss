@@ -4113,7 +4113,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '18.11. 15:46';
+var BUILD = '18.11. 15:58';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -4190,7 +4190,12 @@ function go(view) {
   var mv = { start: 1, custom: 1, opening: 1 };
   ui.musHold = false;
   SND.music(!!mv[view] || view === 'menu', view === 'menu' ? 0.22 : 0.5);
-  ui.view = view; ui.confirm = false; ui.sel = -1; render(); window.scrollTo(0, 0);
+  var pv = ui.view, y0 = 0;
+  // Büro merkt sich die Scrollposition: zurück aus einem Untermenü landet man wieder an derselben Stelle
+  if (pv === 'menu' && view !== 'menu') ui.menuY = window.scrollY;
+  if ({ match: 1, results: 1, season: 1, summer: 1, opening: 1, start: 1, tour: 1, sacked: 1 }[view] === 1) ui.menuY = 0;
+  if (view === 'menu' && pv !== 'menu' && ui.menuY > 0) y0 = ui.menuY;
+  ui.view = view; ui.confirm = false; ui.sel = -1; render(); window.scrollTo(0, y0);
 }
 function heroPic(k, alt, hh) { return '<img class="heropic" alt="' + alt + '" src="' + PICS[k] + '" width="192" height="' + hh + '">'; }
 function sub(title) {
@@ -4961,7 +4966,7 @@ function vStadium() {
   var st = state.stad, u = FM.userTeam(state), h = sub('Stadion'), f = ui.match && ui.match.res ? ui.match.res.fin : null, tab = ui.stt, E = FM.attExpect(state), ce = FM.capEff(state);
   h += stadMap(st, f && f.att ? f.att / ce : E ? E.att / ce : 0.4, tab === 'bau' ? (ui.sblk == null ? 1 : ui.sblk) : -1);
   var fb = st.fans || 1, fillE = f && f.att ? f.att / ce : E ? E.att / ce : 0;
-  h += '<div class="panel"><div class="rings">' + ring(fillE, fillE >= 0.98 ? '#6df09a' : '#ffd84d', tk(ce), 'Plätze · Auslastung') + ring(fb / 1.6, fb < 0.9 ? '#ff9a8f' : fb < 1.1 ? '#ffd84d' : '#6df09a', Math.round(fb * 100) + '%', 'Fanbasis') + ring(1, state.cash < 0 ? '#ff9a8f' : '#6df09a', tk(state.cash), 'Kasse') + '</div></div>';
+  h += '<div class="panel"><div class="rings">' + ring(fillE, fillE >= 0.98 ? '#6df09a' : '#ffd84d', tk(ce), 'Plätze · Auslastung') + ring(fb / 1.6, fb < 0.9 ? '#ff9a8f' : fb < 1.1 ? '#ffd84d' : '#6df09a', Math.round(fb * 100) + '%', 'Fanbasis') + ring(1, state.cash < 0 ? '#ff9a8f' : '#6df09a', tk(state.cash), 'Kasse') + '</div>' + inf('100 % ist der übliche Andrang in deiner Liga. Bei ' + Math.round(fb * 100) + ' % wollen ' + (fb >= 1 ? Math.round((fb - 1) * 100) + ' % mehr' : Math.round((1 - fb) * 100) + ' % weniger') + ' Zuschauer ins Stadion. Siege, ein guter Tabellenplatz, Aufstiege und faire Preise lassen die Fanbasis wachsen. Niederlagen, hohe Preise und Ausschreitungen lassen sie schrumpfen. Möglich sind 60 bis 150 %.', 'Was heißt Fanbasis?') + '</div>';
   var SC0 = FM.stadCond(state), tc0 = function (v) { return v >= 70 ? '#6df09a' : v >= 45 ? '#ffd84d' : '#ff9a8f'; };
   h += '<div class="panel"><p class="lbl">ZUSTAND</p>' + meter('Rasen', SC0.turf / 100, tc0(SC0.turf), SC0.turf + ' %') + meter('Bausubstanz', SC0.cond / 100, tc0(SC0.cond), SC0.cond + ' %') + (tab === 'ops' ? '' : '<button class="big sec2 sm" style="margin-top:8px" data-a="stops">Pflegen und renovieren ›</button>') + '</div>';
   h += tabBar('stt', [['kasse', 'Spieltag'], ['bau', 'Ausbau'], ['ops', 'Betrieb']], tab);

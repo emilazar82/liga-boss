@@ -3722,9 +3722,19 @@ function liveNext(state, auto) {
   liveDisc(state, L, h, true, m0, ev, auto); liveDisc(state, L, a, false, m0, ev, auto); delete L._hard;
   [h, a].forEach(function (t) { var loss = [9, 12, 16][t.ei] / 6 * fatMul(t) * [1, 1.1, 1.2][L.wx | 0]; t.lu.forEach(function (id) { var p = findP(t, id); if (p) p.t = Math.max(30, p.t - (p.p === 0 ? loss / 2 : loss) * (1.25 - 0.005 * p.at[6])); }); });
   if (!L.flz && Math.random() < 0.0075) { L.flz = 1; var ff = 0, fm = 0; if (!L.ntf && !L.tour && h.lg < 7) { ff = [25000, 12000, 5000][Math.min(2, h.lg)]; if (L.home && h.id === u.id) { fm = 1; state.cash -= ff; state.led.stad += ff; news(state, 'Flitzer im Stadion: Der Verband verhängt ' + ff.toLocaleString('de-DE') + ' Ordnungsgeld gegen ' + h.n + ', weil die Ordner den Innenraum nicht gesichert haben.'); } } ev.push({ m: m0 + rnd(3, 13), k: 'flz', h: true, fine: ff, mine: fm, hn: h.n }); }
-  ev.sort(function (x, y) { return x.m - y.m; }); L.ev = L.ev.concat(ev); L.seg++;
+  ev.sort(function (x, y) { return x.m - y.m; });
+  // Nachspielzeit am Ende jeder Hälfte: hängt von Verletzungen, Flitzern, Wechseln, Karten und Toren der Hälfte ab.
+  // Die Ereignisse des letzten Abschnitts verteilen sich dann auf 15 + N Minuten; was über das Ende hinausgeht, bekommt x (z. B. 90+3).
+  var stN = 0, sgi = L.seg, stCap = sgi === 2 ? 3 : sgi === 5 ? 6 : sgi === 6 ? 1 : sgi === 7 ? 3 : 0;
+  if (stCap) {
+    var hf0 = sgi === 2 ? 0 : sgi === 5 ? 45 : sgi === 6 ? 90 : 105, stP = 0;
+    L.ev.concat(ev).forEach(function (e) { if (e.m <= hf0) return; stP += e.k === 'inj' ? 1.3 : e.k === 'flz' ? 2 : e.k === 'sub' ? 0.3 : e.k === 'r' || e.k === 'yr' ? 0.5 : e.k === 'y' ? 0.12 : e.g ? 0.35 : 0; });
+    stN = Math.min(stCap, Math.floor(stP * (sgi >= 6 ? 0.8 : 1) + Math.random() * 0.9));
+    if (stN > 0) { var stE = m0 + 15; ev.forEach(function (e) { var nm = m0 + Math.max(1, Math.ceil((e.m - m0) * (15 + stN) / 15)); if (nm > stE) { e.x = nm - stE; nm = stE; } e.m = nm; }); (L.st = L.st || {})[sgi] = stN; }
+  }
+  L.ev = L.ev.concat(ev); L.seg++;
   var etNow = false; if (L.seg === 6 && !L.et && koTied(state)) { L.et = 1; etNow = true; L.subs[L.h]++; L.subs[L.a]++; }
-  return { events: ev, done: L.seg >= liveEnd(L), et: etNow };
+  return { events: ev, done: L.seg >= liveEnd(L), et: etNow, st: stN };
 }
 function aiLive(L, t, isHome, m0, ev) {
   if (!L.ai0) L.ai0 = { au: t.au, pr: t.pr, tp: t.tp };
@@ -4256,7 +4266,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '19.11. 07:35';
+var BUILD = '19.11. 13:24';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -5771,6 +5781,7 @@ function matchPanel() {
 }
 var T_GOAL = ['TOR für {t}! {p} trifft zum {s}.', '{p} zieht ab – drin! {s} für {t}.', 'Flanke, Kopfball, Tor! {p} macht das {s} für {t}.', '{p} bleibt eiskalt und schiebt ein. {s} für {t}.'];
 var T_MISS = ['{p} ({t}) verzieht knapp.', 'Großchance für {t}, aber {p} scheitert am Torwart.', '{p} ({t}) köpft knapp drüber.', 'Der Schuss von {p} ({t}) geht an den Pfosten.', '{p} ({t}) kommt frei zum Abschluss – gehalten.'];
+function mm(e) { return e.x ? e.m + '+' + e.x : e.m; }
 function tick(text, cls) {
   var box = document.getElementById('mTicker'); if (!box) return;
   var d = document.createElement('div'); d.className = 'tk ' + (cls || ''); d.textContent = text; box.insertBefore(d, box.firstChild);
@@ -6328,6 +6339,7 @@ function simDraw(M) {
   c.imageSmoothingEnabled = false; cv.dataset.cam = S.mode === 'cam' ? '1' : '';
   if (S.mode === 'cam' && S.camSc) { c.setTransform(1, 0, 0, 1, 0, 0); camDraw(c, S); camNote(c, S.camSc); wxDraw(c, S, 368, 224); return; }
   c.setTransform(2, 0, 0, 2, 0, 0);
+  var FLX = !!M.flipX, oxS = ox; if (FLX) c.setTransform(-2, 0, 0, 2, 2 * VW, 0);
   function R(col, wx, wy, w, h) { c.fillStyle = col; c.fillRect(Math.round(wx) - ox, Math.round(wy) - oy, w, h); }
   c.fillStyle = '#2a7d3c'; c.fillRect(0, 0, VW, VH);
   for (k = 0; k < 13; k++) R(k % 2 ? '#3aa750' : '#44b55b', k * 40, 0, 40, FH);
@@ -6347,7 +6359,9 @@ function simDraw(M) {
   }
   crowd(-MG, -MG, FW + MG, -13); crowd(-MG, FH + 13, FW + MG, FH + MG);
   if (!S.adb) S.adb = adBoards();
+  if (FLX) { c.setTransform(2, 0, 0, 2, 0, 0); ox = FW - VW - oxS; }
   if (S.adb.length) { c.imageSmoothingEnabled = true; for (k = 0; k * 40 < FW; k++) { var ai = S.adb[k % S.adb.length], axp = k * 40 + 1 - ox; if (axp > VW || axp < -40) continue; R('#0b1622', k * 40, -13, 40, 12); if (ai && ai.complete && ai.naturalWidth) c.drawImage(ai, 0, 0, ai.naturalWidth, Math.min(ai.naturalHeight, Math.round(ai.naturalWidth * 0.28)), axp, -12 - oy, 38, 10.6); else R('#39454d', k * 40 + 1, -12, 38, 10); } c.imageSmoothingEnabled = false; } crowd(-MG, -13, -15, FH + 13); crowd(FW + 15, -13, FW + MG, FH + 13);
+  if (FLX) { ox = oxS; c.setTransform(-2, 0, 0, 2, 2 * VW, 0); }
   for (k = -1; k < 11; k++) {
     var bc = BOARD[(k + 5) % 5], tc = bc === '#f4efe1' ? '#12356f' : '#f4efe1';
     R(bc, k * 52, -12, 52, 8); R(tc, k * 52 + 8, -9, 20 + (k + 5) % 3 * 8, 2); R('#0b1622', k * 52, -4, 52, 1);
@@ -6434,6 +6448,7 @@ function simDraw(M) {
       if (p.card !== 'y') { c.fillStyle = '#e0402f'; c.fillRect(X + (p.card === 'yr' ? 9 : 4), Y - 32, 4, 6); }
     }
   });
+  if (FLX) c.setTransform(2, 0, 0, 2, 0, 0);
   if (S.cap) {
     var CP = S.cap, ch = 16 + CP.lines.length * 10, cw2 = 150, cex = (CP.card ? (CP.card === 'yr' ? 16 : 9) : 0) + (CP.cross ? 10 : 0), cfs = 7; c.font = "7px 'Press Start 2P', monospace"; var ctw = c.measureText(CP.title).width + cex; c.font = "600 8px 'Space Grotesk', system-ui, sans-serif"; var clw = 0; CP.lines.forEach(function (ln) { clw = Math.max(clw, c.measureText(ln.txt).width + (ln.ic ? 9 : 0)); }); cw2 = Math.min(VW - 8, Math.max(150, Math.ceil(Math.max(ctw, clw)) + 12)); if (ctw > cw2 - 12) cfs = Math.max(4.5, Math.floor(7 * (cw2 - 12 - cex) / (ctw - cex) * 2) / 2); var clf = clw > cw2 - 12 ? Math.max(5.5, Math.floor(8 * (cw2 - 12) / clw * 2) / 2) : 8; var cx0 = Math.round(VW / 2 - cw2 / 2), cy0 = ((S.focus ? S.focus.y : S.by) * FH - oy) > VH / 2 ? 5 : VH - ch - 5;
     c.fillStyle = 'rgba(11,22,34,.86)'; c.fillRect(cx0, cy0, cw2, ch);
@@ -6475,7 +6490,7 @@ function startMatch() {
   function apply(e) {
     var tn = e.h ? hn : an, tpl; M.n++;
     if (e.g && e.h !== M.home && state.live && !M.mute && !state.live.ban && (state.live.prN || 0) < 2) { M.prE = e; setTimeout(shoutBar, 0); setTimeout(function () { if (M.prE === e) { M.prE = null; shoutBar(); } }, 8000); }
-    if (e.g) { if (e.h) M.hg++; else M.ag++; M.goals.push({ m: e.m, h: e.h, p: e.p + (e.og ? ' (ET)' : ''), rp: e.p }); tpl = T_GOAL[(e.m + M.n) % T_GOAL.length]; if (!M.mute && !e._cam) SND.goal(e.h === M.home); }
+    if (e.g) { if (e.h) M.hg++; else M.ag++; M.goals.push({ m: e.m, x: e.x, h: e.h, p: e.p + (e.og ? ' (ET)' : ''), rp: e.p }); tpl = T_GOAL[(e.m + M.n) % T_GOAL.length]; if (!M.mute && !e._cam) SND.goal(e.h === M.home); }
     else { tpl = T_MISS[(e.m + M.n) % T_MISS.length]; if (!M.mute && !e._cam) SND.miss(); }
     if (e.og) tpl = ['Eigentor! {p} lenkt den Ball unglücklich ins eigene Netz – {s} für {t}.', 'Was für ein Pech: {p} trifft ins eigene Tor. {s} für {t}.', '{p} will klären und überwindet den eigenen Torwart – {s} für {t}.'][(e.m + M.n) % 3];
     else if (e.ty === 'ds') tpl = e.g ? ['{p} zieht aus der Distanz ab – der Ball schlägt im Winkel ein! {s} für {t}.', 'Traumtor! {p} hämmert den Ball aus 25 Metern ins Netz – {s} für {t}.', '{p} fasst sich ein Herz und trifft aus der zweiten Reihe. {s} für {t}.'][(e.m + M.n) % 3] : ['Distanzschuss von {p} ({t}) – knapp vorbei.', '{p} ({t}) versucht es aus der Ferne, der Torwart lenkt den Ball über die Latte.', '{p} ({t}) zieht aus 25 Metern ab – drüber.'][(e.m + M.n) % 3];
@@ -6483,7 +6498,7 @@ function startMatch() {
     else if (e.ty === 'so') tpl = e.g ? ['{p} lässt seinen Gegenspieler stehen und vollendet zum {s} für {t}.', 'Solo! {p} tanzt die Abwehr aus und schiebt ein – {s} für {t}.', '{p} setzt sich im Eins-gegen-eins durch: {s} für {t}.'][(e.m + M.n) % 3] : ['{p} ({t}) setzt sich im Solo durch, scheitert aber am Torwart.', 'Starkes Dribbling von {p} ({t}), der Abschluss geht vorbei.', '{p} ({t}) lässt zwei Mann stehen und verzieht dann.'][(e.m + M.n) % 3];
     if (e.pb) tpl = 'Pfosten! Der Ball springt zurück – Nachschuss: ' + tpl; else if (e.pr2) tpl = 'Der Torwart hält den Elfmeter, aber der Nachschuss: ' + tpl; else if (e.ke) tpl = 'Torwartfehler! ' + tpl;
     if (e.ct) tpl = e.g ? ['{p} läuft allein auf den Torwart zu und schiebt eiskalt ein – {s} für {t}.', 'Blitzschnell umgeschaltet! {p} vollendet den Gegenstoß zum {s} für {t}.', 'Ein langer Ball, {p} ist durch und trifft – {s} für {t}.'][(e.m + M.n) % 3] : ['{p} ({t}) ist nach einem langen Ball frei durch, scheitert aber am Torwart.', '{t} schaltet schnell um, doch {p} verzieht im Laufduell.', '{p} ({t}) läuft allein aufs Tor zu und vergibt.'][(e.m + M.n) % 3];
-    tick(e.m + "' " + (e.ct ? 'Konter! ' : e.sp === 'pen' ? 'Elfmeter! ' : e.sp === 'corner' ? 'Ecke. ' : e.sp === 'fk' ? 'Freistoß. ' : '') + tpl.replace('{t}', tn).replace('{p}', e.p).replace('{s}', M.hg + ':' + M.ag) + (e.g && e.ex ? ' Ausgerechnet gegen seinen alten Verein!' : ''), e.g ? 'goal' + (e.h === M.home ? '' : ' opp') : '');
+    tick(mm(e) + "' " + (e.ct ? 'Konter! ' : e.sp === 'pen' ? 'Elfmeter! ' : e.sp === 'corner' ? 'Ecke. ' : e.sp === 'fk' ? 'Freistoß. ' : '') + tpl.replace('{t}', tn).replace('{p}', e.p).replace('{s}', M.hg + ':' + M.ag) + (e.g && e.ex ? ' Ausgerechnet gegen seinen alten Verein!' : ''), e.g ? 'goal' + (e.h === M.home ? '' : ' opp') : '');
     var sc = document.getElementById('mScore'); if (sc) sc.textContent = M.hg + ':' + M.ag; aggUpd(M.hg, M.ag);
     if (KF && e.g) kfBar();
   }
@@ -6540,8 +6555,8 @@ function startMatch() {
   }
   M.stats = mStats; mStats();
   function note(e) {
-    if (e.k === 'wx') { if (S) S.wx = e.w; tick(e.m + "' " + (e.w === 1 ? (e.w0 === 2 ? 'Der Schnee geht in Regen über.' : 'Es beginnt zu regnen – der Rasen wird rutschig.') : e.w === 2 ? (e.w0 === 1 ? 'Der Regen geht in Schnee über.' : 'Es fängt an zu schneien.') : e.w0 === 2 ? 'Der Schneefall hört auf, der Platz wird wieder besser bespielbar.' : 'Der Regen hört auf.'), 'info'); return; }
-    if (e.k === 'flz') { tick(e.m + "' " + ['Ein Flitzer in Herzchen-Unterhose stürmt den Platz! Zwei Ordner nehmen die Verfolgung auf.', 'Spielunterbrechung: Ein Fan in Unterhose dreht eine Ehrenrunde, die Ordner hinterher.', 'Was ist denn da los? Ein Flitzer schlägt Haken über den Rasen, das Stadion johlt.'][(e.m + M.n) % 3] + (e.fine ? ' Der Verband bestraft ' + (e.mine ? 'deinen Verein' : e.hn) + ' als Gastgeber mit ' + num(e.fine) + ' Ordnungsgeld, weil die Ordner den Innenraum nicht im Griff hatten.' : ''), 'info'); return; }
+    if (e.k === 'wx') { if (S) S.wx = e.w; tick(mm(e) + "' " + (e.w === 1 ? (e.w0 === 2 ? 'Der Schnee geht in Regen über.' : 'Es beginnt zu regnen – der Rasen wird rutschig.') : e.w === 2 ? (e.w0 === 1 ? 'Der Regen geht in Schnee über.' : 'Es fängt an zu schneien.') : e.w0 === 2 ? 'Der Schneefall hört auf, der Platz wird wieder besser bespielbar.' : 'Der Regen hört auf.'), 'info'); return; }
+    if (e.k === 'flz') { tick(mm(e) + "' " + ['Ein Flitzer in Herzchen-Unterhose stürmt den Platz! Zwei Ordner nehmen die Verfolgung auf.', 'Spielunterbrechung: Ein Fan in Unterhose dreht eine Ehrenrunde, die Ordner hinterher.', 'Was ist denn da los? Ein Flitzer schlägt Haken über den Rasen, das Stadion johlt.'][(e.m + M.n) % 3] + (e.fine ? ' Der Verband bestraft ' + (e.mine ? 'deinen Verein' : e.hn) + ' als Gastgeber mit ' + num(e.fine) + ' Ordnungsgeld, weil die Ordner den Innenraum nicht im Griff hatten.' : ''), 'info'); return; }
     if (!M.mute && (e.k === 'y' || e.k === 'yr' || e.k === 'r')) SND.whistle(0);
     var sd = e.h ? 0 : 1; if (e.k === 'y') M.cnt.y[sd]++; else if (e.k === 'yr') { M.cnt.y[sd]++; M.cnt.r[sd]++; } else if (e.k === 'r') M.cnt.r[sd]++;
     mStats();
@@ -6553,11 +6568,11 @@ function startMatch() {
     else if (e.k === 'inj') { txt = e.p + ' (' + tn + ') hat sich verletzt und muss raus. ' + (e.rl ? 'Zu früh zurück – ein Rückfall. ' : '') + (e.it ? 'Verdacht auf ' + e.it + '. ' : '') + 'Voraussichtliche Pause: ' + e.w + (e.w === 1 ? ' Woche.' : ' Wochen.'); cls = 'red'; }
     else if (e.k === 'tac') txt = tn + e.t;
     else txt = 'Wechsel bei ' + tn + ': ' + e.p + ' kommt' + (e.o ? ' für ' + e.o : '') + '.';
-    tick(e.m + "' " + txt, cls);
+    tick(mm(e) + "' " + txt, cls);
   }
   function any(e) { if (e.k === 'tac') note(e); else if (e.k) { note(e); simApply(S, e); } else apply(e); }
   M.note = function (e) { note(e); if (e.k === 'tac') return; if (fast) simApply(S, e); else S.pend.push(e); };
-  function loadSeg() { var r = FM.liveNext(state); M.queue = r.events.slice(); M.segEnd = state.live.seg * 15; persist(); shoutBar(); }
+  function loadSeg() { var r = FM.liveNext(state); M.queue = r.events.slice(); M.segEnd = state.live.seg * 15; M.stN = r.st || 0; M.x = 0; var cs = state.live.seg - 1; M.flipX = (cs >= 3 && cs <= 5) || cs === 7; persist(); shoutBar(); }
   M.unGoal = function (e) { for (var gi = M.goals.length - 1; gi >= 0; gi--) if (M.goals[gi].m === e.m && (M.goals[gi].rp || M.goals[gi].p) === e.p && M.goals[gi].h === e.h) { M.goals.splice(gi, 1); break; } if (e.h) M.hg = Math.max(0, M.hg - 1); else M.ag = Math.max(0, M.ag - 1); var sc0 = document.getElementById('mScore'); if (sc0) sc0.textContent = M.hg + ':' + M.ag; aggUpd(M.hg, M.ag); if (M.kfBar) M.kfBar(); };
   function finish() {
     if (M.pkWait) return;
@@ -6579,7 +6594,7 @@ function startMatch() {
       var uh = M.home, gf = uh ? m.hg : m.ag, ga = uh ? m.ag : m.hg, won = m.pen || m.agg ? m.w === state.uid : gf > ga, lost = m.pen || m.agg ? m.w !== state.uid : gf < ga;
       var sl = function (hh) {
         var g = M.goals.filter(function (x) { return x.h === hh; }), by = [], ix = {};
-        g.forEach(function (x) { if (ix[x.p] === undefined) { ix[x.p] = by.length; by.push({ p: x.p, m: [] }); } by[ix[x.p]].m.push(x.m + "'"); });
+        g.forEach(function (x) { if (ix[x.p] === undefined) { ix[x.p] = by.length; by.push({ p: x.p, m: [] }); } by[ix[x.p]].m.push(mm(x) + "'"); });
         if (!by.length) return '<li class="no">–</li>';
         var row = function (o) { return esc(o.p) + ' <i>' + o.m.join(', ') + '</i>'; };
         if (by.length <= 4) return by.map(function (o) { return '<li>' + row(o) + '</li>'; }).join('');
@@ -6627,12 +6642,15 @@ function startMatch() {
     M.last = 0; if (timer) cancelAnimationFrame(timer); timer = requestAnimationFrame(frame);
   }
   function minute() {
+    var mn = document.getElementById('mMin');
+    if (M.min >= M.segEnd && (M.x || 0) < (M.stN || 0)) { M.x = (M.x || 0) + 1; if (mn) mn.textContent = M.segEnd + '+' + M.x + '. Minute'; return; }
     M.min++;
-    var mn = document.getElementById('mMin'); if (mn && M.min < (state.live && state.live.et ? 120 : 90)) mn.textContent = M.min + '. Minute';
+    if (mn && M.min < (state.live && state.live.et ? 120 : 90)) mn.textContent = M.min + '. Minute';
+    if (M.min === M.segEnd && M.stN > 0) { if (mn) mn.textContent = M.min + '. Minute'; tick(M.segEnd + "' Der Schiedsrichter zeigt an: " + (M.stN === 1 ? 'eine Minute' : M.stN + ' Minuten') + ' Nachspielzeit.', 'info'); }
   }
   M.pause = function (title) { M.paused = true; M.ptitle = title; ui.subOut = -1; ui.subIn = -1; ui.subPlan = []; matchPanel(); window.scrollTo(0, 0); };
   M.resume = function () { var PL = ui.subPlan || []; ui.subPlan = []; ui.subOut = -1; ui.subIn = -1; if (state.live) PL.forEach(function (q) { var rs = FM.liveSub(state, q.o, q.i); if (typeof rs === 'string') toast(rs); else M.note(rs); });
-    if (M.ptitle === 'Halbzeit' || M.ptitle === 'Verlängerung') SND.whistle(1); if (state.live) state.live.need = null; M.paused = false; M.last = 0; matchPanel(); };
+    if (M.ptitle === 'Halbzeit' || M.ptitle === 'Verlängerung' || M.ptitle === 'Verlängerung · Seitenwechsel') SND.whistle(1); if (state.live) state.live.need = null; M.paused = false; M.last = 0; matchPanel(); };
   M.finish = finish;
   M.skip = function () {
     if (M.done || M.pkWait) return;
@@ -6664,17 +6682,17 @@ function startMatch() {
       if (S.pend.length) startScene(S, S.pend.shift());
       else if (M.wantPause) { M.wantPause = false; M.pause('Spiel unterbrochen · ' + M.min + '. Minute'); }
       else if (M.kfq && M.kfq.length && M.kfq[0].m <= M.min) kfGoal(M.kfq.shift());
-      else if (M.queue.length && M.queue[0].m <= M.min) {
+      else if (M.queue.length && (M.queue[0].m < M.min || (M.queue[0].m === M.min && (M.queue[0].x || 0) <= (M.x || 0)))) {
         var e = M.queue.shift();
         if (e.k === 'tac') note(e);
         else if (e.k) { note(e); var af = e.need && state.live.need ? (function (mm) { return function () { M.pause('Verletzung · ' + mm + '. Minute'); }; })(e.m) : null; if (fast) { simApply(S, e); if (af) af(); } else startScene(S, e, af); }
         else if (fast) apply(e);
         else { S.cur = e; startChance(S, e, function (ev) { S.cur = null; apply(ev); }); }
       }
-      else if (M.min >= M.segEnd) {
+      else if (M.min >= M.segEnd && (M.x || 0) >= (M.stN || 0)) {
         if (FM.liveOver(state)) { finish(); return; }
         if (state.live.seg === 6 && !M.etDone) { M.etDone = true; SND.whistle(2); tick('Unentschieden nach 90 Minuten – es gibt Verlängerung, zweimal 15 Minuten. Beide Mannschaften dürfen einmal zusätzlich wechseln.', 'info'); var etl = document.getElementById('mMin'); if (etl) etl.textContent = 'Verlängerung'; M.pause('Verlängerung'); }
-        else if (state.live.seg === 7 && !M.et2Done) { M.et2Done = true; SND.whistle(1); tick('Seitenwechsel in der Verlängerung. Stand: ' + M.hg + ':' + M.ag + '.', 'info'); loadSeg(); }
+        else if (state.live.seg === 7 && !M.et2Done) { M.et2Done = true; SND.whistle(2); tick('Pause in der Verlängerung – die Mannschaften wechseln die Seiten. Stand: ' + M.hg + ':' + M.ag + '.', 'info'); var e2l = document.getElementById('mMin'); if (e2l) e2l.textContent = 'Seitenwechsel'; M.pause('Verlängerung · Seitenwechsel'); }
         else if (state.live.seg === 3 && !M.htDone) { M.htDone = true; SND.whistle(2); tick('Halbzeit. Stand: ' + M.hg + ':' + M.ag + '.', 'info'); if (KF) tick('Konferenz zur Pause: ' + KF.ms.map(function (m, i) { return m.hn + ' ' + M.kfs[i][0] + ':' + M.kfs[i][1] + ' ' + m.an; }).join(' · '), 'info'); M.pause('Halbzeit'); }
         else loadSeg();
       }

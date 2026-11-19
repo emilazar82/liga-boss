@@ -3647,11 +3647,12 @@ function liveSub(state, outId, inId) {
   if (!L) return 'Es läuft kein Spiel.';
   if (L.subs[u.id] <= 0) return 'Das Wechselkontingent ist erschöpft.';
   if (!p || !avail(p) || L.pl[u.id].indexOf(inId) >= 0) return 'Dieser Spieler kann nicht eingewechselt werden.';
-  var max = 11 - L.off.filter(function (o) { return o.t === u.id; }).length;
+  var max = 11 - L.off.filter(function (o) { return o.t === u.id; }).length, H = L.hurt || [], hx = outId != null ? H.indexOf(outId) : (H.length ? 0 : -1), hp = null;
+  if (hx >= 0 && u.lu.indexOf(H[hx]) < 0) { hp = findP(u, H[hx]); outId = null; } else hx = -1;   // Verletzter: steht nicht mehr auf dem Platz, sein Platz wird aufgefüllt
   if (outId == null && u.lu.length >= max) return 'Erst einen Spieler herausnehmen.';
   if (outId != null && u.lu.indexOf(outId) < 0) return 'Dieser Spieler steht nicht auf dem Platz.';
-  var o = outId != null ? findP(u, outId) : null;
-  doSub(L, u, outId, p); L.need = null;
+  var o = outId != null ? findP(u, outId) : hp;
+  doSub(L, u, outId, p); L.need = null; if (hx >= 0) H.splice(hx, 1);
   var e = { m: Math.min(L.et ? 120 : 90, L.seg * 15), h: L.home, k: 'sub', p: p.n, o: o ? o.n : '' }; L.ev.push(e); return e;
 }
 function liveDisc(state, L, t, isHome, m0, ev, auto) {
@@ -3671,7 +3672,7 @@ function liveDisc(state, L, t, isHome, m0, ev, auto) {
     var e = { m: m, h: isHome, k: 'inj', it: injName(p.inj, p.i), rl: rl0 ? 1 : 0, p: p.n, id: p.i, w: p.inj }; ev.push(e);
     if (L.subs[t.id] > 0) {
       var bench = liveBench(state, t.id).sort(function (a, b) { return eff(b) - eff(a); });
-      if (t.id === u.id && !auto) { if (bench.length) { L.need = { pos: p.p, n: p.n, i: p.i, a: p.a, s: p.s, it: e.it, w: e.w, m: m }; e.need = true; } }
+      if (t.id === u.id && !auto) { (L.hurt = L.hurt || []).push(p.i); if (bench.length) { L.need = { pos: p.p, n: p.n, i: p.i, a: p.a, s: p.s, it: e.it, w: e.w, m: m }; e.need = true; } }
       else {
         var b = bench.filter(function (x) { return x.p === p.p; })[0] || bench.filter(function (x) { return x.p > 0; })[0];
         if (b) { doSub(L, t, null, b); ev.push({ m: m, h: isHome, k: 'sub', p: b.n, o: p.n }); }
@@ -4239,7 +4240,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '18.11. 21:07';
+var BUILD = '19.11. 06:49';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -5678,7 +5679,7 @@ function matchPanel() {
     }
   }
   if (!M.paused || !L) { el.innerHTML = ''; return; }
-  var u = FM.userTeam(state), need = L.need, left = L.subs[u.id];
+  var u = FM.userTeam(state), need = L.need, plan = ui.subPlan || (ui.subPlan = []), left = L.subs[u.id] - plan.length;
   function row(p, act, on) {
     return '<button class="pl' + (on ? ' on' : '') + '" data-a="' + act + '" data-id="' + p.i + '"><span><span class="pos p' + p.p + '">' + FM.POS[p.p] + '</span></span><span class="nm">' + esc(p.n) + (L.yc[p.i] ? ' <span class="st yel">G</span>' : '') + '</span><span>' + p.a + '</span><span><b>' + p.s + '</b></span><span>' + p.f + '</span><span>' + fitBar(p.t) + '</span></button>';
   }
@@ -5690,24 +5691,34 @@ function matchPanel() {
   }
   h += chips('mtab', [['sub', 'Wechsel · ' + left + ' übrig'], ['tac', 'Taktik']], tab);
   var bench = FM.liveBench(state, u.id).sort(function (a, b) { return a.p - b.p || FM.eff(b) - FM.eff(a); });
-  var late = '', free = need ? 0 : 11 - (L.off || []).filter(function (o) { return o.t === u.id; }).length - u.lu.length;
   if (tab === 'sub') {
-    if (need) h += '<div style="border:3px solid #ff6a5a;background:#3a1512;padding:10px"><div class="row" style="align-items:center;gap:8px;margin-bottom:8px"><span style="flex:none;width:26px;height:26px;display:grid;place-items:center;background:#ff6a5a;color:#fff;font-family:var(--px);font-size:14px;line-height:1">+</span><b style="font-family:var(--px);font-size:11px;color:#ff9a8f;letter-spacing:.5px">VERLETZT · MUSS RAUS</b></div><div class="row" style="align-items:center;gap:10px"><span class="pos p' + need.pos + '">' + FM.POS[need.pos] + '</span><b class="grow" style="font-size:18px;min-width:0">' + esc(need.n) + '</b>' + (need.s ? '<span style="white-space:nowrap">Stärke <b>' + need.s + '</b></span>' : '') + '</div>' + (need.it || need.w ? '<p style="margin:6px 0 0;color:#ffd0ca;font-size:13.5px">' + (need.it ? 'Verdacht auf ' + esc(need.it) + ' · ' : '') + (need.w ? 'Pause etwa ' + need.w + (need.w === 1 ? ' Woche' : ' Wochen') : '') + (need.m ? ' · ' + need.m + '. Minute' : '') + '</p>' : '') + '<p class="hint" style="margin:8px 0 0;color:#f4efe1">Wähle unten einen Ersatz oder spiele in Unterzahl weiter. Spieler seiner Position stehen oben.</p></div>';
-    else if (left > 0) {
-      if (free > 0) h += '<div style="border:3px solid #ffd84d;background:#2c2a12;padding:10px"><b style="font-family:var(--px);font-size:11px;color:#ffd84d;letter-spacing:.5px">' + (free === 1 ? 'EIN PLATZ IST FREI' : free + ' PLÄTZE SIND FREI') + '</b><p style="margin:6px 0 0">Du spielst in Unterzahl, ohne dass jemand vom Platz gestellt wurde. Tippe einen Bankspieler an, um aufzufüllen.</p></div>';
-      var hPitch = '<p class="lbl" style="margin:0">AUF DEM PLATZ · ' + (free > 0 ? 'ODER WER GEHT RAUS?' : 'WER GEHT RAUS?') + '</p><div class="list">';
-      u.lu.map(function (id) { return FM.findP(u, id); }).sort(function (a, b) { return a.p - b.p; }).forEach(function (p) { hPitch += row(p, 'mout', ui.subOut === p.i); });
-      hPitch += '</div>';
-      if (free > 0 && ui.subOut < 0) late = hPitch; else h += hPitch;   // freier Platz: erst die Bank zeigen
-    } else h += '<p class="hint" style="margin:0">Das Wechselkontingent ist erschöpft.</p>';
-    if (left > 0 && (need || ui.subOut >= 0 || free > 0)) {
-      h += '<p class="lbl" style="margin:0">' + (need ? 'BANK · WER KOMMT FÜR ' + esc(need.n.toUpperCase()) + '?' : ui.subOut < 0 ? 'BANK · WER FÜLLT DEN FREIEN PLATZ?' : 'BANK · WER KOMMT?') + '</p><div class="list">';
-      if (!bench.length) h += '<p class="hint" style="margin:0">Es sitzt niemand mehr auf der Bank.</p>';
-      if (need) bench = bench.filter(function (p) { return p.p === need.pos; }).concat(bench.filter(function (p) { return p.p !== need.pos; }));
-      bench.forEach(function (p) { h += row(p, 'min', false).replace('class="pl', need && p.p === need.pos ? 'style="box-shadow:inset 4px 0 0 #6df09a" class="pl' : 'class="pl'); });
+    // Wechsel werden nur vorgemerkt und erst beim Weiterspielen vollzogen (dann meldet sie auch der Ticker).
+    var outP = {}, inP = {}; plan.forEach(function (q) { if (q.o != null) outP[q.o] = 1; inP[q.i] = 1; });
+    var hurt = (L.hurt || []).slice(); if (need && hurt.indexOf(need.i) < 0) hurt.push(need.i);
+    hurt = hurt.filter(function (id) { return u.lu.indexOf(id) < 0 && FM.findP(u, id); });
+    var free = 11 - (L.off || []).filter(function (o) { return o.t === u.id; }).length - u.lu.length - hurt.length - plan.filter(function (q) { return q.o == null; }).length;
+    if (plan.length) {
+      h += '<div style="border:3px solid #6df09a;background:#0c3a2b;padding:10px"><b style="font-family:var(--px);font-size:11px;color:#6df09a;letter-spacing:.5px">VORGEMERKT · GILT BEIM WEITERSPIELEN</b>';
+      plan.forEach(function (q, i) { var pi = FM.findP(u, q.i), po = q.o != null ? FM.findP(u, q.o) : null; h += '<div class="row" style="align-items:center;gap:8px;margin-top:8px"><span class="grow" style="min-width:0"><b>' + esc(pi ? pi.n : '?') + '</b> kommt' + (po ? ' für ' + esc(po.n) : '') + '</span><button data-a="mundo" data-id="' + i + '" style="flex:none;background:#0a2a22;color:#fff;border:2px solid #6df09a;padding:7px 12px;font:inherit;font-size:13px">Zurück</button></div>'; });
       h += '</div>';
     }
-    h += late;
+    if (need && ui.subOut < 0 && !outP[need.i] && left > 0) ui.subOut = need.i;   // der Verletzte ist schon als „geht raus" gewählt
+    if (need && !outP[need.i]) h += '<div style="border:3px solid #ff6a5a;background:#3a1512;padding:10px"><div class="row" style="align-items:center;gap:8px;margin-bottom:8px"><span style="flex:none;width:26px;height:26px;display:grid;place-items:center;background:#ff6a5a;color:#fff;font-family:var(--px);font-size:14px;line-height:1">+</span><b style="font-family:var(--px);font-size:11px;color:#ff9a8f;letter-spacing:.5px">VERLETZT · KANN NICHT WEITERSPIELEN</b></div><div class="row" style="align-items:center;gap:10px"><span class="pos p' + need.pos + '">' + FM.POS[need.pos] + '</span><b class="grow" style="font-size:18px;min-width:0">' + esc(need.n) + '</b>' + (need.s ? '<span style="white-space:nowrap">Stärke <b>' + need.s + '</b></span>' : '') + '</div>' + (need.it || need.w ? '<p style="margin:6px 0 0;color:#ffd0ca;font-size:13.5px">' + (need.it ? 'Verdacht auf ' + esc(need.it) + ' · ' : '') + (need.w ? 'Pause etwa ' + need.w + (need.w === 1 ? ' Woche' : ' Wochen') : '') + (need.m ? ' · ' + need.m + '. Minute' : '') + '</p>' : '') + '<p class="hint" style="margin:8px 0 0;color:#f4efe1">Wähle unten einen Ersatz oder spiele in Unterzahl weiter. Spieler seiner Position stehen oben.</p></div>';
+    if (left > 0) {
+      h += '<p class="lbl" style="margin:0">AUF DEM PLATZ · WER GEHT RAUS?</p><div class="list">';
+      hurt.filter(function (id) { return !outP[id]; }).forEach(function (id) { var hp = FM.findP(u, id); h += row(hp, 'mout', ui.subOut === id).replace('<span class="nm">' + esc(hp.n), '<span class="nm">' + esc(hp.n) + ' <span class="st" style="background:#ff6a5a;color:#fff">verletzt</span>'); });
+      u.lu.filter(function (id) { return !outP[id]; }).map(function (id) { return FM.findP(u, id); }).sort(function (a, b) { return a.p - b.p; }).forEach(function (p) { h += row(p, 'mout', ui.subOut === p.i); });
+      h += '</div>';
+    } else h += '<p class="hint" style="margin:0">' + (plan.length ? 'Mehr Wechsel sind nicht möglich.' : 'Das Wechselkontingent ist erschöpft.') + '</p>';
+    if (left > 0 && (ui.subOut >= 0 || free > 0)) {
+      var po2 = ui.subOut >= 0 ? FM.findP(u, ui.subOut) : null, ppos = po2 ? po2.p : -1;
+      h += '<p class="lbl" style="margin:0">' + (po2 ? 'BANK · WER KOMMT FÜR ' + esc(po2.n.toUpperCase()) + '?' : 'BANK · EIN PLATZ IST FREI, WER KOMMT?') + '</p><div class="list">';
+      bench = bench.filter(function (p) { return !inP[p.i]; });
+      if (!bench.length) h += '<p class="hint" style="margin:0">Es sitzt niemand mehr auf der Bank.</p>';
+      if (ppos >= 0) bench = bench.filter(function (p) { return p.p === ppos; }).concat(bench.filter(function (p) { return p.p !== ppos; }));
+      bench.forEach(function (p) { h += row(p, 'min', false).replace('class="pl', p.p === ppos ? 'style="box-shadow:inset 4px 0 0 #6df09a" class="pl' : 'class="pl'); });
+      h += '</div>';
+    }
   } else {
     var I = FM.liveTactInfo(state), ht = L.seg === 3;
     h += tfx(I).replace('class="tfx"', 'class="tfx in"');
@@ -6587,8 +6598,9 @@ function startMatch() {
     M.min++;
     var mn = document.getElementById('mMin'); if (mn && M.min < (state.live && state.live.et ? 120 : 90)) mn.textContent = M.min + '. Minute';
   }
-  M.pause = function (title) { M.paused = true; M.ptitle = title; ui.subOut = -1; matchPanel(); window.scrollTo(0, 0); };
-  M.resume = function () { if (M.ptitle === 'Halbzeit' || M.ptitle === 'Verlängerung') SND.whistle(1); if (state.live) state.live.need = null; M.paused = false; M.last = 0; matchPanel(); };
+  M.pause = function (title) { M.paused = true; M.ptitle = title; ui.subOut = -1; ui.subPlan = []; matchPanel(); window.scrollTo(0, 0); };
+  M.resume = function () { var PL = ui.subPlan || []; ui.subPlan = []; ui.subOut = -1; if (state.live) PL.forEach(function (q) { var rs = FM.liveSub(state, q.o, q.i); if (typeof rs === 'string') toast(rs); else M.note(rs); });
+    if (M.ptitle === 'Halbzeit' || M.ptitle === 'Verlängerung') SND.whistle(1); if (state.live) state.live.need = null; M.paused = false; M.last = 0; matchPanel(); };
   M.finish = finish;
   M.skip = function () {
     if (M.done || M.pkWait) return;
@@ -7454,11 +7466,11 @@ app.addEventListener('click', function (ev) {
   if (a === 'pkpick') { var KM = ui.match, kid = +b.getAttribute('data-id'), kx = KM.pkSel.indexOf(kid); if (kx >= 0) KM.pkSel.splice(kx, 1); else if (KM.pkSel.length < 5) KM.pkSel.push(kid); else return toast('Fünf Schützen sind gewählt. Tippe erst einen an, um ihn herauszunehmen.'); return pkPicker(); }
   if (a === 'pkgo') { var GM2 = ui.match; if (!GM2 || !GM2.pkWait) return; FM.setPenOrder(state, GM2.pkSel); GM2.pkWait = false; var mt2 = document.querySelector('.mtop'); if (mt2) mt2.style.position = ''; window.scrollTo(0, 0); return GM2.finish(); }
   if (a === 'mresume') { if (ui.match && ui.match.resume) ui.match.resume(); return; }
+  if (a === 'mundo') { (ui.subPlan || []).splice(+b.getAttribute('data-id'), 1); return matchPanel(); }
   if (a === 'mout') { var oid = +b.getAttribute('data-id'); ui.subOut = ui.subOut === oid ? -1 : oid; return matchPanel(); }
   if (a === 'min') {
-    var rs = FM.liveSub(state, state.live.need || ui.subOut < 0 ? null : ui.subOut, +b.getAttribute('data-id'));
-    if (typeof rs === 'string') return toast(rs);
-    ui.match.note(rs); ui.subOut = -1; return matchPanel();
+    (ui.subPlan = ui.subPlan || []).push({ o: ui.subOut >= 0 ? ui.subOut : null, i: +b.getAttribute('data-id') });
+    ui.subOut = -1; return matchPanel();
   }
   if (a === 'packask') { var pq = document.getElementById('packSel'); if (pq) ui.packPick = pq.value; ui.packAsk = true; return render(); }
   if (a === 'cty') { var ci = document.getElementById('club'); if (ci) ui.name = ci.value; ui.cty = b.getAttribute('data-val'); ui.confirm = false; return render(); }

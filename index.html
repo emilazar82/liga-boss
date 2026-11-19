@@ -4208,7 +4208,7 @@ var MUSSRC = {"m1": "SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjYwLjE2LjEwMAAAAAAAAAAAAAA
 var SND = (function () {
   var ac = null, master = null, buf = {}, loading = false, cSrc = null, cGain = null, wantCrowd = false, chantT = null, mSrc = null, mGain = null, wantMusic = false, mVol = 0.5;
   // Musik: mehrere Stücke im zufälligen Wechsel, nie zweimal dasselbe hintereinander, mit kurzer Pause dazwischen.
-  var MUS = ['music'].concat(Object.keys(MUSSRC).filter(function (k) { return k.charAt(0) === 'm'; })), mLast = '', mTok = 0, mTimer = null, mBusy = false, mCache = {};
+  var MUS = ['music'].concat(Object.keys(MUSSRC).filter(function (k) { return k.charAt(0) === 'm'; })), mLast = '', mTok = 0, mTimer = null, mBusy = false, mCache = {}, mHold = null, mT0 = 0, mOff = 0, mDur = 0;
   function dec(k, cb, keep) {
     if (k === 'music') { if (buf.music) cb(buf.music); else mBusy = false; return; }
     if (mCache.k === k && mCache.ac === ac) return cb(mCache.b);
@@ -4220,14 +4220,17 @@ var SND = (function () {
   function mStop() { mTok++; if (mTimer) { clearTimeout(mTimer); mTimer = null; } mBusy = false; }
   function musicOn() {
     if (mSrc || mBusy || !ctx()) return;
-    var pool = MUS.filter(function (k) { return k !== mLast && (k !== 'music' || buf.music); }); if (!pool.length) return;
-    var k = pool[Math.floor(Math.random() * pool.length)], tok = ++mTok; mBusy = true;
+    // Wer nur kurz in ein anderes Menü geht, hört danach dasselbe Stück an der alten Stelle weiter.
+    var res = mHold && Date.now() - mHold.at < 900000 && mHold.off < mHold.dur - 6 && (mHold.k !== 'music' || buf.music) ? mHold : null; mHold = null;
+    var pool = MUS.filter(function (k) { return k !== mLast && (k !== 'music' || buf.music); }); if (!pool.length && !res) return;
+    var k = res ? res.k : pool[Math.floor(Math.random() * pool.length)], tok = ++mTok; mBusy = true;
     dec(k, function (b) {
       mBusy = false; if (tok !== mTok || !wantMusic || mSrc || !ac) return;
       var old = k === 'music', dur = old ? 33 : b.duration, src = ac.createBufferSource(), g = ac.createGain(); mLast = k; src.buffer = b;
       if (old) { src.loop = true; src.loopStart = 1; src.loopEnd = 17; }
-      g.gain.value = 0.0001; g.gain.linearRampToValueAtTime(mVol, ac.currentTime + 0.8); src.connect(g); g.connect(master); src.start(0, old ? 1 : 0);
-      mSrc = src; mGain = g;
+      var off = res ? Math.max(0, Math.min(res.off, dur - 6)) : 0;
+      g.gain.value = 0.0001; g.gain.linearRampToValueAtTime(mVol, ac.currentTime + 0.8); src.connect(g); g.connect(master); src.start(0, old ? 1 + off % 16 : off);
+      mSrc = src; mGain = g; mT0 = ac.currentTime; mOff = off; mDur = dur;
       var end = function () {
         if (tok !== mTok) return;
         if (document.hidden) { mTimer = setTimeout(end, 3000); return; }
@@ -4235,7 +4238,7 @@ var SND = (function () {
         if (mSrc === src) { mSrc = null; mGain = null; }
         mTimer = setTimeout(function () { mTimer = null; if (tok === mTok && wantMusic) musicOn(); }, 3800);
       };
-      mTimer = setTimeout(end, Math.max(4, dur - (old ? 0 : 0.3)) * 1000);
+      mTimer = setTimeout(end, Math.max(4, dur - off - (old ? 0 : 0.3)) * 1000);
     }, true);
   }
   // Nach dem Zurückholen aus dem Hintergrund bleibt der Ton auf dem iPhone sonst stumm, obwohl der
@@ -4308,6 +4311,7 @@ var SND = (function () {
     miss: function () { swell(0.75, 0.12, 0.5, 1.4); },
     win: function () { play('cele', 0.9); setTimeout(function () { play('chant', 0.5); }, 2500); },
     intro: function () { play('intro', 0.6); },
+    fresh: function () { mHold = null; },
     jingle: function (n) {
       if (!n || !MUSSRC['j' + n] || prefs.mus === false || !ctx()) return;
       dec('j' + n, function (b) {
@@ -4322,7 +4326,7 @@ var SND = (function () {
       wantMusic = !!on && prefs.mus !== false;
       on = wantMusic; mVol = vol || 0.5;
       if (on && mSrc && mGain && ac) { try { mGain.gain.cancelScheduledValues(ac.currentTime); mGain.gain.setValueAtTime(mGain.gain.value, ac.currentTime); mGain.gain.linearRampToValueAtTime(mVol, ac.currentTime + 0.8); } catch (eM) { } }
-      if (!on) { mStop(); if (mSrc) { var s1 = mSrc, g1 = mGain; mSrc = null; mGain = null; try { g1.gain.cancelScheduledValues(ac.currentTime); g1.gain.setValueAtTime(g1.gain.value, ac.currentTime); g1.gain.linearRampToValueAtTime(0.0001, ac.currentTime + 1.2); s1.stop(ac.currentTime + 1.3); } catch (e) { } } return; }
+      if (!on) { if (mSrc && ac) mHold = { k: mLast, off: mOff + ac.currentTime - mT0, dur: mDur, at: Date.now() }; mStop(); if (mSrc) { var s1 = mSrc, g1 = mGain; mSrc = null; mGain = null; try { g1.gain.cancelScheduledValues(ac.currentTime); g1.gain.setValueAtTime(g1.gain.value, ac.currentTime); g1.gain.linearRampToValueAtTime(0.0001, ac.currentTime + 1.2); s1.stop(ac.currentTime + 1.3); } catch (e) { } } return; }
       if (ctx()) musicOn();
     },
     crowd: function (on) {
@@ -4345,7 +4349,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '19.11. 23:49';
+var BUILD = '20.11. 00:09';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -4421,6 +4425,7 @@ function go(view) {
   if (view !== 'match') SND.crowd(false);
   var mv = { start: 1, custom: 1, opening: 1 };
   ui.musHold = false;
+  if (view === 'match') SND.fresh();   // nach einem Spiel beginnt ein neues Stück
   SND.music(!!mv[view] || view === 'menu', view === 'menu' ? 0.18 : 0.5);
   // Jingles: neuer Titel oder Aufstieg (auch nach einem Pokalfinale), Entlassung
   if (state) { var TN = ((state.car && state.car.ti) || []).length; if (ui.tiN !== undefined && TN > ui.tiN && ui.tiSt === state) setTimeout(function () { SND.jingle('title'); }, 700); ui.tiN = TN; ui.tiSt = state; if (view === 'sacked' && ui.view !== 'sacked') setTimeout(function () { SND.jingle('sack'); }, 500); }

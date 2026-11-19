@@ -4285,7 +4285,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '19.11. 17:53';
+var BUILD = '19.11. 18:57';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -5540,7 +5540,20 @@ function vBoard() {
   h += '<div class="panel">' + acard('m_sign', 'Um Vertragsauflösung bitten', 'Du verlässt den Verein sofort.') + fx(state.rq === state.season ? [['Nur noch ein Angebot vom schwächsten Verein', 0], ['Ruf −10', 0]] : [['Angebote aus gleicher oder tieferer Liga', 1], ['Ruf −4', 0], ['Kader, Kasse und Stadion bleiben hier', 0]]);
   h += ui.rsg ? '<p style="margin:10px 0 8px;font-size:15px">Wirklich gehen? Das lässt sich nicht zurücknehmen. Du wählst danach einen der Vereine, die dir ein Angebot machen.</p><div class="row"><button class="big" data-a="rsgyes">Ja, Vertrag auflösen</button><button class="big sec2" data-a="rsgno">Bleiben</button></div>' : '<button class="big sec2 sm" style="margin-top:10px" data-a="rsg">Um Vertragsauflösung bitten</button>';
   h += '</div>';
-  if (state.hist.length) { h += '<div class="panel"><p class="lbl">BISHERIGE SAISONS</p>'; state.hist.slice().reverse().forEach(function (x) { h += kv((x.s % 100 < 10 ? '0' : '') + x.s % 100 + '/' + ((x.s + 1) % 100 < 10 ? '0' : '') + (x.s + 1) % 100 + ' · ' + FM.lgName(state, x.lg), 'Platz ' + x.pl); }); h += '</div>'; }
+  if (state.hist.length) {
+    // Je Saison: Liga und Platz, darunter der Verein (bei einem Wechsel beide) und die Titel dieser Saison.
+    var CR = state.car || { se: [], ti: [] }, TNM2 = { m: 'Meister', p: 'Pokalsieger', e: EUN() + '-Sieger', a: 'Aufstieg' };
+    h += '<div class="panel"><p class="lbl">BISHERIGE SAISONS</p>';
+    state.hist.slice().reverse().forEach(function (x, i) {
+      var cl = [], ti = [];
+      (CR.se || []).forEach(function (e) { if (e.s === x.s && e.c && cl.indexOf(e.c) < 0) cl.push(e.c); });
+      (CR.ti || []).forEach(function (t) { if (t.s === x.s && TNM2[t.k]) ti.push(TNM2[t.k]); });
+      h += '<div style="padding:9px 0' + (i ? ';border-top:1px solid rgba(255,255,255,.12)' : '') + '"><div class="row" style="align-items:baseline;gap:8px"><span class="grow" style="min-width:0">' + (x.s % 100 < 10 ? '0' : '') + x.s % 100 + '/' + ((x.s + 1) % 100 < 10 ? '0' : '') + (x.s + 1) % 100 + ' · ' + FM.lgName(state, x.lg) + '</span><b style="flex:none">Platz ' + x.pl + '</b></div>';
+      if (cl.length || ti.length) h += '<div class="row" style="align-items:baseline;gap:8px;margin-top:3px;font-size:13px"><span class="grow" style="min-width:0;opacity:.75">' + esc(cl.join(' → ')) + '</span>' + (ti.length ? '<b style="flex:none;color:#ffd84d;text-align:right">' + esc(ti.join(' · ')) + '</b>' : '') + '</div>';
+      h += '</div>';
+    });
+    h += '</div>';
+  }
   return h;
 }
 function vSacked() {

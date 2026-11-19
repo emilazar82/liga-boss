@@ -971,9 +971,23 @@ function fgnJobs(state) {
     var top = state.fgn[c].filter(function (o) { return !o.l; }).map(function (o) { return o.st; }).sort(function (a, b) { return b - a; })[5] || 99;
     state.fgn[c].forEach(function (o) { var l = o.l || 0, need = l === 0 ? (o.st >= top ? 80 : 60) : l === 1 ? 40 : 5; if (need > state.rep) return; if (l < u.lg || (l === u.lg && o.st > mine + 2) || (state.rep >= 80 && l === 0 && u.lg === 0 && o.st >= top && o.st >= mine - 4)) out.push({ c: c, n: o.n, l: l, st: Math.round(o.st) }); });
   });
-  return shuffle(out).slice(0, 1);
+  var res = Math.random() < 0.5 ? shuffle(out).slice(0, 1) : [];
+  // Aufstiegsprojekt: Ein ehrgeiziger Verein aus einer tieferen Liga will mit einem namhaften Trainer nach oben –
+  // am häufigsten aus dem Heimatland des Trainers, seltener aus einem anderen Land.
+  if (state.rep >= 30) {
+    var h0 = homeCty(state), pick = function (cs) {
+      var pool = [];
+      cs.forEach(function (c) { var by = {}; (state.fgn[c] || []).forEach(function (o) { var l = o.l || 0; if (l > u.lg && l <= 2) (by[l] = by[l] || []).push(o); }); Object.keys(by).forEach(function (l) { by[l].sort(function (a, b) { return b.st - a.st; }).slice(0, 6).forEach(function (o) { var e = { c: c, n: o.n, l: +l, st: Math.round(o.st), pj: 1 }; pool.push(e); if (+l === u.lg + 1) { pool.push(e); pool.push(e); } }); }); });
+      return pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
+    };
+    var pj = h0 && state.fgn[h0] && Math.random() < 0.55 ? pick([h0]) : Math.random() < 0.15 ? pick(Object.keys(state.fgn).filter(function (c) { return c !== h0; })) : null;
+    if (pj && !res.some(function (x) { return x.c === pj.c && x.n === pj.n; })) res.push(pj);
+  }
+  return res;
 }
-function fjobInfo(state, k) { var j = (state.fjobs || [])[k]; if (!j) return null; return { n: j.n, c: j.c, cn: CTY[j.c].n, lgn: fgnLgs(state, j.c)[j.l], lg: j.l, str: j.st, cash: [1500000, 600000, 250000][j.l], cap: [30000, 15000, 8000][j.l] }; }
+// Heimatland des Trainers: das Land, in dem die Karriere begann. Ältere Spielstände kennen es nicht; dort gilt Deutschland, wenn es gerade Ausland ist.
+function homeCty(state) { return state.cty0 || (state.fgn && state.fgn.de && (state.cty || 'de') !== 'de' ? 'de' : null); }
+function fjobInfo(state, k) { var j = (state.fjobs || [])[k]; if (!j) return null; return { pj: j.pj || 0, home: j.c === homeCty(state), n: j.n, c: j.c, cn: CTY[j.c].n, lgn: fgnLgs(state, j.c)[j.l], lg: j.l, str: j.st, cash: [1500000, 600000, 250000][j.l], cap: [30000, 15000, 8000][j.l] }; }
 function moveCountry(state, k) {
   var j = (state.fjobs || [])[k]; if (!j) return 'Das Angebot gilt nicht mehr.';
   if (state.round !== 0 || state.live || (state.tour && state.tour.on)) return 'Ein Wechsel ins Ausland ist nur in der Sommerpause möglich.';
@@ -986,7 +1000,7 @@ function moveCountry(state, k) {
   Object.keys(state.fgq || {}).forEach(function (c) { names[c] = state.fgq[c].map(function (ix) { return state.fgn[c][ix] ? state.fgn[c][ix].n : ''; }); });
   delete W[j.c];
   var ns = newGameCustom(D, j.n, W, true).state;
-  ns.season = state.season; ns.y0 = state.y0; ns.wk0 = state.wk0; ns.fg0 = state.season; if (state.cs) { ns.cs = state.cs; csRestore(ns); }
+  ns.season = state.season; ns.y0 = state.y0; ns.wk0 = state.wk0; ns.fg0 = state.season; ns.cty0 = state.cty0 || homeCty(state) || oldC; if (state.cs) { ns.cs = state.cs; csRestore(ns); }
   ['coach', 'rep', 'hist', 'car', 'ntj', 'tourH', 'tdone', 'eun'].forEach(function (f) { if (state[f] !== undefined) ns[f] = state[f]; });
   if (state.tour && !state.tour.on) ns.tour = state.tour;
   if (state.me) { ns.me = state.me; meNewClub(ns); ns.me.c0 = meNet(ns); ns.me.put = 0; }
@@ -4133,13 +4147,13 @@ function finishSeason(state) {
   state.teams.forEach(function (t) { t.st = emptyStats(); if (t.id !== u.id) t.lu = bestEleven(t); });
   u.lu = u.lu.filter(function (id) { return !!findP(u, id); });
   if (state.wk0 !== undefined) state.wk0 += RN(state);
-  state.season++; state.round = 0; state.over = false;
+  state.season++; state.round = 0; state.over = false; delete state.nj;   // „neu im Amt“ gilt nur für die Saison des Amtsantritts
   buildSchedules(state);
   state.market = null; if (!(state.sp && state.sp.until >= state.season)) { if (state.sp) sum.spEnd = state.sp.n; state.sp = null; } state.spo = null; state.led = newLedger(); state.cup = null; state.hall = null; state.camp = null; state.toto = null; state.ads = null; state.dk = null; state.eu = null; state.fh = null; state.ph = null; ensure(state);
   state.pre = { n: 0, log: [] }; state.camp = { due: true }; state.open = !state.sacked;
   u.coh = Math.max(30, (u.coh === undefined ? 50 : u.coh) - 20);
   state.jobs = state.sacked ? sackJobs(state) : seasonJobs(state, lastPl); if (state.sacked) sum.sev = sum.meBust ? 0 : meSack(state);
-  state.fjobs = !state.sacked && Math.random() < 0.5 ? fgnJobs(state) : [];
+  state.fjobs = !state.sacked ? fgnJobs(state) : [];
   sum.rep = state.rep;
   sum.newLg = u.lg;
   return sum;
@@ -4294,7 +4308,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '19.11. 19:23';
+var BUILD = '19.11. 20:49';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -5314,7 +5328,7 @@ function popScan() {
   else if (old.sp && !first) pop('Sponsor', 'Der Vertrag mit <b>' + esc(old.sp === 1 ? 'dem Trikotsponsor' : old.sp) + '</b> ist ausgelaufen. Fünf neue Angebote liegen vor' + (state.spf ? ' – ' + (state.spf > 1.08 ? 'nach der guten Saison besser dotiert als üblich' : state.spf < 0.92 ? 'nach der schwachen Saison schlechter dotiert als üblich' : 'auf üblichem Niveau') : '') + '. Ohne Trikotsponsor kannst du kein Spiel anpfeifen.', [['Zu den Sponsoren', function () { go('sponsors'); }], ['Später']], 'm_sign');
   (state.fjobs || []).forEach(function (x, k) {
     var key = 'fj' + x.c + x.n; pk[key] = 1; if (old[key] || first) return; var j = FM.fjobInfo(state, k); if (!j) return;
-    pop('Angebot aus dem Ausland', flag(EUFL[j.c]) + ' <b>' + esc(j.n) + '</b> (' + esc(j.cn) + ', ' + esc(j.lgn) + ', Kaderstärke ' + j.str + ') möchte dich als Trainer verpflichten. Das Angebot gilt bis zum 1. Spieltag.', [['Angebot ansehen', function () { go('board'); }], ['Ablehnen', function () { state.fjobs = state.fjobs.filter(function (y) { return y !== x; }); toast('Angebot abgelehnt.'); }], ['Später entscheiden', null, 'unter Vorstand']], 'm_sign');
+    pop(j.home ? 'Angebot aus der Heimat' : 'Angebot aus dem Ausland', flag(EUFL[j.c]) + ' <b>' + esc(j.n) + '</b> (' + esc(j.cn) + ', ' + esc(j.lgn) + ', Kaderstärke ' + j.str + ') möchte dich als Trainer verpflichten.' + (j.pj ? ' Der Verein will aufsteigen und setzt dafür auf einen Trainer mit deinem Namen.' : '') + ' Das Angebot gilt bis zum 1. Spieltag.', [['Angebot ansehen', function () { go('board'); }], ['Ablehnen', function () { state.fjobs = state.fjobs.filter(function (y) { return y !== x; }); toast('Angebot abgelehnt.'); }], ['Später entscheiden', null, 'unter Vorstand']], 'm_sign');
   });
   if (ui.sum && (ui.sum.meBon || ui.sum.meNew || ui.sum.meDiv || ui.sum.meCov || ui.sum.meInv || ui.sum.meWarn || ui.sum.meBust || ui.sum.meCut) && !ui.sum._mp) { ui.sum._mp = 1; var mb = (ui.sum.meBon || []).slice(), mn = ui.sum.meNew; if (ui.sum.meDiv) mb.push(['Gewinnanteil aus dem Verein', ui.sum.meDiv]); (ui.sum.meInv || []).forEach(function (x) { mb.push([x.n + ' (' + x.lgn + ', Platz ' + x.pl + ')', x.dv]); }); if (ui.sum.meCov) mb.push(['Verlust des Vereins gedeckt', -ui.sum.meCov]); if (ui.sum.meCut) mb.push(['Dein Gehalt wurde an die neue Liga angepasst: ' + money(ui.sum.meCut.old) + ' → ' + money(ui.sum.meCut.wage) + ' pro Woche', 0]); if (ui.sum.meWarn) mb.push(['Warnung der Bank: Dein Verein ist überschuldet. Noch eine solche Saison, und er ist verloren', 0]); if (ui.sum.meBust) mb.push([ui.sum.meBust + ' ist insolvent. Der Verein gehört dir nicht mehr', 0]); if (mb.length || mn) pop('Dein Konto', (mb.length ? mb.map(function (x) { return x[1] === 0 ? '<b>' + esc(x[0]) + '.</b>' : esc(x[0]) + ': <b>' + (x[1] > 0 ? '+' : '') + money(x[1]) + '</b>'; }).join('<br>') : '') + (mn ? (mb.length ? '<br>' : '') + 'Dein Vertrag wurde bis Ende Saison ' + seasonLabel(mn.until) + ' verlängert' + (mn.wage > mn.old ? ', das Gehalt steigt auf <b>' + money(mn.wage) + '</b> pro Woche.' : '.') : ''), [['OK'], ['Zu Privat', function () { go('private'); }]], 'm_bag'); }
   if (R && R.meSold && !R._ms) { R._ms = 1; pop('Privat', 'Dein Konto war im Minus. <b>' + esc(R.meSold) + '</b> wurde mit Verlust verkauft.', [['OK'], ['Zu Privat', function () { go('private'); }]], 'm_bag'); }
@@ -5507,7 +5521,7 @@ function jobsHtml() {
   });
   (state.fjobs || []).forEach(function (x, k) {
     var j = FM.fjobInfo(state, k); if (!j) return;
-    h += '<div class="panel"><div class="acard">' + (crestImg(j.n, 42) || crestSvg('#2f63c4', '#f4efe1', 1, crestL(j.n), 42)) + '<div class="grow"><p class="title">' + esc(j.n) + '</p><p class="hint" style="margin:0">' + flag(EUFL[j.c]) + esc(j.cn) + ' · ' + esc(j.lgn) + '</p></div></div><div class="rings">' + ring(j.str / 100, '#ffd84d', j.str, 'Kaderstärke') + ring(1, '#6df09a', tk(j.cash), 'Kasse') + ring(Math.min(1, j.cap / 60000), '#5fb7c9', tk(j.cap), 'Stadionplätze') + '</div>' + (ui.fjq === k ? '<p class="hint" style="margin:10px 0 0">Du wechselst das Land: Du spielst dann in den Ligen, im Pokal und um die Plätze von ' + esc(j.cn) + '. Dein bisheriges Land läuft als Auslandsliga weiter. Das lässt sich nicht rückgängig machen.</p><div class="row" style="margin-top:8px"><button class="big sec2 sm" data-a="fjobq" data-val="-1">Abbrechen</button><button class="big sm warn" data-a="fjob" data-val="' + k + '">Ja, wechseln</button></div>' : '<button class="big sec2" style="margin-top:10px" data-a="fjobq" data-val="' + k + '">Nach ' + esc(j.cn) + ' zu ' + esc(j.n) + ' wechseln</button>') + '</div>';
+    h += '<div class="panel"><div class="acard">' + (crestImg(j.n, 42) || crestSvg('#2f63c4', '#f4efe1', 1, crestL(j.n), 42)) + '<div class="grow"><p class="title">' + esc(j.n) + '</p><p class="hint" style="margin:0">' + flag(EUFL[j.c]) + esc(j.cn) + ' · ' + esc(j.lgn) + (j.pj ? ' · <b style="color:#ffd84d">Aufstiegsprojekt</b>' : '') + '</p></div></div><div class="rings">' + ring(j.str / 100, '#ffd84d', j.str, 'Kaderstärke') + ring(1, '#6df09a', tk(j.cash), 'Kasse') + ring(Math.min(1, j.cap / 60000), '#5fb7c9', tk(j.cap), 'Stadionplätze') + '</div>' + (ui.fjq === k ? '<p class="hint" style="margin:10px 0 0">Du wechselst das Land: Du spielst dann in den Ligen, im Pokal und um die Plätze von ' + esc(j.cn) + '. Dein bisheriges Land läuft als Auslandsliga weiter. Das lässt sich nicht rückgängig machen.</p><div class="row" style="margin-top:8px"><button class="big sec2 sm" data-a="fjobq" data-val="-1">Abbrechen</button><button class="big sm warn" data-a="fjob" data-val="' + k + '">Ja, wechseln</button></div>' : '<button class="big sec2" style="margin-top:10px" data-a="fjobq" data-val="' + k + '">Nach ' + esc(j.cn) + ' zu ' + esc(j.n) + ' wechseln</button>') + '</div>';
   });
   return h;
 }
@@ -6784,7 +6798,7 @@ function vCupResults() {
 }
 function seasonLabel(y) { return y + '/' + ((y + 1) % 100 < 10 ? '0' : '') + (y + 1) % 100; }
 function vOpening() {
-  var u = FM.userTeam(state), B = state.board, H = state.hist, last = H.length && !state.nj ? H[H.length - 1] : null, sl = seasonLabel(state.season), early = state.round <= 5;
+  var u = FM.userTeam(state), B = state.board, H = state.hist, CS = (state.car && state.car.se) || [], was = CS.length && CS[CS.length - 1].s === state.season - 1 && CS[CS.length - 1].c === u.n, last = H.length && (!state.nj || was) ? H[H.length - 1] : null, sl = seasonLabel(state.season), early = state.round <= 5;
   var t1 = !last ? (u.lg === 0 ? (B.goal <= 3 ? 'Willkommen bei ' + u.n + (coachN() ? ', ' + coachN() : '') + '. Dieser Verein gehört nach ganz oben, und daran werden Sie gemessen.' : B.goal <= 8 ? 'Willkommen bei ' + u.n + (coachN() ? ', ' + coachN() : '') + '. Wir wollen uns in der oberen Tabellenhälfte festsetzen.' : 'Willkommen bei ' + u.n + (coachN() ? ', ' + coachN() : '') + '. Für uns zählt zuerst, die Klasse zu halten und den Verein Schritt für Schritt aufzubauen.') : 'Willkommen bei ' + u.n + (coachN() ? ', ' + coachN() : '') + '. Wir haben einen langen Weg vor uns: Schritt für Schritt nach oben, bis in die ' + FM.lgName(state, 0) + '.') : last.lg > u.lg ? (coachN() ? coachN() + ', der' : 'Der') + ' Aufstieg war ein großer Tag für den Verein. Jetzt müssen wir uns eine Klasse höher behaupten.' : last.lg < u.lg ? (coachN() ? coachN() + ', der' : 'Der') + ' Abstieg tut weh. Wir erwarten, dass die Mannschaft sofort eine Antwort gibt.' : B.conf >= 60 ? (coachN() ? coachN() + ', die' : 'Die') + ' letzte Saison hat uns gefallen. Platz ' + last.pl + ' ist eine gute Grundlage.' : 'Platz ' + last.pl + ' in der letzten Saison war nicht das, was wir uns vorgestellt haben.';
   var bonus = Math.round(FM.GRANT[u.lg] * (B.amb === 2 ? 0.3 : B.amb === 1 ? 0.05 : 0.15));
   var h = '<div class="logo" style="font-size:14px">VORSTANDSSITZUNG</div><p class="hint" style="margin:0;text-align:center">' + esc(u.n) + ' · Saison ' + sl + ' · ' + FM.lgName(state, u.lg) + '</p>';

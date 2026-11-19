@@ -4285,7 +4285,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '19.11. 17:46';
+var BUILD = '19.11. 17:53';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -4468,7 +4468,7 @@ function vMenu() {
   if (state.talks.length) { var T0 = FM.talkInfo(state); h += '<button class="tkc" data-a="go" data-v="talk">' + icon('m_talk', 36) + '<span><b>' + (T0.length === 1 ? 'Ein Spieler will dich sprechen' : T0.length + ' Spieler wollen dich sprechen') + '</b><small>' + T0.map(function (t) { return esc(t.p.n) + ' ' + t.t; }).join(' · ') + '</small></span><i>›</i></button>'; }
   h += '<div class="sec"><h2>MANNSCHAFT</h2><div class="tiles">' + tile('go', 'lineup', 'aufstellung', 'Aufstellung', '', FM.lineupValid(u) ? '' : '!prüfen') + tile('go', 'tactics', 'taktik', 'Taktik') + tile('go', 'training', 'training', 'Training', '', state.camp && state.camp.due ? 'Lager' : '') + tile('go', 'transfers', 'transfers', 'Transfers', '', state.offers.length ? '!' + state.offers.length + (state.offers.length === 1 ? ' Angebot' : ' Angebote') : '') + '</div></div>';
   var yrdy = state.youth.pl.filter(function (p) { return p.a >= 18; }).length;
-  h += '<div class="sec"><h2>VEREIN</h2><div class="tiles">' + tile('go', 'finance', 'finanzen', 'Finanzen', '', state.cash < 0 ? '!Minus' : '') + tile('go', 'stadium', 'stadion', 'Stadion', '', state.stad.build ? '~Bau' : '') + tile('go', 'sponsors', 'sponsoren', 'Sponsoren', '', state.sp ? (state.ads.on.length < FM.adSlots(state) && state.ads.off.length ? 'Banden frei' : (state.sp.until === undefined || state.sp.until <= state.season) && state.round >= FM.RN(state) - 4 ? '~endet' : '') : '!offen') + tile('go', 'contracts', 'vertraege', 'Verträge', '', expiring(u) ? (state.round >= FM.RN(state) - 8 ? '!' : '') + expiring(u) + ' enden' : '') + tile('go', 'board', 'vorstand_t', 'Vorstand', '', state.board.conf < 25 ? '!Warnung' : state.jobs.length || (state.fjobs || []).length || state.nto ? 'Angebot' : '') + tile('go', 'youth', 'jugend', 'Jugend', '', yrdy ? yrdy + ' letzte Saison' : '') + tile('go', 'shop', 'shop_t', 'Ausrüster') + '</div></div>';
+  h += '<div class="sec"><h2>VEREIN</h2><div class="tiles">' + tile('go', 'finance', 'finanzen', 'Finanzen', '', state.cash < 0 ? '!Minus' : '') + tile('go', 'stadium', 'stadion', 'Stadion', '', state.stad.build ? '~Bau' : '') + tile('go', 'sponsors', 'sponsoren', 'Sponsoren', '', state.sp ? (state.ads.on.length < FM.adSlots(state) && state.ads.off.length ? 'Banden frei' : (state.sp.until === undefined || state.sp.until <= state.season) && state.round >= FM.RN(state) - 4 ? '~endet' : '') : '!offen') + tile('go', 'contracts', 'vertraege', 'Verträge', '', expiring(u) ? (state.round >= FM.RN(state) - 8 ? '!' : '') + expiring(u) + ' enden' : '') + tile('go', 'board', 'vorstand_t', 'Vorstand', '', state.bq ? '!Präsident wartet' : state.board.conf < 25 ? '!Warnung' : state.jobs.length || (state.fjobs || []).length || state.nto ? 'Angebot' : '') + tile('go', 'youth', 'jugend', 'Jugend', '', yrdy ? yrdy + ' letzte Saison' : '') + tile('go', 'shop', 'shop_t', 'Ausrüster') + '</div></div>';
   h += '<div class="sec"><h2>WETTBEWERB</h2><div class="tiles">' + tile('go', 'table', 'tabelle', 'Tabelle') + tile('go', 'fixtures', 'spielplan', 'Spielplan') + tile('go', 'cup', 'pokal', 'Pokal', '', state.cup.due || state.eu.due ? '!heute' : state.cup.won ? '~Sieger' : '') + tile('go', 'stats', 'statistik', 'Statistik') + '</div></div>';
   var hd = state.hall && state.hall.due;
   h += '<div class="sec"><h2>WEITERES</h2><div class="tiles">' + tile('go', 'toto', 'toto', 'Tippspiel', '', FM.totoComplete(state) ? '~getippt' : state.round < FM.RN(state) && !state.over ? 'tippen' : '') + (state.hall ? tile('go', 'hall', 'halle', 'Halle', '', hd ? 'offen' : '') : tile('', '', 'halle', 'Halle', 'Winter')) + tile('go', 'fame', 'ruhm', 'Ruhmeshalle') + tile('go', 'nat', 'pokal', 'Nationalelf', '', state.ntf && state.ntj ? '!Länderspiel' : state.nto ? 'Angebot' : state.ntj ? '~' + natName(state.ntj) : '') + tile('go', 'clubs', 'stadion', 'Vereine', '', (function () { var n = (FM.me(state).inv || []).length + (FM.mePct(state) ? 1 : 0); return n ? '~' + n : ''; })()) + tile('go', 'private', 'me_tile', 'Privat', '', FM.me(state).cash >= 8000 && !FM.me(state).own.length ? 'Geld da' : '') + '</div></div>';
@@ -5280,12 +5280,6 @@ function popScan() {
   var TE = FM.trainEvInfo(state);
   if (TE) { var tek = 'te' + TE.n; pk[tek] = 1; if (!old[tek] && !first) pop(TE.t, esc(TE.q), TE.o.map(function (o, k) { return [o[0], function () { var cur = FM.trainEvInfo(state); if (cur && cur.n === TE.n) { var tx = FM.trainEv(state, k); if (tx) toast(tx); } }, o[1]]; }), 'm_talk'); }
   var NF = FM.ntfInfo(state);
-  if (state.bq && !first && !state.live && !state.sacked) {
-    var BQ = state.bq; delete state.bq; persist();
-    if (BQ.k === 'ult') pop('Ultimatum vom Vorstand', 'Der Präsident bestellt dich ein: <b>' + (BQ.ls >= 3 ? BQ.ls + ' Niederlagen in Folge' : 'Die Ergebnisse der letzten Wochen') + ', Platz ' + BQ.pl + ' statt Ziel ' + BQ.goal + '.</b> So geht es nicht weiter.<br>Aus den nächsten <b>3 Ligaspielen</b> müssen mindestens <b>4 Punkte</b> her – sonst ist Schluss.', [['Verstanden', null]], 'm_talk');
-    else pop('Der Vorstand atmet auf', 'Du hast das Ultimatum erfüllt. Der Präsident stellt sich wieder hinter dich – vorerst. Eine zweite Frist wird es in dieser Saison nicht geben.', [['Verstanden', null]], 'm_talk');
-    return;
-  }
   if (state.ntq && !first && !state.live) {
     var NQ = state.ntq; delete state.ntq; persist();
     if (NQ.k === 'fire') pop('Als Nationaltrainer entlassen', '<b>' + esc(NQ.n) + '</b>: ' + esc(NQ.why) + '.<br><span class="hint">Deinen Verein trainierst du weiter. Mit gutem Ruf kann wieder ein Verband anfragen.</span>', [['Verstanden', null]]);
@@ -5523,7 +5517,8 @@ function placeChart(B) {
 }
 function vBoard() {
   var B = state.board, u = FM.userTeam(state), pl = FM.place(state, u.id), h = sub('Vorstand'), early = state.round <= 5, n = FM.table(state, u.lg).length;
-  h += '';
+  if (state.bq) h += '<div style="border:3px solid #ffd84d;background:#3a3410;padding:12px"><b style="font-family:var(--px);font-size:11px;color:#ffd84d;letter-spacing:.5px">DER PRÄSIDENT ERWARTET DICH</b><p style="margin:6px 0 10px">' + (state.bq.k === 'ult' ? 'Im Vorstandszimmer brennt noch Licht. Vor dem nächsten Spiel musst du dir anhören, was er zu sagen hat.' : 'Der Präsident hat dir etwas zu sagen.') + '</p><button class="big" data-a="bhear">Anhören</button></div>';
+  else if (ui.bmsg) h += '<div style="border:3px solid #ffd84d;background:#3a3410;padding:12px"><b style="font-family:var(--px);font-size:11px;color:#ffd84d;letter-spacing:.5px">DER PRÄSIDENT SPRICHT</b><p style="margin:8px 0 0;line-height:1.45">' + ui.bmsg + '</p></div>';
   var cc = B.conf < 25 ? '#ff9a8f' : B.conf < 50 ? '#ffd84d' : '#6df09a', ok = state.round < 6 || pl <= B.goal;
   h += '<div class="panel"><div class="rings">' + ring(B.conf / 100, cc, Math.round(B.conf), 'Vertrauen (von 100)') + ring((n - pl + 1) / n, ok ? '#6df09a' : '#ff9a8f', pl + '.', 'Platz · Ziel ' + B.goal + '.') + ring(state.rep / 100, '#5fb7c9', state.rep, 'Dein Ruf') + '</div>';
   h += '<p class="title" style="margin:12px 0 0;text-align:center;font-size:15px;color:' + cc + '">' + confText(B.conf) + '</p>';
@@ -7526,8 +7521,20 @@ app.addEventListener('click', function (ev) {
   if (a === 'lg') { ui.lg = +b.getAttribute('data-val'); ui.fc = ''; return render(); }
   if (a === 'fc') { var fv = b.getAttribute('data-val'); ui.fc = ui.fc === fv ? '' : fv; ui.fl = 0; return render(); }
   if (a === 'fl') { ui.fl = +b.getAttribute('data-val'); return render(); }
+  if (a === 'bhear') {
+    var BQ = state.bq; if (!BQ) return; delete state.bq; persist();
+    if (BQ.k === 'ult') {
+      var Bd = state.board, todo = ['<b>4 Punkte aus den nächsten 3 Ligaspielen.</b> Ein Sieg und ein Unentschieden reichen. Pokal und Europapokal zählen dafür nicht.', 'Verfehlst du das, bist du sofort entlassen – egal, wie viel Vertrauen noch übrig ist.', 'Eine zweite Frist bekommst du in dieser Saison nicht mehr.'];
+      if (state.cash < 0) todo.push('Bring die Kasse ins Plus. Das Minus kostet dich jede Woche zusätzlich Vertrauen.');
+      if (Bd.conf < 30 && !Bd.talk) todo.push('Du kannst hier einmal die Aussprache suchen. Mit Glück bringt sie Vertrauen, mit Pech kostet sie welches.');
+      ui.bmsg = ('„' + (BQ.ls >= 3 ? BQ.ls + ' Niederlagen in Folge' : 'Diese Ergebnisse') + ', Platz ' + BQ.pl + ' statt Platz ' + BQ.goal + '. Das ist nicht der Verein, für den ich Sie geholt habe. Ich stehe im Wort bei den Mitgliedern – und meine Geduld ist am Ende.“<br><br><b style="color:#ffd84d">Das musst du tun, um deinen Job zu retten:</b><br>' + todo.map(function (t, i) { return (i + 1) + '. ' + t; }).join('<br>'));
+    } else ui.bmsg = ('„Sie haben geliefert. Die Mannschaft lebt wieder, und ich stelle mich vor Sie – vorerst.“<br><br>Das Ultimatum ist erfüllt. Eine zweite Frist wird es in dieser Saison aber nicht geben.');
+    render(); return window.scrollTo(0, 0);
+  }
   if (a === 'kickoff') {
     if (state.sacked) return go('sacked');
+    if (state.bq) { toast('Der Präsident will dich sprechen. Vorher wird nicht gespielt.'); return go('board'); }
+    ui.bmsg = null;
     if (!FM.lineupValid(u)) { toast('Die Startelf ist nicht vollständig. Verletzte und gesperrte Spieler müssen ersetzt werden.'); ui.lm = 'set'; go('lineup'); ui.koBack = 'kickoff'; return render(); }
     if (!state.sp && state.spo) { toast('Vor dem Spiel fehlt noch ein Trikotsponsor.'); ui.spt = 'trikot'; return go('sponsors'); }
     var LV = state.cup.due && FM.cupTie(state) ? FM.startCup(state) : state.eu.due && FM.euTie(state) ? FM.startEu(state) : FM.startRound(state);

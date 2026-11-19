@@ -103,6 +103,13 @@ jobs:
           echo "TB_KEY_PATH=$RUNNER_TEMP/keys/AuthKey_$KEY_ID.p8" >> "$GITHUB_ENV"
           echo "vorhanden=ja" >> "$GITHUB_OUTPUT"
 
+      - name: Alte Entwickler-Zertifikate aufräumen
+        if: steps.key.outputs.vorhanden == 'ja'
+        env:
+          KEY_ID: ${{ secrets.TB_ASC_KEY_ID }}
+          ISSUER: ${{ secrets.TB_ASC_ISSUER_ID }}
+        run: python3 ios/ci/alte_zertifikate.py "$TB_KEY_PATH" "$KEY_ID" "$ISSUER"
+
       - name: Store-Datei bauen (signiertes Archiv)
         if: steps.key.outputs.vorhanden == 'ja'
         working-directory: ios

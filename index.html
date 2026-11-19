@@ -3673,9 +3673,10 @@ function simSeg(home, away, m0, cup, disId, bo, mo, wx) {
       if (goal && pl) { if (!cup) pl.g++; pl.f = clamp(pl.f + 1, 1, 10); }
       var kon = tv(t, 'pr') === 0 && tv(t, 'tp') === 2, opn = opp.au === 2 || tv(opp, 'pr') === 2, kvb = t.vb === 1 ? 0.1 : 0;
       var E1 = { m: m0 + rnd(1, 15), h: isHome, g: goal, p: pl ? pl.n : '', id: pl ? pl.i : -1, ex: goal && pl && pl.exn && pl.exn === opp.n ? 1 : 0, ct: Math.random() < (kon ? (opn ? 0.6 : 0.32) : (opn ? 0.22 : 0.1)) + kvb ? 1 : 0 };
-      if (Math.random() < 0.025) { var kt = pkOf(t), kpp = keeperOf(opp); if (kt) { if (goal && pl && !cup && pl.g > 0) pl.g--; pl = kt; goal = Math.random() < elfP(kt, kpp ? kpp.at[5] : 40); if (goal && !cup) pl.g++; E1.g = goal; E1.p = kt.n; E1.id = kt.i; E1.pn = 1; E1.ct = 0; E1.ex = goal && kt.exn && kt.exn === opp.n ? 1 : 0; } }
+      if (Math.random() < 0.025) { var kt = pkOf(t), kpp = keeperOf(opp); if (kt) { if (goal && pl && !cup && pl.g > 0) pl.g--; pl = kt; goal = Math.random() < elfP(kt, kpp ? kpp.at[5] : 40); if (goal && !cup) pl.g++; E1.g = goal; E1.p = kt.n; E1.id = kt.i; E1.pn = 1; E1.ct = 0; E1.ex = goal && kt.exn && kt.exn === opp.n ? 1 : 0; var pdf = opp.lu.map(function (id) { return findP(opp, id); }).filter(function (q) { return q && q.p === 1; }), pfb = pdf[Math.floor(Math.random() * pdf.length)]; E1.pc = Math.random() < 0.25 ? 'h' : 'f'; E1.fb = pfb ? pfb.n : ''; } }
       if (!E1.pn && goal && pl && Math.random() < 0.03) { var dfs = opp.lu.map(function (id) { return findP(opp, id); }).filter(function (q) { return q && q.p === 1; }), og = dfs[Math.floor(Math.random() * dfs.length)]; if (og) { if (!cup && pl.g > 0) pl.g--; E1.p = og.n; E1.id = -1; E1.og = 1; E1.ex = 0; E1.ct = 0; } }
-      if (!E1.ct && !E1.og && !E1.pn && pl) { var rt = Math.random(); E1.ty = pl.p === 2 && rt < 0.45 ? 'ds' : rt < 0.24 ? 'fl' : rt < 0.4 ? 'so' : ''; }
+      if (!E1.ct && !E1.og && !E1.pn && pl) { var rt = Math.random(), r0 = Math.random(); E1.ty = pl.p >= 2 && r0 < 0.008 ? 'fr' : pl.p === 3 && r0 < 0.055 ? 'lu' : r0 < 0.115 ? 'vo' : pl.p === 2 && rt < 0.45 ? 'ds' : rt < 0.24 ? 'fl' : rt < 0.4 ? 'so' : ''; }
+      if (!goal && !E1.og && Math.random() < 0.12) E1.gp = 1;   // Glanzparade
       ev.push(E1);
     }
   }
@@ -4349,7 +4350,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '20.11. 00:09';
+var BUILD = '20.11. 00:56';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -5933,7 +5934,9 @@ function startScene(S, e, after) {
     if (e.nb && F) V = nearest(mates(S, 1 - T, 3), F.x, F.y) || V;
     if (!F || !V) return fin();
     var off = e.k !== 'y', far = Math.abs(V.x - S.bx) * FW + Math.abs(V.y - S.by) * FH > 150;
-    passTo(S, V.x, V.y, far ? 9 : 0, 300, function () {
+    var inBox = (T === 0 ? V.x < 0.19 : V.x > 0.81) && Math.abs(V.y - 0.5) < 0.33, vx = V.x;
+    if (inBox) { vx = T === 0 ? 0.22 + Math.random() * 0.06 : 0.78 - Math.random() * 0.06; V.run = { x: vx, y: V.y }; V.spd = 2.6; F.run = { x: vx + (T === 0 ? -0.03 : 0.03), y: V.y }; F.spd = 2.6; }
+    passTo(S, vx, V.y, far || inBox ? 9 : 0, inBox ? 170 : 300, function () {
       var fl = F.x > V.x, FV = [['slide', 'GRÄTSCHE', 0], ['push', 'STOSSEN', 1], ['kick', 'HOHES BEIN', 0], ['elbow', 'ELLBOGEN', 0], ['pull', 'HALTEN', 2]][Math.floor(Math.random() * 5)];
       if (e.k === 'r' && Math.random() < 0.6) FV = Math.random() < 0.5 ? ['slide', 'GRÄTSCHE VON HINTEN', 1] : ['elbow', 'ELLBOGEN', 0];
       if (e.nb) FV = Math.random() < 0.5 ? ['pull', 'NOTBREMSE', 2] : ['slide', 'NOTBREMSE', 1];
@@ -6049,7 +6052,7 @@ function startChance(S, e, apply) {
   var mids = S.pl.filter(function (p) { return p.T === T && p.l === 2; });
   var mid = nearest(mids, S.bx, S.by) || nearest(mates(S, T, 1), S.bx, S.by), sts = mates(S, T, 3), fwd = sts[Math.floor(Math.random() * sts.length)] || mid;
   var keeper = S.pl.filter(function (p) { return p.T === D && p.l === 0; })[0] || nearest(mates(S, D, 1), W(0.95), 0.5);
-  var kind = e.g ? 0 : 1 + Math.floor(Math.random() * 3), ry = 0.34 + Math.random() * 0.32;
+  var kind = e.g ? 0 : e.gp ? 1 : 1 + Math.floor(Math.random() * 3), ry = 0.34 + Math.random() * 0.32;
   var rs = Math.random(), sp = e.pn ? 'pen' : rs < 0.16 ? 'corner' : rs < 0.3 ? 'fk' : '';
   var ty = e.ty || '';
   if (!e.pn && (e.ct || ty || e.og)) sp = '';
@@ -6068,7 +6071,9 @@ function startChance(S, e, apply) {
       return;
     }
     S.mode = 'cam'; S.cap = null; S.camSc = mkCam(kind, fwd.kit, keeper.kit, force, sp === 'pen', sp === 'fk' && !two); S.camSc.mineU = fwd.kit === 0; e._cam = true;
-    var CQ = S.camSc; CQ.note = two ? 'NACHSCHUSS!' : ke ? 'TORWARTFEHLER!' : e.og ? 'EIGENTOR!' : ty === 'ds' ? 'DISTANZSCHUSS' : null;
+    var CQ = S.camSc; CQ.note = two ? 'NACHSCHUSS!' : ke ? 'TORWARTFEHLER!' : e.og ? 'EIGENTOR!' : ty === 'ds' ? 'DISTANZSCHUSS' : ty === 'fr' ? 'FALLRÜCKZIEHER!' : ty === 'lu' ? 'LUPFER' : ty === 'vo' ? 'DIREKTABNAHME' : null;
+    if (ty === 'fr' && !two) CQ.bike = 1;
+    if (ty === 'lu' && !two) { CQ.fly *= 1.4; CQ.arc = 26; CQ.curve = 0; CQ.kt = CQ.tc + CQ.fly - KA[CQ.kp][2]; CQ.dur = CQ.pre + CQ.tc + CQ.fly + (kind === 0 ? 2.0 : 1.3); }
     if (ty === 'ds' && !two) { CQ.fly *= 1.45; CQ.arc = Math.max(CQ.arc, 13); CQ.kt = CQ.tc + CQ.fly - KA[CQ.kp][2]; CQ.dur = CQ.pre + CQ.tc + CQ.fly + (kind === 0 ? 2.0 : 1.3); }
     S.camDone = function () {
       S.camSc = null; fwd.run = null; fwd.spd = 1;
@@ -6085,11 +6090,12 @@ function startChance(S, e, apply) {
       else { S.pl.forEach(function (p) { p.dive = 0; p.run = null; p.spd = 1; }); S.bz = 0; S.bx = keeper.x; S.by = keeper.y; S.own = keeper; S.hold = 0.5; S.mode = 'idle'; S.sc = null; }
     };
   }
-  if (sp) {
+  var spGo = function () {
     var cy = Math.random() < 0.5 ? 0.012 : 0.988, tn = S.tm[T].n;
     var spot = sp === 'corner' ? { x: W(0.992), y: cy } : sp === 'fk' ? { x: W(0.75), y: ry } : { x: W(0.89), y: 0.5 }, taker = sp === 'corner' ? mid : fwd, dx = T ? 0.022 : -0.022;
     S.pass = null; S.own = null; S.bx = spot.x; S.by = spot.y; S.bz = 0;
-    S.cap = { title: sp === 'corner' ? 'ECKE' : sp === 'fk' ? 'FREISTOSS' : 'ELFMETER', col: '#ffd84d', lines: [{ txt: tn }] };
+    if (sp === 'fk' && Math.random() < 0.25) e.hs = 1;
+    S.cap = { title: sp === 'corner' ? 'ECKE' : sp === 'fk' ? (e.hs ? 'HANDSPIEL · FREISTOSS' : 'FREISTOSS') : 'ELFMETER', col: '#ffd84d', lines: [{ txt: tn }] };
     taker.run = { x: spot.x + (sp === 'corner' ? 0 : dx), y: spot.y + (sp === 'corner' ? (cy < 0.5 ? 0.03 : -0.03) : 0) }; taker.spd = 2.3;
     if (sp === 'corner') { fwd.run = { x: W(0.9), y: 0.44 + Math.random() * 0.12 }; fwd.spd = 1.6; }
     if (sp === 'fk') mates(S, D, 1).sort(function (a, b) { return Math.abs(a.x - spot.x) + Math.abs(a.y - spot.y) - Math.abs(b.x - spot.x) - Math.abs(b.y - spot.y); }).slice(0, 3).forEach(function (p, i) { p.run = { x: W(0.835), y: ry + (0.5 - ry) * 0.3 + (i - 1) * 0.028 }; p.spd = 1.8; });
@@ -6099,8 +6105,25 @@ function startChance(S, e, apply) {
       if (sp === 'corner') passTo(S, fwd.run.x, fwd.run.y, 16, 210, function () { toCam(Math.random() < 0.7 ? 'header' : 'volley'); });
       else toCam(sp === 'pen' || Math.random() < 0.6 ? 'shoot' : 'side');
     });
+  };
+  // Vor dem Elfmeter sieht man, warum es ihn gibt: Foul oder Handspiel im Strafraum.
+  if (sp === 'pen' && e.pc) {
+    var fx0 = W(0.9), fy0 = 0.4 + Math.random() * 0.2, DF = (e.fb && simFind(S, D, e.fb)) || nearest(mates(S, D, 1), fx0, fy0);
+    S.pass = null; S.own = fwd; S.bz = 0; fwd.run = { x: fx0, y: fy0 }; fwd.spd = 2.4;
+    if (DF) { DF.run = { x: fx0 + (T ? -0.025 : 0.025), y: fy0 + 0.012 }; DF.spd = 2.7; }
+    S.cap = { title: 'IM STRAFRAUM', col: '#ffd84d', lines: [{ txt: S.tm[T].n }] };
+    wait(S, 1.0, function () {
+      var fl = DF ? DF.x > fwd.x : false;
+      if (e.pc === 'f') { if (DF) DF.act = { a: 'slide', t0: S.t, flip: fl }; fwd.act = { a: 'fall', t0: S.t, flip: fl }; }
+      fwd.run = { x: fwd.x, y: fwd.y }; S.own = null; S.bx = fwd.x + (T ? -0.02 : 0.02); S.by = fwd.y;
+      S.cap = { title: e.pc === 'h' ? 'HANDSPIEL IM STRAFRAUM' : 'FOUL IM STRAFRAUM', col: '#ff6a5a', lines: [{ txt: e.fb || S.tm[D].n }] };
+      if (!ui.match || !ui.match.mute) SND.whistle(0);
+      S.ref.run = { x: fwd.x + (T ? 0.04 : -0.04), y: Math.min(0.92, fwd.y + 0.09) }; S.ref.spd = 2.2;
+      wait(S, 1.7, function () { fwd.act = null; if (DF) { DF.act = null; DF.run = null; DF.spd = 1; } spGo(); });
+    });
     return;
   }
+  if (sp) { spGo(); return; }
   if (e.ct) {
     var dfl = S.pl.filter(function (p) { return p.T === T && p.l === 1; }), df = nearest(dfl.length ? dfl : mates(S, T, 1), W(0.22), 0.5) || mid;
     S.pass = null; S.own = df; S.bx = df.x; S.by = df.y; S.bz = 0; S.focus = null;
@@ -6161,7 +6184,7 @@ function startChance(S, e, apply) {
       fwd.run = { x: px, y: ry }; fwd.spd = 1.55;
       passTo(S, px, ry, 7, 235, function () {
         S.own = fwd; fwd.run = { x: W(0.875), y: 0.5 + (ry - 0.5) * 0.5 };
-        wait(S, 0.42, function () { toCam(); });
+        wait(S, 0.42, function () { toCam(ty === 'fr' || ty === 'vo' ? 'volley' : ty === 'lu' ? 'shoot' : undefined); });
       });
       S.pass.dur = Math.max(S.pass.dur, runT * 0.9);
     });
@@ -6374,7 +6397,9 @@ function camDraw(c, S) {
   else if (hit) af = AA.miss[0] + Math.min(AA.miss[1] - 1, Math.floor((t - Math.max(A[1] / 20, tc + C.fly)) * 20));
   else af = A[0] + A[1] - 1;
   if (goal && ta < A[1] && t > tc + C.fly + 0.05) af = AA.cel[0] + Math.floor((t - tc - C.fly) * 20) % AA.cel[1];
-  spr(c, (C.gk && attGK(C.ka)) || 'att_' + (C.ka ? 'b' : 'a'), GM.att, af, ax, ay, !left);
+  var bk = C.bike ? Math.max(0, 1 - Math.abs(t - tc) / 0.34) : 0;
+  if (bk > 0) { var bpy = ay - GM.att.s * 0.42 - 16 * bk; c.save(); c.translate(ax, bpy); c.rotate(-dir * 1.75 * bk); c.translate(-ax, -bpy); spr(c, (C.gk && attGK(C.ka)) || 'att_' + (C.ka ? 'b' : 'a'), GM.att, af, ax, ay - 16 * bk, !left, true); c.restore(); }
+  else spr(c, (C.gk && attGK(C.ka)) || 'att_' + (C.ka ? 'b' : 'a'), GM.att, af, ax, ay, !left);
   if (goal) {
     var bxp = left ? 204 : 24;
     c.fillStyle = 'rgba(11,22,34,.86)'; c.fillRect(bxp, 168, 140, 42);
@@ -6596,10 +6621,14 @@ function startMatch() {
     if (e.og) tpl = ['Eigentor! {p} lenkt den Ball unglücklich ins eigene Netz – {s} für {t}.', 'Was für ein Pech: {p} trifft ins eigene Tor. {s} für {t}.', '{p} will klären und überwindet den eigenen Torwart – {s} für {t}.'][(e.m + M.n) % 3];
     else if (e.ty === 'ds') tpl = e.g ? ['{p} zieht aus der Distanz ab – der Ball schlägt im Winkel ein! {s} für {t}.', 'Traumtor! {p} hämmert den Ball aus 25 Metern ins Netz – {s} für {t}.', '{p} fasst sich ein Herz und trifft aus der zweiten Reihe. {s} für {t}.'][(e.m + M.n) % 3] : ['Distanzschuss von {p} ({t}) – knapp vorbei.', '{p} ({t}) versucht es aus der Ferne, der Torwart lenkt den Ball über die Latte.', '{p} ({t}) zieht aus 25 Metern ab – drüber.'][(e.m + M.n) % 3];
     else if (e.ty === 'fl') tpl = e.g ? ['Flanke von außen, {p} ist zur Stelle – {s} für {t}.', 'Über den Flügel! {p} verwertet die Hereingabe zum {s} für {t}.', 'Maßflanke, {p} steigt am höchsten: {s} für {t}.'][(e.m + M.n) % 3] : ['Flanke in den Strafraum, {p} ({t}) kommt nicht richtig hinter den Ball.', '{t} kommt über außen, doch {p} verpasst die Hereingabe knapp.', 'Gute Flanke, aber {p} ({t}) köpft dem Torwart in die Arme.'][(e.m + M.n) % 3];
+    else if (e.ty === 'fr') tpl = e.g ? ['Fallrückzieher! {p} trifft artistisch in den Winkel – {s} für {t}.', 'Was für ein Tor! {p} legt sich quer in die Luft und trifft per Fallrückzieher. {s} für {t}.', '{p} mit dem Rücken zum Tor – Fallrückzieher, drin! {s} für {t}.'][(e.m + M.n) % 3] : ['{p} ({t}) versucht es per Fallrückzieher – knapp drüber.', 'Fallrückzieher von {p} ({t}), der Torwart ist zur Stelle.', '{p} ({t}) setzt zum Fallrückzieher an, trifft den Ball aber nicht voll.'][(e.m + M.n) % 3];
+    else if (e.ty === 'lu') tpl = e.g ? ['{p} sieht, dass der Torwart zu weit vor dem Tor steht, und lupft den Ball über ihn hinweg – {s} für {t}.', 'Frech! {p} hebt den Ball über den herauseilenden Torwart. {s} für {t}.', 'Gefühlvoller Lupfer von {p} – {s} für {t}.'][(e.m + M.n) % 3] : ['{p} ({t}) versucht den Lupfer, der Ball senkt sich aufs Tornetz.', 'Lupfer von {p} ({t}) – der Torwart fischt ihn noch aus der Luft.', '{p} ({t}) will den Torwart überlupfen, der Ball geht drüber.'][(e.m + M.n) % 3];
+    else if (e.ty === 'vo') tpl = e.g ? ['{p} nimmt den Ball direkt aus der Luft – {s} für {t}.', 'Direktabnahme! {p} trifft den Ball perfekt. {s} für {t}.', 'Volley von {p}, unhaltbar: {s} für {t}.'][(e.m + M.n) % 3] : ['{p} ({t}) nimmt den Ball direkt, trifft ihn aber nicht richtig.', 'Volley von {p} ({t}) – weit drüber.', 'Direktabnahme von {p} ({t}), der Torwart hält.'][(e.m + M.n) % 3];
     else if (e.ty === 'so') tpl = e.g ? ['{p} lässt seinen Gegenspieler stehen und vollendet zum {s} für {t}.', 'Solo! {p} tanzt die Abwehr aus und schiebt ein – {s} für {t}.', '{p} setzt sich im Eins-gegen-eins durch: {s} für {t}.'][(e.m + M.n) % 3] : ['{p} ({t}) setzt sich im Solo durch, scheitert aber am Torwart.', 'Starkes Dribbling von {p} ({t}), der Abschluss geht vorbei.', '{p} ({t}) lässt zwei Mann stehen und verzieht dann.'][(e.m + M.n) % 3];
+    if (!e.g && e.gp && !e.sp) tpl = ['Glanzparade! Der Torwart kratzt den Schuss von {p} ({t}) aus dem Winkel.', 'Was für eine Parade! {p} ({t}) scheitert am glänzend reagierenden Torwart.', '{p} ({t}) zieht ab – der Torwart fliegt und lenkt den Ball um den Pfosten.'][(e.m + M.n) % 3];
     if (e.pb) tpl = 'Pfosten! Der Ball springt zurück – Nachschuss: ' + tpl; else if (e.pr2) tpl = 'Der Torwart hält den Elfmeter, aber der Nachschuss: ' + tpl; else if (e.ke) tpl = 'Torwartfehler! ' + tpl;
     if (e.ct) tpl = e.g ? ['{p} läuft allein auf den Torwart zu und schiebt eiskalt ein – {s} für {t}.', 'Blitzschnell umgeschaltet! {p} vollendet den Gegenstoß zum {s} für {t}.', 'Ein langer Ball, {p} ist durch und trifft – {s} für {t}.'][(e.m + M.n) % 3] : ['{p} ({t}) ist nach einem langen Ball frei durch, scheitert aber am Torwart.', '{t} schaltet schnell um, doch {p} verzieht im Laufduell.', '{p} ({t}) läuft allein aufs Tor zu und vergibt.'][(e.m + M.n) % 3];
-    tick(mm(e) + "' " + (e.ct ? 'Konter! ' : e.sp === 'pen' ? 'Elfmeter! ' : e.sp === 'corner' ? 'Ecke. ' : e.sp === 'fk' ? 'Freistoß. ' : '') + tpl.replace('{t}', tn).replace('{p}', e.p).replace('{s}', M.hg + ':' + M.ag) + (e.g && e.ex ? ' Ausgerechnet gegen seinen alten Verein!' : ''), e.g ? 'goal' + (e.h === M.home ? '' : ' opp') : '');
+    tick(mm(e) + "' " + (e.ct ? 'Konter! ' : e.sp === 'pen' ? (e.pc === 'h' ? 'Handspiel' + (e.fb ? ' von ' + e.fb : '') + ' im Strafraum – Elfmeter! ' : e.pc === 'f' ? 'Foul' + (e.fb ? ' von ' + e.fb : '') + ' im Strafraum – Elfmeter! ' : 'Elfmeter! ') : e.sp === 'corner' ? 'Ecke. ' : e.sp === 'fk' ? (e.hs ? 'Handspiel – Freistoß. ' : 'Freistoß. ') : '') + tpl.replace('{t}', tn).replace('{p}', e.p).replace('{s}', M.hg + ':' + M.ag) + (e.g && e.ex ? ' Ausgerechnet gegen seinen alten Verein!' : ''), e.g ? 'goal' + (e.h === M.home ? '' : ' opp') : '');
     var sc = document.getElementById('mScore'); if (sc) sc.textContent = M.hg + ':' + M.ag; aggUpd(M.hg, M.ag);
     if (KF && e.g) kfBar();
   }

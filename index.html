@@ -4350,7 +4350,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '20.11. 01:08';
+var BUILD = '20.11. 12:25';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -6945,31 +6945,52 @@ function vShop() {
   return h;
 }
 function vPrivate() {
-  var M = FM.me(state), u = FM.userTeam(state), tab = ui.pvt || 'con', h = sub('Privat'), up = FM.meUpkeep(state), RNn = FM.RN(state);
-  h += '<div class="tbar"><div><span>Vermögen</span><b>' + tk(M.cash) + '</b></div><div><span>Gehalt / Wo.</span><b>' + num(M.wage) + '</b></div><div><span>Unterhalt / Wo.</span><b>' + (up ? num(up) : '–') + '</b></div></div>';
-  h += '<div class="panel"><p class="lbl">PRIVATLEBEN</p>' + kv('Familienstand', FM.meFamTxt(state)) + kv('Geburtstag', 'in der Woche nach dem ' + FM.meBday(state) + '. Spieltag') + '</div>';
+  var M = FM.me(state), u = FM.userTeam(state), tab = ui.pvt || 'con', h = sub('Privat'), up = FM.meUpkeep(state), RNn = FM.RN(state), CN = coachN() || 'Trainer';
   if (tab === 'club') tab = 'con';
+  var ini = CN.split(/\s+/).map(function (x) { return x.charAt(0); }).join('').slice(0, 2).toUpperCase();
+  h += '<div class="panel" style="display:flex;gap:12px;align-items:center"><div aria-hidden="true" style="width:52px;height:52px;flex:none;border:2px solid #2a8078;background:#0b3f3b;display:flex;align-items:center;justify-content:center;font-family:var(--px);font-size:18px;color:#ffd84d">' + esc(ini) + '</div><div class="grow" style="min-width:0"><b style="font-size:17px;display:block">' + esc(CN) + '</b><span class="hint">' + esc(FM.meFamTxt(state)) + ' · Geburtstag nach dem ' + FM.meBday(state) + '. Spieltag</span></div></div>';
   h += chips('pvt', [['con', 'Vertrag'], ['own', 'Haus und Auto'], ['edu', 'Kurse']], tab);
+  if (tab !== 'con') h += '<div class="tbar"><div><span>Vermögen</span><b>' + tk(M.cash) + '</b></div><div><span>Gehalt / Wo.</span><b>' + num(M.wage) + '</b></div><div><span>Unterhalt / Wo.</span><b>' + (up ? num(up) : '–') + '</b></div></div>';
   if (tab === 'con') {
-    var left = Math.max(0, (M.until - state.season) * RNn + RNn - state.round);
-    h += '<div class="panel"><p class="lbl">TRAINERVERTRAG · ' + esc(u.n.toUpperCase()) + '</p>' + kv('Gehalt pro Woche', money(M.wage)) + kv('Pro Saison', money(M.wage * RNn)) + kv('Läuft bis', 'Ende Saison ' + seasonLabel(M.until)) + kv('Abfindung bei Entlassung', money(Math.round(left * M.wage * 0.5))) + '<p class="hint" style="margin:8px 0 0">Das Gehalt zahlt der Verein aus seiner Kasse. Wirst du entlassen, bekommst du die Hälfte des Restvertrags. Bittest du selbst um Auflösung, gibt es nichts.</p></div>';
-    h += '<div class="panel"><p class="lbl">PRÄMIEN LAUT VERTRAG</p>' + kv('Saisonziel erreicht', money(6 * M.wage)) + kv('Pokalsieg', money(10 * M.wage)) + kv('Aufstieg', money(20 * M.wage)) + kv('Meisterschaft', money(20 * M.wage)) + kv('Europapokalsieg', money(25 * M.wage)) + '</div>';
-    h += '<div class="panel">' + acard('m_sign', 'Mehr Gehalt fordern', 'Einmal pro Saison, ab dem 7. Spieltag.') + fx([['Gehalt +12 %', 1], ['Bei Ablehnung Vertrauen −4', 0], ['Höchstens 25 % über dem Üblichen', 0]]) + '<button class="big sec2 sm" style="margin-top:10px" data-a="measkw"' + (M.ask === state.season ? ' disabled' : '') + '>' + (M.ask === state.season ? 'In dieser Saison schon verhandelt' : 'Mehr Gehalt fordern') + '</button><p class="hint" style="margin:8px 0 0">Je höher das Vertrauen des Vorstands (jetzt ' + Math.round(state.board.conf) + '), desto eher sagt er ja. Am Saisonende wird dein Gehalt neu bewertet: Es steigt auf das, was Liga und Ruf wert sind, und sinkt nach einem Abstieg, wenn es weit darüber liegt. Läuft der Vertrag aus, verlängert er sich um zwei Jahre.</p></div>';
+    // Vertrag als Papierblatt
+    var left = Math.max(0, (M.until - state.season) * RNn + RNn - state.round), all = Math.max(left, RNn * 2), abf = Math.round(left * M.wage * 0.5), INK = '#1d2a28', EDGE = '#b9a77e';
+    var PR = [['Saisonziel', 6, 'm_shield'], ['Pokalsieg', 10, 'm_cup'], ['Aufstieg', 20, 'm_shirt'], ['Meister', 20, 'm_cup'], ['Europa', 25, 'm_cup']];
+    h += '<div style="background:#ece4d4;color:' + INK + ';border:3px solid ' + EDGE + ';box-shadow:4px 4px 0 #052826;padding:16px 16px 14px">'
+      + '<div style="display:flex;align-items:center;gap:10px;border-bottom:2px solid ' + EDGE + ';padding-bottom:10px">' + crest(u.id, 40) + '<div style="min-width:0"><div style="font-family:var(--px);font-size:12px;letter-spacing:1px">TRAINERVERTRAG</div><b style="font-size:17px">' + esc(u.n) + '</b></div></div>'
+      + '<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:10px;margin-top:12px"><div><div style="font-size:13px;opacity:.7">Gehalt pro Woche</div><div style="font-family:var(--px);font-size:22px;margin-top:4px">' + money(M.wage) + '</div></div><div style="text-align:right"><div style="font-size:13px;opacity:.7">pro Saison</div><b style="font-size:16px">' + money(M.wage * RNn) + '</b></div></div>'
+      + '<div style="margin-top:14px;font-size:13px;opacity:.75">Laufzeit bis Ende ' + seasonLabel(M.until) + ' · noch ' + left + (left === 1 ? ' Spieltag' : ' Spieltage') + '</div><div style="height:10px;background:#d8cdb5;border:2px solid ' + EDGE + ';margin-top:6px"><div style="height:100%;width:' + Math.round((1 - left / all) * 100) + '%;background:#2a8078"></div></div>'
+      + '<div style="display:flex;justify-content:space-between;gap:10px;margin-top:12px;font-size:14px"><span>Abfindung bei Entlassung</span><b>' + money(abf) + '</b></div>'
+      + '<div style="margin-top:14px;font-family:var(--px);font-size:10px;letter-spacing:1px;opacity:.8">PRÄMIEN</div><div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin-top:6px">'
+      + PR.map(function (q) { return '<div style="background:#f6f0e3;border:2px solid ' + EDGE + ';padding:6px 2px;text-align:center;min-width:0"><div style="height:30px;display:flex;align-items:center;justify-content:center">' + icon(q[2], 28) + '</div><div style="font-size:11px;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(q[0]) + '</div><b style="font-size:12px">' + tk(q[1] * M.wage) + '</b></div>'; }).join('') + '</div>'
+      + '<div style="margin-top:14px;display:flex;justify-content:space-between;align-items:flex-end;gap:10px"><span style="font-size:12px;opacity:.6">Unterschrift</span><span style="font-family:\'Brush Script MT\',\'Segoe Script\',cursive;font-size:22px;border-bottom:1px solid ' + INK + ';padding:0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:70%">' + esc(CN) + '</span></div></div>';
+    var asked = M.ask === state.season;
+    h += '<div class="panel" style="display:flex;gap:10px;align-items:center">' + icon('m_sign', 42) + '<div class="grow"><b>Mehr Gehalt fordern</b><div class="hint">' + (asked ? 'In dieser Saison schon verhandelt' : '+12 % · einmal pro Saison ab dem 7. Spieltag · Vorstand ' + Math.round(state.board.conf) + ' / 100') + '</div></div></div>';
+    h += '<button class="big" data-a="measkw"' + (asked ? ' disabled' : '') + '>' + (asked ? 'Schon verhandelt' : 'Gehalt neu verhandeln') + '</button>';
+    h += inf('Das Gehalt zahlt der Verein aus seiner Kasse. Wirst du entlassen, bekommst du die Hälfte des Restvertrags; bittest du selbst um Auflösung, gibt es nichts.<br><br>Mehr Gehalt fordern: +12 %, höchstens 25 % über dem Üblichen. Je höher das Vertrauen des Vorstands, desto eher sagt er ja. Bei einer Ablehnung sinkt das Vertrauen um 4.<br><br>Am Saisonende wird dein Gehalt neu bewertet: Es steigt auf das, was Liga und Ruf wert sind, und sinkt nach einem Abstieg, wenn es weit darüber liegt. Läuft der Vertrag aus, verlängert er sich um zwei Jahre.', 'So funktioniert’s');
     if (M.log.length) { h += '<div class="panel"><p class="lbl">LETZTE BEWEGUNGEN</p>'; M.log.forEach(function (x) { h += kv(esc(x.t) + ' <span class="hint">· ' + seasonLabel(x.s) + '</span>', (x.v > 0 ? '+' : '') + money(x.v)); }); h += '</div>'; }
-  } else if (tab === 'own') {
-    h += '<p class="hint" style="margin:0">Besitz hebt deinen Ruf – und der bringt bessere Sponsoren, Jobangebote und Gehälter. Er kostet aber Unterhalt, auch wenn du bei einem kleineren Verein landest. Reicht das Geld nicht mehr, wird das Teuerste mit Verlust verkauft.</p>';
-    var grp = '';
-    FM.MEOWN.forEach(function (o) {
-      var has = M.own.indexOf(o[0]) >= 0;
-      if (o[5] !== grp) { grp = o[5]; h += '<p class="lbl" style="margin:0">' + grp.toUpperCase() + '</p>'; }
-      h += '<div class="panel"' + (has ? ' style="border-color:#c9a227"' : '') + '><div class="row" style="align-items:center;gap:10px">' + (PICS['me_' + o[0]] ? '<img class="pc" alt="" aria-hidden="true" src="' + PICS['me_' + o[0]] + '" width="96" height="72" style="width:96px;height:72px;image-rendering:pixelated;border:2px solid #052826;flex:none' + (has ? '' : ';filter:saturate(.55) brightness(.85)') + '">' : '') + '<div class="grow"><b style="font-size:16px;display:block">' + (has ? '★ ' : '') + o[1] + '</b><b>' + tk(o[2]) + '</b></div></div>' + fx([['Ruf +' + o[4], 1]].concat(o[3] ? [['Unterhalt ' + num(o[3]) + ' pro Woche', 0]] : [])) + (has ? '<button class="big sec2 sm" style="margin-top:10px" data-a="mesell" data-val="' + o[0] + '">Verkaufen · ' + tk(Math.round(o[2] * 0.7)) + '</button>' : '<button class="big sec2 sm" style="margin-top:10px" data-a="mebuy" data-val="' + o[0] + '"' + (M.cash < o[2] ? ' disabled' : '') + '>' + (M.cash < o[2] ? 'Noch ' + tk(o[2] - M.cash) + ' sparen' : 'Kaufen') + '</button>') + '</div>';
-    });
   } else {
-    h += '<p class="hint" style="margin:0">Ein Abschluss bleibt für die ganze Laufbahn, auch nach einem Vereinswechsel.</p>';
-    FM.MEEDU.forEach(function (o) {
-      var has = M.edu.indexOf(o[0]) >= 0;
-      h += '<div class="panel"' + (has ? ' style="border-color:#c9a227"' : '') + '><div class="row" style="align-items:center;gap:10px">' + (PICS['me_' + o[0]] ? '<img class="pc" alt="" aria-hidden="true" src="' + PICS['me_' + o[0]] + '" width="96" height="72" style="width:96px;height:72px;image-rendering:pixelated;border:2px solid #052826;flex:none' + (has ? '' : ';filter:saturate(.55) brightness(.85)') + '">' : '') + '<div class="grow"><b style="font-size:16px;display:block">' + (has ? '★ ' : '') + o[1] + '</b><b>' + tk(o[2]) + '</b></div></div><p class="hint" style="margin:6px 0 0">' + o[3] + '</p>' + (has ? '' : '<button class="big sec2 sm" style="margin-top:10px" data-a="melearn" data-val="' + o[0] + '"' + (M.cash < o[2] ? ' disabled' : '') + '>' + (M.cash < o[2] ? 'Noch ' + tk(o[2] - M.cash) + ' sparen' : 'Anmelden') + '</button>') + '</div>';
-    });
+    // Haus und Auto, Kurse: Raster mit zwei Karten nebeneinander
+    var edu = tab === 'edu', LIST = edu ? FM.MEEDU : FM.MEOWN, HAVE = edu ? M.edu : M.own;
+    var star = function (n) { return '<span style="color:#ffd84d;letter-spacing:1px">' + '★★★★★'.slice(0, n) + '</span><span style="color:#2c6a66;letter-spacing:1px">' + '★★★★★'.slice(n) + '</span>'; };
+    if (!edu) {
+      var rs = 0; FM.MEOWN.forEach(function (o) { if (M.own.indexOf(o[0]) >= 0) rs += o[4]; });
+      h += '<div class="panel"><div class="row" style="align-items:center;gap:10px"><p class="lbl grow" style="margin:0">DEIN BESITZ</p><span class="hint" style="font-size:12px">Ruf durch Besitz +' + rs + '</span></div>' + (M.own.length ? '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">' + M.own.map(function (k) { return PICS['me_' + k] ? '<img src="' + PICS['me_' + k] + '" alt="" aria-hidden="true" style="width:72px;height:54px;image-rendering:pixelated;border:2px solid #c9a227">' : ''; }).join('') + '</div>' : '<p class="hint" style="margin:8px 0 0">Noch nichts gekauft.</p>') + '</div>';
+    }
+    h += inf(edu ? 'Ein Abschluss bleibt für die ganze Laufbahn, auch nach einem Vereinswechsel.' : 'Besitz hebt deinen Ruf – und der bringt bessere Sponsoren, Jobangebote und Gehälter. Er kostet aber Unterhalt, auch wenn du bei einem kleineren Verein landest. Reicht das Geld nicht mehr, wird das Teuerste mit Verlust verkauft. Verkaufen bringt 70 % des Kaufpreises.', 'So funktioniert’s');
+    var card = function (o) {
+      var has = HAVE.indexOf(o[0]) >= 0, poor = M.cash < o[2], btn;
+      if (edu) btn = has ? '<div class="chip" style="min-height:36px;display:flex;align-items:center;justify-content:center;font-size:13px;color:#ffd84d;margin-top:8px">Abgeschlossen</div>' : '<button class="chip" style="width:100%;min-height:38px;margin-top:8px;font-size:13px' + (poor ? ';opacity:.5' : '') + '" data-a="melearn" data-val="' + o[0] + '"' + (poor ? ' disabled' : '') + '>' + (poor ? 'Noch ' + tk(o[2] - M.cash) : 'Anmelden') + '</button>';
+      else btn = has ? '<button class="chip" style="width:100%;min-height:38px;margin-top:8px;font-size:13px;color:#ffd84d" data-a="mesell" data-val="' + o[0] + '">Verkaufen · ' + tk(Math.round(o[2] * 0.7)) + '</button>' : '<button class="chip" style="width:100%;min-height:38px;margin-top:8px;font-size:13px' + (poor ? ';opacity:.5' : '') + '" data-a="mebuy" data-val="' + o[0] + '"' + (poor ? ' disabled' : '') + '>' + (poor ? 'Noch ' + tk(o[2] - M.cash) : 'Kaufen') + '</button>';
+      return '<div class="panel" style="padding:8px;display:flex;flex-direction:column;min-width:0' + (has ? ';border-color:#c9a227' : '') + '">' + (PICS['me_' + o[0]] ? '<img src="' + PICS['me_' + o[0]] + '" alt="" aria-hidden="true" style="width:100%;aspect-ratio:4/3;image-rendering:pixelated;display:block' + (has ? '' : ';filter:saturate(.7)') + '">' : '')
+        + '<b style="display:block;font-size:14px;margin-top:6px;line-height:1.2">' + (has ? '★ ' : '') + esc(o[1]) + '</b>'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:4px"><span style="font-size:14px">' + tk(o[2]) + '</span>' + (edu ? '' : '<span style="font-size:12px" title="Ruf +' + o[4] + '">' + star(o[4]) + '</span>') + '</div>'
+        + '<div class="hint grow" style="font-size:11px;line-height:1.3;margin-top:2px">' + (edu ? esc(o[3]) : (o[3] ? num(o[3]) + ' € Unterhalt / Wo' : 'kein Unterhalt')) + '</div>' + btn + '</div>';
+    };
+    var grp = null, buf = [];
+    var flush = function () { if (buf.length) h += '<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">' + buf.join('') + '</div>'; buf = []; };
+    var order = edu ? LIST.slice() : LIST.slice().sort(function (x, y) { var gi = ['Auto', 'Wohnen', 'Luxus']; return (gi.indexOf(x[5]) - gi.indexOf(y[5])) || x[2] - y[2]; });
+    order.forEach(function (o) { if (!edu && o[5] !== grp) { flush(); grp = o[5]; h += '<p class="lbl" style="margin:4px 0 0">' + esc(grp.toUpperCase()) + '</p>'; } buf.push(card(o)); });
+    flush();
   }
   return h;
 }

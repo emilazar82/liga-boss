@@ -4350,7 +4350,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '20.11. 01:03';
+var BUILD = '20.11. 01:08';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -6358,6 +6358,7 @@ function camDraw(c, S) {
   var left = C.side > 0, dir = left ? 1 : -1, appr = Math.min(1, t / (tc - 0.12)), axE = left ? 78 : 290, ax = axE - dir * (1 - appr) * (dead ? 62 : 46), ay = 199 + (1 - appr) * (dead ? 24 : 18);
   var air = C.shot === 'header' || C.shot === 'volley';
   var cx = air ? (C.shot === 'header' ? axE + dir * 4 : axE + dir * 30) : axE + dir * 17, cy = air ? (C.shot === 'header' ? 199 - 100 : 199 - 44) : 192;
+  if (C.bike) { cx = axE + dir * 28; cy = 199 - 131; }   // Fallrückzieher: der Ball wird hoch über dem Kopf getroffen
   var bx, by, depth = 0, shY = 200;
   if (t < tc) {
     if (air) { var u = Math.max(0, 1 - (tc - t) / 0.75), sx0 = left ? -14 : 382; bx = sx0 + (cx - sx0) * u; by = 150 + (cy - 150) * u - Math.sin(Math.PI * u) * 46; shY = 190 + 8 * u; }
@@ -6392,7 +6393,8 @@ function camDraw(c, S) {
   if (C.fk) {
     var jt = t - (tc - 0.06), wf = jt < 0 ? 0 : [1, 2, 3, 3, 4, 5, 0][Math.min(6, Math.floor(jt * 11))], wx = left ? 152 : 216;
     for (var wi = 0; wi < 4; wi++) spr(c, 'wall_' + (C.kd ? 'b' : 'a'), GM.wall, wf, wx + (wi - 1.5) * 15, 164 + (wi % 2), false);
-  } else if (!C.pen) { spr(c, dk, GM.def, df, 136, 155, false); spr(c, dk, GM.def, (df + 4) % 8, 238, 161, true); }
+  } else if (!C.pen && !C.bike) { spr(c, dk, GM.def, df, 136, 155, false); spr(c, dk, GM.def, (df + 4) % 8, 238, 161, true); }
+  else if (C.bike) spr(c, dk, GM.def, df, left ? 238 : 136, left ? 161 : 155, left);
   if (!far) ball();
   var af, ta = t * 20;
   if (ta < A[1]) af = A[0] + Math.floor(ta);
@@ -6400,8 +6402,16 @@ function camDraw(c, S) {
   else if (hit) af = AA.miss[0] + Math.min(AA.miss[1] - 1, Math.floor((t - Math.max(A[1] / 20, tc + C.fly)) * 20));
   else af = A[0] + A[1] - 1;
   if (goal && ta < A[1] && t > tc + C.fly + 0.05) af = AA.cel[0] + Math.floor((t - tc - C.fly) * 20) % AA.cel[1];
-  var bk = C.bike ? Math.max(0, 1 - Math.abs(t - tc) / 0.34) : 0;
-  if (bk > 0) { var bpy = ay - GM.att.s * 0.42 - 16 * bk; c.save(); c.translate(ax, bpy); c.rotate(-dir * 1.75 * bk); c.translate(-ax, -bpy); spr(c, (C.gk && attGK(C.ka)) || 'att_' + (C.ka ? 'b' : 'a'), GM.att, af, ax, ay - 16 * bk, !left, true); c.restore(); }
+  // Fallrückzieher: Absprung, Drehung in die Waagerechte, Schuss am höchsten Punkt, Landung auf dem Rücken, kurz liegen bleiben.
+  var tb = t - tc, bkOn = C.bike && tb > -0.34 && tb < (goal ? 0.75 : 1.05);
+  if (bkOn) {
+    var bu = Math.max(0, Math.min(1, (tb + 0.34) / 0.68)), bh = 38 * 4 * bu * (1 - bu), br = Math.min(1, bu / 0.55); br = br * br * (3 - 2 * br);
+    var up = tb > 0.34 ? Math.max(0, Math.min(1, (tb - (goal ? 0.5 : 0.8)) / 0.25)) : 0;
+    var bang = -dir * (1.72 * br - (tb > 0.34 ? 0.15 : 0)) * (1 - up), bf = tb < -0.12 ? 84 : tb < -0.03 ? 85 : tb < 0.04 ? 86 : tb < 0.16 ? 87 : tb < 0.3 ? 88 : 96;
+    var gy = tb > 0.34 ? 199 - 14 * (1 - up) + (tb < 0.42 ? -3 * Math.sin((tb - 0.34) / 0.08 * Math.PI) : 0) : ay, bpx = ax + dir * 6 * br, bpy = gy - 52 - bh;
+    c.fillStyle = 'rgba(0,0,0,.22)'; c.fillRect(Math.round(bpx) - 14 - Math.round(8 * br), 200, 28 + Math.round(16 * br), 4);
+    c.save(); c.translate(bpx, bpy); c.rotate(bang); c.translate(-bpx, -bpy); spr(c, (C.gk && attGK(C.ka)) || 'att_' + (C.ka ? 'b' : 'a'), GM.att, bf, bpx, bpy + 52, !left, true); c.restore();
+  }
   else spr(c, (C.gk && attGK(C.ka)) || 'att_' + (C.ka ? 'b' : 'a'), GM.att, af, ax, ay, !left);
   if (goal) {
     var bxp = left ? 204 : 24;

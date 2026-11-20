@@ -4350,7 +4350,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '20.11. 00:56';
+var BUILD = '20.11. 01:03';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -6112,7 +6112,9 @@ function startChance(S, e, apply) {
     S.pass = null; S.own = fwd; S.bz = 0; fwd.run = { x: fx0, y: fy0 }; fwd.spd = 2.4;
     if (DF) { DF.run = { x: fx0 + (T ? -0.025 : 0.025), y: fy0 + 0.012 }; DF.spd = 2.7; }
     S.cap = { title: 'IM STRAFRAUM', col: '#ffd84d', lines: [{ txt: S.tm[T].n }] };
-    wait(S, 1.0, function () {
+    var tries = 0, foulNow = function () {
+      // Erst pfeifen, wenn der Angreifer wirklich im Strafraum angekommen ist.
+      if (Math.abs(fwd.x - fx0) > 0.025 && tries++ < 8) return wait(S, 0.35, foulNow);
       var fl = DF ? DF.x > fwd.x : false;
       if (e.pc === 'f') { if (DF) DF.act = { a: 'slide', t0: S.t, flip: fl }; fwd.act = { a: 'fall', t0: S.t, flip: fl }; }
       fwd.run = { x: fwd.x, y: fwd.y }; S.own = null; S.bx = fwd.x + (T ? -0.02 : 0.02); S.by = fwd.y;
@@ -6120,7 +6122,8 @@ function startChance(S, e, apply) {
       if (!ui.match || !ui.match.mute) SND.whistle(0);
       S.ref.run = { x: fwd.x + (T ? 0.04 : -0.04), y: Math.min(0.92, fwd.y + 0.09) }; S.ref.spd = 2.2;
       wait(S, 1.7, function () { fwd.act = null; if (DF) { DF.act = null; DF.run = null; DF.spd = 1; } spGo(); });
-    });
+    };
+    wait(S, 0.8, foulNow);
     return;
   }
   if (sp) { spGo(); return; }

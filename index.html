@@ -4399,7 +4399,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '20.11. 18:29';
+var BUILD = '20.11. 19:29';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -6154,7 +6154,10 @@ function matchPanel() {
   }
   var tab = need ? 'sub' : (ui.mtab || 'sub'), sc = L.home ? M.hg + ':' + M.ag : M.ag + ':' + M.hg, d = L.home ? M.hg - M.ag : M.ag - M.hg;
   var h = '<div class="panel" style="display:flex;flex-direction:column;gap:10px"><div class="row" style="align-items:center"><p class="title grow" style="margin:0">' + esc(M.ptitle) + '</p><b style="font-family:var(--px);font-size:12px;color:' + (d > 0 ? '#6df09a' : d < 0 ? '#ff9a8f' : '#ffd84d') + '">' + sc + '</b></div>';
-  if ((M.ptitle === 'Halbzeit' || M.ptitle === 'Verlängerung' || M.ptitle === 'Verlängerung · Seitenwechsel') && !need && L.st) h += '</div>' + statBox(L.st, M.h, M.a, M.ptitle === 'Halbzeit' ? 'STATISTIK · HALBZEIT' : M.ptitle === 'Verlängerung' ? 'STATISTIK · NACH 90 MINUTEN' : 'STATISTIK · NACH 105 MINUTEN') + '<div class="panel" style="display:flex;flex-direction:column;gap:10px">';
+  if ((M.ptitle === 'Halbzeit' || M.ptitle === 'Verlängerung' || M.ptitle === 'Verlängerung · Seitenwechsel') && !need && L.st && L.st.n) {
+    var S0 = L.st, me0 = L.home ? 0 : 1, op0 = 1 - me0, ph0 = Math.round(S0.pos / S0.n * 100), pm = me0 === 0 ? ph0 : 100 - ph0;
+    h += '<p style="margin:0;font-size:14px;opacity:.9">Ballbesitz <b>' + pm + ' : ' + (100 - pm) + '</b> · Torschüsse <b>' + S0.sh[me0] + ' : ' + S0.sh[op0] + '</b></p>';
+  }
   if (L.seg === 3 && M.ptitle === 'Halbzeit' && !need) {
     if (L.talk) h += '<div><p class="lbl" style="margin:0 0 6px">ANSPRACHE IN DER KABINE</p><p class="tnote' + (L.talk.g < 0 ? ' bad' : '') + '" style="margin:0">' + esc(L.talk.t) + '</p></div>';
     else h += '<div><p class="lbl" style="margin:0 0 6px">ANSPRACHE IN DER KABINE</p>' + tiles('htalk', [[1, 'Loben', 't12', sm('passt bei Führung')], [2, 'Anstacheln', 't2', sm('passt bei knappem Stand')], [3, 'Zusammenfalten', 'i2', sm('nur bei Rückstand · riskant')], [0, 'Ruhig bleiben', 't0', sm('keine Wirkung')]], -1, 'pk2') + '</div>';
@@ -7180,7 +7183,7 @@ function absentHtml() {
   return h + '</div>';
 }
 // Statistik im Stil der Fernsehbalken: eigene Mannschaft gelb, Gegner blau, der kleinere Wert grau
-function statBox(S, hId, aId, title) {
+function statBox(S, hId, aId, title, compact) {
   if (!S || !S.n) return '';
   var me = state.uid, cH = hId === me ? '#ffd84d' : '#7fb0ea', cA = aId === me ? '#ffd84d' : '#7fb0ea', ph = Math.round(S.pos / S.n * 100), zh = Math.round(S.zk / S.n);
   var sv = function (i) { return Math.max(0, S.on[1 - i] - S.gl[1 - i]); };
@@ -7188,18 +7191,11 @@ function statBox(S, hId, aId, title) {
   if (S.rc[0] || S.rc[1]) R.push(['Rote Karten', S.rc[0], S.rc[1]]);
   var nm = function (id) { var t = FM.team(state, id); return '<span style="display:flex;align-items:center;gap:6px;min-width:0' + (id === aId ? ';justify-content:flex-end' : '') + '">' + (id === hId ? crest(id, 22) : '') + '<b style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis' + (id === me ? ';color:#ffd84d' : '') + '">' + esc(t ? t.n : '') + '</b>' + (id === aId ? crest(id, 22) : '') + '</span>'; };
   var h = '<div class="panel" style="padding:12px"><p class="lbl" style="margin:0 0 8px;text-align:center">' + esc(title) + '</p><div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px">' + nm(hId) + nm(aId) + '</div>';
-  R.forEach(function (r) { var x = r[1], y = r[2]; h += '<div style="margin-top:9px"><div style="display:flex;justify-content:space-between;font-size:14px"><b>' + x + (r[3] || '') + '</b><span style="opacity:.8">' + r[0] + '</span><b>' + y + (r[3] || '') + '</b></div><div style="display:flex;gap:3px;height:8px;margin-top:4px"><div style="flex:' + Math.max(x, 0.0001) + ' 1 0;background:' + (x >= y && x > 0 ? cH : 'rgba(255,255,255,.18)') + '"></div><div style="flex:' + Math.max(y, 0.0001) + ' 1 0;background:' + (y >= x && y > 0 ? cA : 'rgba(255,255,255,.18)') + '"></div></div></div>'; });
+  var main = compact ? [R[0], R[1], R[4]] : R, rest = compact ? R.filter(function (r, k) { return k !== 0 && k !== 1 && k !== 4; }) : [];
+  function rowH(r) { var x = r[1], y = r[2], h = ''; h += '<div style="margin-top:9px"><div style="display:flex;justify-content:space-between;font-size:14px"><b>' + x + (r[3] || '') + '</b><span style="opacity:.8">' + r[0] + '</span><b>' + y + (r[3] || '') + '</b></div><div style="display:flex;gap:3px;height:8px;margin-top:4px"><div style="flex:' + Math.max(x, 0.0001) + ' 1 0;background:' + (x >= y && x > 0 ? cH : 'rgba(255,255,255,.18)') + '"></div><div style="flex:' + Math.max(y, 0.0001) + ' 1 0;background:' + (y >= x && y > 0 ? cA : 'rgba(255,255,255,.18)') + '"></div></div></div>'; return h; }
+  main.forEach(function (r) { h += rowH(r); });
+  if (rest.length) h += '<details style="margin-top:10px"><summary style="cursor:pointer;font-size:13px;opacity:.85">Alle Werte</summary>' + rest.map(rowH).join('') + '</details>';
   return h + '</div>';
-}
-function paperStat(m) {
-  var S = m && m.st; if (!S || !S.n) return '<p class="ld">Für dieses Spiel liegt keine Statistik vor.</p>';
-  var ph = Math.round(S.pos / S.n * 100), zh = Math.round(S.zk / S.n), sv = function (i) { return Math.max(0, S.on[1 - i] - S.gl[1 - i]); };
-  var R = [['Ballbesitz', ph, 100 - ph, '%'], ['Torschüsse', S.sh[0], S.sh[1]], ['Aufs Tor', S.on[0], S.on[1]], ['Torszenen', S.bc[0], S.bc[1]], ['Ecken', S.co[0], S.co[1]], ['Passquote', Math.round(S.pq[0] / S.n), Math.round(S.pq[1] / S.n), '%'], ['Zweikämpfe', zh, 100 - zh, '%'], ['Fouls', S.fo[0], S.fo[1]], ['Abseits', S.of[0], S.of[1]], ['Paraden', sv(0), sv(1)], ['Gelbe Karten', S.yc[0], S.yc[1]]];
-  if (S.rc[0] || S.rc[1]) R.push(['Rote Karten', S.rc[0], S.rc[1]]);
-  var th = FM.team(state, m.h), ta = FM.team(state, m.a), me = state.uid;
-  var h = '<h3 class="s">Die Statistik' + (m.et ? ' nach 120 Minuten' : '') + '</h3><div style="display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:8px;align-items:baseline;margin:2px 0 6px;font-size:13px"><b style="overflow:hidden;white-space:nowrap;text-overflow:ellipsis' + (m.h === me ? ';text-decoration:underline' : '') + '">' + esc(th ? th.n : '') + '</b><b style="font-size:18px">' + m.hg + ':' + m.ag + '</b><b style="text-align:right;overflow:hidden;white-space:nowrap;text-overflow:ellipsis' + (m.a === me ? ';text-decoration:underline' : '') + '">' + esc(ta ? ta.n : '') + '</b></div>';
-  R.forEach(function (r) { var x = r[1], y = r[2]; h += '<div style="margin-top:7px"><div style="display:flex;justify-content:space-between;font-size:14px"><b>' + x + (r[3] || '') + '</b><span>' + r[0] + '</span><b>' + y + (r[3] || '') + '</b></div><div style="display:flex;gap:2px;height:6px;margin-top:3px"><div style="flex:' + Math.max(x, 0.0001) + ' 1 0;background:' + (x >= y && x > 0 ? '#1b1b1b' : '#c9bea2') + '"></div><div style="flex:' + Math.max(y, 0.0001) + ' 1 0;background:' + (y >= x && y > 0 ? '#1b1b1b' : '#c9bea2') + '"></div></div></div>'; });
-  return h;
 }
 function paperNav(pg, list) { return '<nav>' + list.map(function (x) { return '<button data-a="pp" data-val="' + x[1] + '" aria-pressed="' + (pg === x[1]) + '"' + (pg === x[1] ? ' class="on"' : '') + '>' + x[0] + '</button>'; }).join('') + '</nav>'; }
 function scoreCard(hId, aId, hg, ag, extra) {
@@ -7214,11 +7210,13 @@ function vCupResults() {
   var h = '<div class="hdr"><div class="title grow">' + (R.tour ? TNM() : R.eu ? EUN() : CUPN()) + ' · ' + R.name + '</div></div>';
   if (R.tour) {
     if (mine && mine.length > 3) h += scoreCard(mine[0], mine[1], mine[2], mine[3], (R.grp ? (R.won ? 'SIEG' : R.draw ? 'UNENTSCHIEDEN' : 'NIEDERLAGE') + (R.grpEnd ? '<br>' + (R.grpOk ? 'VIERTELFINALE ERREICHT' : 'IN DER GRUPPE AUSGESCHIEDEN') : '') : R.won ? (R.final ? 'TITEL GEWONNEN!' : 'WEITER') : 'AUSGESCHIEDEN') + (m.pen ? ' · NACH ELFMETERSCHIESSEN' : ''));
+    if (m && m.st) h += statBox(m.st, m.h, m.a, m.et ? 'STATISTIK · NACH 120 MINUTEN' : 'STATISTIK', 1);
     h += '<button class="big" data-a="tournext">Weiter</button>' + cupPaper(R, m) + absentHtml() + '<p class="lbl" style="margin:0">ALLE SPIELE DER RUNDE</p><div class="list">';
     R.ties.forEach(function (x) { h += tieRow(x); });
     return h + '</div><p class="hint" style="margin:0">* nach Elfmeterschießen · n.V. = nach Verlängerung</p><button class="big" data-a="tournext">Weiter</button>';
   }
   if (mine && mine.length > 3) h += scoreCard(mine[0], mine[1], mine[2], mine[3], (R.grp || R.leg === 1 ? (R.won ? 'SIEG' : R.draw ? 'UNENTSCHIEDEN' : 'NIEDERLAGE') + (R.leg === 1 ? '<br>HINSPIEL' : '') + (R.grpEnd ? '<br>' + (R.grpOk ? 'VIERTELFINALE ERREICHT' : 'IN DER GRUPPE AUSGESCHIEDEN') : '') : R.won ? (R.final ? (R.eu ? 'TITEL GEWONNEN!' : 'POKALSIEG!') : 'WEITER') : 'AUSGESCHIEDEN') + (R.agg ? '<br>GESAMT ' + R.agg[0] + ':' + R.agg[1] : '') + (m.pen ? '<br>NACH ELFMETERSCHIESSEN' : ''));
+  if (m && m.st) h += statBox(m.st, m.h, m.a, m.et ? 'STATISTIK · NACH 120 MINUTEN' : 'STATISTIK', 1);
   h += (R.won && !R.final && !R.eu ? '<button class="big" data-a="go" data-v="draw">Zur Auslosung</button>' : '<button class="big" data-a="go" data-v="menu">Zurück ins Büro</button>');
   h += cupPaper(R, m);
   var px = []; if (R.att) { px.push([num(R.att) + ' Zuschauer', 1]); px.push(['Einnahmen +' + money(R.inc), 1]); } if (R.prize) px.push(['Prämie +' + money(R.prize), 1]);
@@ -7561,8 +7559,7 @@ function cupPaper(R, m) {
   if (R.boardCup) it.push(['Vorstand', R.boardCup]);
   var sup = []; (R.eu ? [] : R.ties || []).forEach(function (x) { if (x.length < 5 || x[0] === u.id || x[1] === u.id) return; var a = FM.team(state, x[0]), b = FM.team(state, x[1]); if (!a || !b || a.lg === b.lg) return; var low = a.lg > b.lg ? a : b; if (x[4] === low.id) sup.push(low.n + ' wirft ' + (low === a ? b : a).n + ' raus'); });
   if (sup.length) it.push(['Überraschung', sup.slice(0, 2).join('. ') + '.']);
-  var cpg = ui.pp === 3 && m.st ? 3 : 0, cnav = m.st ? paperNav(cpg, [['Titelseite', 0], ['Statistik', 3]]) : '';
-  if (cpg === 3) return '<article class="paper' + (R.final && R.won ? ' gold' : '') + '">' + paperHead(R.final ? 'Sonderausgabe zum Finale' : cupN + ' · ' + R.name) + cnav + paperStat(m) + '</article>';
+  var cnav = '';
   return '<article class="paper' + (R.final && R.won ? ' gold' : '') + '">' + paperHead(R.final ? 'Sonderausgabe zum Finale' : cupN + ' · ' + R.name) + cnav + '<h3>' + esc(hl) + '</h3><p class="ld">' + esc(lead) + '</p>' + (it.length ? '<div class="cols">' + it.map(function (x) { return '<p><b>' + esc(x[0]) + '.</b> ' + esc(x[1]) + '</p>'; }).join('') + '</div>' : '') + '</article>';
 }
 function vDraw() {
@@ -7883,8 +7880,7 @@ function paperFront(R, mine, u) {
 
 function paper(R, mine, u) {
   var home = mine[0] === u.id, gf = home ? mine[2] : mine[3], ga = home ? mine[3] : mine[2], o = FM.team(state, home ? mine[1] : mine[0]).n, t = u.n, sc = gf + ':' + ga, d = gf - ga, G = (ui.match && ui.match.goals) || [], k = (R.round + gf * 3 + ga) % 3, pg = ui.pp || 0;
-  var h = '<article class="paper">' + paperHead() + paperNav(pg, [['Titelseite', 0], ['Elf des Tages', 1], ['Liga & Markt', 2]].concat(R.match && R.match.st ? [['Statistik', 3]] : []));
-  if (pg === 3) return h + paperStat(R.match) + '</article>';
+  var h = '<article class="paper">' + paperHead() + paperNav(pg, [['Titelseite', 0], ['Elf des Tages', 1], ['Liga & Markt', 2]]);
   if (pg === 1) {
     var X = R.xi || [], rows = [[], [], [], []]; X.forEach(function (x) { rows[x.p].push(x); });
     h += '<h3 class="s">Die Elf des ' + (R.round + 1) + '. Spieltags</h3><div class="xi">';
@@ -7944,6 +7940,7 @@ function vResults() {
   state.sched[u.lg][R.round].forEach(function (x) { if (x[0] === u.id || x[1] === u.id) mine = x; });
   var h = '<div class="hdr"><div class="title grow">' + (R.round + 1) + '. Spieltag</div></div>';
   if (mine) h += scoreCard(mine[0], mine[1], mine[2], mine[3]);
+  if (m && m.st) h += statBox(m.st, m.h, m.a, m.et ? 'STATISTIK · NACH 120 MINUTEN' : 'STATISTIK', 1);
   h += R.sacked ? '<button class="big warn" data-a="go" data-v="sacked">Weiter</button>' : state.over ? '<button class="big" data-a="season">Saisonabschluss</button>' : '<button class="big" data-a="go" data-v="menu">Zurück ins Büro</button>';
   if (mine) h += paper(R, mine, u);
   var prev = state.ph.length > 1 ? state.ph[state.ph.length - 2] : pl, mv = prev - pl;

@@ -4399,7 +4399,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '20.11. 19:29';
+var BUILD = '20.11. 19:49';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -4472,6 +4472,7 @@ function go(view) {
   if (state && view === 'menu') popScan();
   if (ui.dirty && view === 'menu') persist();
   if (view === 'results') ui.pp = 0;
+  if (view === 'results' && ui.view === 'match' && ui.match) ui.match.seen = 1;
   if (view === 'results' && state && ui.match && ui.match.res && ui.view !== 'cer') { var CF = cerFor(ui.match.res); if (CF) { ui.match.res._cer = 1; persist(); var CU = FM.userTeam(state); if (!CF.t) { ui.cer = partyObj(CF.party, CU, 'results', coachN()); return go('cer'); } cerStart(CF.t, CU, 'results', CF.s, coachN()); if (CF.party) ui.cer.after = partyObj(CF.party, CU, 'results', coachN()); return; } }
   if (view !== 'match' && view !== 'cer') SND.crowd(false);
   if (view === 'cer' && ui.view !== 'cer') { SND.cer(true, ui.cer && ui.cer.mode === 'party' ? 'jauf' : null); SND.crowd(true); } else if (view !== 'cer' && ui.view === 'cer') SND.cer(false);
@@ -7055,7 +7056,7 @@ function startMatch() {
     var PK = m.pen && m.pk && m.pk.k && m.pk.k.length ? m.pk : null;
     var penTick = function () { if (m.pen) tick('Elfmeterschießen' + (PK ? ' ' + PK.hs + ':' + PK.as : '') + '! ' + FM.team(state, m.w).n + ' behält die Nerven und kommt weiter.', 'goal' + (m.w === state.uid ? '' : ' opp')); };
     var endBtns = function () {
-    var b = document.getElementById('mBtns'); if (b) { b.style.display = ''; b.innerHTML = R.ntf ? '<button class="big" data-a="go" data-v="menu">Zurück zum Verein</button>' : R.fr ? '<button class="big" data-a="go" data-v="summer">Zur Vorbereitung</button>' : '<button class="big" data-a="go" data-v="results">Zur Zeitung</button>'; }
+    var b = document.getElementById('mBtns'); if (b) { b.style.display = ''; b.innerHTML = R.ntf ? '<button class="big" data-a="go" data-v="menu">Zurück zum Verein</button>' : R.fr ? '<button class="big" data-a="go" data-v="summer">Zur Vorbereitung</button>' : '<button class="big" data-a="go" data-v="results">Zur Spielauswertung</button>'; }
     };
     SND.whistle(3);
     M.showFin = function () {
@@ -7200,6 +7201,8 @@ function statBox(S, hId, aId, title, compact) {
 function paperNav(pg, list) { return '<nav>' + list.map(function (x) { return '<button data-a="pp" data-val="' + x[1] + '" aria-pressed="' + (pg === x[1]) + '"' + (pg === x[1] ? ' class="on"' : '') + '>' + x[0] + '</button>'; }).join('') + '</nav>'; }
 function scoreCard(hId, aId, hg, ag, extra) {
   var me = state.uid, d = hId === me ? hg - ag : ag - hg, G = (ui.match && ui.match.goals) || [], gl = function (hm) { return G.filter(function (g) { return g.h === hm; }).map(function (g) { return g.m + "' " + esc(g.p); }).join('<br>'); };
+  // Spiel wurde live verfolgt: Ergebnis und Torschützen standen schon beim Abpfiff im Stadion, hier nur eine kompakte Zeile
+  if (ui.match && ui.match.seen) return '<div class="panel" style="display:flex;align-items:center;gap:10px;padding:10px 12px">' + crest(hId, 26) + '<b style="font-family:var(--px);font-size:18px">' + hg + ':' + ag + '</b>' + crest(aId, 26) + '<b class="grow" style="text-align:right;font-family:var(--px);font-size:12px;line-height:1.5;color:' + (d > 0 ? '#6df09a' : d < 0 ? '#ff9a8f' : '#ffd84d') + '">' + (extra || (d > 0 ? 'SIEG' : d < 0 ? 'NIEDERLAGE' : 'UNENTSCHIEDEN')) + '</b></div>';
   var h = '<div class="panel"><div class="sbt"><div>' + crest(hId, 46) + '<b>' + esc(FM.team(state, hId).n) + '</b></div><div class="sbs">' + hg + ':' + ag + '</div><div>' + crest(aId, 46) + '<b>' + esc(FM.team(state, aId).n) + '</b></div></div>';
   if (G.length && G.length === hg + ag) h += '<div class="sbg"><div>' + gl(true) + '</div><div>' + gl(false) + '</div></div>';
   return h + '<p class="sbv" style="color:' + (d > 0 ? '#6df09a' : d < 0 ? '#ff9a8f' : '#ffd84d') + '">' + (extra || (d > 0 ? 'SIEG' : d < 0 ? 'NIEDERLAGE' : 'UNENTSCHIEDEN')) + '</p></div>';

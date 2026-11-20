@@ -1824,7 +1824,7 @@ function invBuy(state, k, n) {
   if (!e && M.inv.length >= 6) return 'Mehr als sechs Beteiligungen verwaltet deine Bank nicht.';
   if (e && e.pct >= 100) return 'Der Verein gehört dir schon ganz.';
   var cost = Math.round(f.val * 0.1 * 1.05); if (M.cash < cost) return 'Dafür reicht dein Privatvermögen nicht.';
-  M.cash -= cost; if (!e) { e = { k: k, n: n, pct: 0, paid: 0, hist: [], s0: state.season }; M.inv.push(e); } var ew0 = e.bs === state.season ? e.bw || 0 : e.pct * RN(state); e.bs = state.season; e.bw = ew0 + 10 * (RN(state) - state.round); e.pct += 10; e.paid += cost; meLog(state, '10 % an ' + n, -cost); return '';
+  M.cash -= cost; if (!e) { e = { k: k, n: n, pct: 0, paid: 0, hist: [], s0: state.season }; M.inv.push(e); } var ew0 = e.bs === state.season ? e.bw || 0 : e.pct * RN(state); e.bs = state.season; e.bw = ew0 + 10 * (RN(state) - state.round); e.pct += 10; e.paid += cost; meLog(state, '10 % an ' + n + ' gekauft', -cost); return '';
 }
 function invSell(state, idx) {
   var M = me(state), e = (M.inv || [])[idx]; if (!e) return 'Die Beteiligung gibt es nicht mehr.';
@@ -4350,7 +4350,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '20.11. 12:25';
+var BUILD = '20.11. 13:22';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -6967,7 +6967,19 @@ function vPrivate() {
     h += '<div class="panel" style="display:flex;gap:10px;align-items:center">' + icon('m_sign', 42) + '<div class="grow"><b>Mehr Gehalt fordern</b><div class="hint">' + (asked ? 'In dieser Saison schon verhandelt' : '+12 % · einmal pro Saison ab dem 7. Spieltag · Vorstand ' + Math.round(state.board.conf) + ' / 100') + '</div></div></div>';
     h += '<button class="big" data-a="measkw"' + (asked ? ' disabled' : '') + '>' + (asked ? 'Schon verhandelt' : 'Gehalt neu verhandeln') + '</button>';
     h += inf('Das Gehalt zahlt der Verein aus seiner Kasse. Wirst du entlassen, bekommst du die Hälfte des Restvertrags; bittest du selbst um Auflösung, gibt es nichts.<br><br>Mehr Gehalt fordern: +12 %, höchstens 25 % über dem Üblichen. Je höher das Vertrauen des Vorstands, desto eher sagt er ja. Bei einer Ablehnung sinkt das Vertrauen um 4.<br><br>Am Saisonende wird dein Gehalt neu bewertet: Es steigt auf das, was Liga und Ruf wert sind, und sinkt nach einem Abstieg, wenn es weit darüber liegt. Läuft der Vertrag aus, verlängert er sich um zwei Jahre.', 'So funktioniert’s');
-    if (M.log.length) { h += '<div class="panel"><p class="lbl">LETZTE BEWEGUNGEN</p>'; M.log.forEach(function (x) { h += kv(esc(x.t) + ' <span class="hint">· ' + seasonLabel(x.s) + '</span>', (x.v > 0 ? '+' : '') + money(x.v)); }); h += '</div>'; }
+    if (M.log.length) {
+      // Nach Saison gruppiert, Beträge in einer festen Spalte, Plus grün und Minus rot
+      var bySe = {}, ses = []; M.log.forEach(function (x) { if (!bySe[x.s]) { bySe[x.s] = []; ses.push(x.s); } bySe[x.s].push(x); });
+      h += '<div class="panel"><p class="lbl">LETZTE BEWEGUNGEN</p>';
+      ses.forEach(function (se, si) {
+        var sum = bySe[se].reduce(function (a2, x) { return a2 + x.v; }, 0);
+        h += '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:' + (si ? '14px' : '4px') + ' 0 2px;padding-bottom:4px;border-bottom:2px solid #2a8078"><b style="font-family:var(--px);font-size:11px;letter-spacing:1px;color:#9fd9cf">SAISON ' + seasonLabel(se) + '</b><span class="hint" style="font-size:12px;white-space:nowrap">Saldo <b style="color:' + (sum >= 0 ? '#6df09a' : '#ff8a7a') + '">' + (sum > 0 ? '+' : '') + money(sum) + '</b></span></div>';
+        bySe[se].forEach(function (x) {
+          h += '<div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:baseline;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.07)"><span style="font-size:15px;line-height:1.3">' + esc(/^\d+ % an /.test(x.t) && x.v < 0 && !/ (gekauft|verkauft)$/.test(x.t) ? x.t + ' gekauft' : x.t) + '</span><b style="white-space:nowrap;font-size:15px;color:' + (x.v >= 0 ? '#6df09a' : '#ff8a7a') + '">' + (x.v > 0 ? '+' : '') + money(x.v) + '</b></div>';
+        });
+      });
+      h += '</div>';
+    }
   } else {
     // Haus und Auto, Kurse: Raster mit zwei Karten nebeneinander
     var edu = tab === 'edu', LIST = edu ? FM.MEEDU : FM.MEOWN, HAVE = edu ? M.edu : M.own;

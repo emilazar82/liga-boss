@@ -4399,7 +4399,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '20.11. 20:06';
+var BUILD = '20.11. 20:29';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -4490,9 +4490,9 @@ function go(view) {
   ui.view = view; ui.confirm = false; ui.sel = -1; render(); window.scrollTo(0, y0);
 }
 function heroPic(k, alt, hh) { return '<img class="heropic" alt="' + alt + '" src="' + PICS[k] + '" width="192" height="' + hh + '">'; }
-function sub(title) {
+function sub(title, priv) {
   if (state.ntfx) return '<div class="hdr"><button class="back" data-a="go" data-v="ntprep">‹ Länderspiel</button><div class="title grow">' + title + '</div></div>';
-  return '<div class="hdr"><button class="back" data-a="go" data-v="menu">‹ Büro</button><div class="title grow">' + title + '</div><div class="cash" title="Kasse"><span>Kasse</span><b style="color:' + (state.cash < 0 ? '#ff9a8f' : '#6df09a') + '">' + tk(state.cash) + '</b></div></div>';
+  return '<div class="hdr"><button class="back" data-a="go" data-v="menu">‹ Büro</button><div class="title grow">' + title + '</div>' + (priv ? (function () { var V = FM.me(state).cash || 0; return '<div class="cash" title="Dein Privatvermögen"><span>Vermögen</span><b style="color:' + (V < 0 ? '#ff9a8f' : '#ffd84d') + '">' + tk(V) + '</b></div>'; })() : '<div class="cash" title="Vereinskasse"><span>Kasse</span><b style="color:' + (state.cash < 0 ? '#ff9a8f' : '#6df09a') + '">' + tk(state.cash) + '</b></div>') + '</div>';
 }
 function tabBar(act, items, cur) { return '<div class="tabs">' + items.map(function (it) { return '<button class="' + (it[0] === cur ? 'on' : '') + '" data-a="' + act + '" data-val="' + it[0] + '" aria-pressed="' + (it[0] === cur) + '">' + it[1] + '</button>'; }).join('') + '</div>'; }
 function backSel(t) { return '<div class="row" style="align-items:center"><button class="back" data-a="sel" data-id="' + ui.sel + '">‹ Liste</button><b class="grow">' + t + '</b></div>'; }
@@ -7293,7 +7293,7 @@ function vShop() {
   return h;
 }
 function vPrivate() {
-  var M = FM.me(state), u = FM.userTeam(state), tab = ui.pvt || 'con', h = sub('Privat'), up = FM.meUpkeep(state), RNn = FM.RN(state), CN = coachN() || 'Trainer';
+  var M = FM.me(state), u = FM.userTeam(state), tab = ui.pvt || 'con', h = sub('Privat', 1), up = FM.meUpkeep(state), RNn = FM.RN(state), CN = coachN() || 'Trainer';
   if (tab === 'club') tab = 'con';
   var ini = CN.split(/\s+/).map(function (x) { return x.charAt(0); }).join('').slice(0, 2).toUpperCase();
   h += '<div class="panel" style="display:flex;gap:12px;align-items:center"><div aria-hidden="true" style="width:52px;height:52px;flex:none;border:2px solid #2a8078;background:#0b3f3b;display:flex;align-items:center;justify-content:center;font-family:var(--px);font-size:18px;color:#ffd84d">' + esc(ini) + '</div><div class="grow" style="min-width:0"><b style="font-size:17px;display:block">' + esc(CN) + '</b><span class="hint">' + esc(FM.meFamTxt(state)) + ' · Geburtstag nach dem ' + FM.meBday(state) + '. Spieltag</span></div></div>';
@@ -7363,7 +7363,7 @@ function tmK(id, side, mine) { var t = FM.team(state, id), n = '<span class="nm"
 function kitSwUpd() { try { var L = document.querySelectorAll('.ksw'); for (var i = 0; i < L.length; i++) { var K = KIT[+L[i].getAttribute('data-k')]; L[i].style.background = 'linear-gradient(' + K.s + ' 0 62%,' + K.h + ' 62% 100%)'; } } catch (e) { } }
 function coachOf(id) { var t = FM.team(state, id); if (!t) return ''; if (id === state.uid) return coachN() || ''; return t.co ? t.co.n : ''; }
 function vClubs() {
-  var M = FM.me(state), u = FM.userTeam(state), tab = ui.clt === 'buy' ? 'buy' : 'mine', h = sub('Meine Vereine'), NOSW = '';
+  var M = FM.me(state), u = FM.userTeam(state), tab = ui.clt === 'buy' ? 'buy' : 'mine', h = sub('Meine Vereine', 1), NOSW = '';
   var stars = function (n) { return '<span style="color:#ffd84d;letter-spacing:1px">' + '★★★★★'.slice(0, n) + '</span><span style="color:#2c6a66;letter-spacing:1px">' + '★★★★★'.slice(n) + '</span>'; };
     var pct = FM.mePct(state), V = FM.clubVal(state), own = pct >= 100, stp = pct >= 45 ? 100 - pct : 5, st2 = FM.meStep(state), SW = FM.shareWin(state), swd = SW ? '' : ' disabled';
     if (!SW) NOSW = '<div class="panel" style="border-color:#c9a227"><p style="margin:0;font-size:15px"><b>Der Anteilshandel ruht.</b> In den letzten sieben Spieltagen werden keine Anteile gekauft oder verkauft. Nach dem Saisonwechsel geht es weiter.</p></div>';

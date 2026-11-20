@@ -4371,7 +4371,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '20.11. 14:59';
+var BUILD = '20.11. 15:21';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -6889,6 +6889,17 @@ function statBox(S, hId, aId, title) {
   R.forEach(function (r) { var x = r[1], y = r[2]; h += '<div style="margin-top:9px"><div style="display:flex;justify-content:space-between;font-size:14px"><b>' + x + (r[3] || '') + '</b><span style="opacity:.8">' + r[0] + '</span><b>' + y + (r[3] || '') + '</b></div><div style="display:flex;gap:3px;height:8px;margin-top:4px"><div style="flex:' + Math.max(x, 0.0001) + ' 1 0;background:' + (x >= y && x > 0 ? cH : 'rgba(255,255,255,.18)') + '"></div><div style="flex:' + Math.max(y, 0.0001) + ' 1 0;background:' + (y >= x && y > 0 ? cA : 'rgba(255,255,255,.18)') + '"></div></div></div>'; });
   return h + '</div>';
 }
+function paperStat(m) {
+  var S = m && m.st; if (!S || !S.n) return '<p class="ld">Für dieses Spiel liegt keine Statistik vor.</p>';
+  var ph = Math.round(S.pos / S.n * 100), zh = Math.round(S.zk / S.n), sv = function (i) { return Math.max(0, S.on[1 - i] - S.gl[1 - i]); };
+  var R = [['Ballbesitz', ph, 100 - ph, '%'], ['Torschüsse', S.sh[0], S.sh[1]], ['Aufs Tor', S.on[0], S.on[1]], ['Torszenen', S.bc[0], S.bc[1]], ['Ecken', S.co[0], S.co[1]], ['Passquote', Math.round(S.pq[0] / S.n), Math.round(S.pq[1] / S.n), '%'], ['Zweikämpfe', zh, 100 - zh, '%'], ['Fouls', S.fo[0], S.fo[1]], ['Abseits', S.of[0], S.of[1]], ['Paraden', sv(0), sv(1)], ['Gelbe Karten', S.yc[0], S.yc[1]]];
+  if (S.rc[0] || S.rc[1]) R.push(['Rote Karten', S.rc[0], S.rc[1]]);
+  var th = FM.team(state, m.h), ta = FM.team(state, m.a), me = state.uid;
+  var h = '<h3 class="s">Die Statistik' + (m.et ? ' nach 120 Minuten' : '') + '</h3><div style="display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:8px;align-items:baseline;margin:2px 0 6px;font-size:13px"><b style="overflow:hidden;white-space:nowrap;text-overflow:ellipsis' + (m.h === me ? ';text-decoration:underline' : '') + '">' + esc(th ? th.n : '') + '</b><b style="font-size:18px">' + m.hg + ':' + m.ag + '</b><b style="text-align:right;overflow:hidden;white-space:nowrap;text-overflow:ellipsis' + (m.a === me ? ';text-decoration:underline' : '') + '">' + esc(ta ? ta.n : '') + '</b></div>';
+  R.forEach(function (r) { var x = r[1], y = r[2]; h += '<div style="margin-top:7px"><div style="display:flex;justify-content:space-between;font-size:14px"><b>' + x + (r[3] || '') + '</b><span>' + r[0] + '</span><b>' + y + (r[3] || '') + '</b></div><div style="display:flex;gap:2px;height:6px;margin-top:3px"><div style="flex:' + Math.max(x, 0.0001) + ' 1 0;background:' + (x >= y && x > 0 ? '#1b1b1b' : '#c9bea2') + '"></div><div style="flex:' + Math.max(y, 0.0001) + ' 1 0;background:' + (y >= x && y > 0 ? '#1b1b1b' : '#c9bea2') + '"></div></div></div>'; });
+  return h;
+}
+function paperNav(pg, list) { return '<nav>' + list.map(function (x) { return '<button data-a="pp" data-val="' + x[1] + '" aria-pressed="' + (pg === x[1]) + '"' + (pg === x[1] ? ' class="on"' : '') + '>' + x[0] + '</button>'; }).join('') + '</nav>'; }
 function scoreCard(hId, aId, hg, ag, extra) {
   var me = state.uid, d = hId === me ? hg - ag : ag - hg, G = (ui.match && ui.match.goals) || [], gl = function (hm) { return G.filter(function (g) { return g.h === hm; }).map(function (g) { return g.m + "' " + esc(g.p); }).join('<br>'); };
   var h = '<div class="panel"><div class="sbt"><div>' + crest(hId, 46) + '<b>' + esc(FM.team(state, hId).n) + '</b></div><div class="sbs">' + hg + ':' + ag + '</div><div>' + crest(aId, 46) + '<b>' + esc(FM.team(state, aId).n) + '</b></div></div>';
@@ -6901,13 +6912,11 @@ function vCupResults() {
   var h = '<div class="hdr"><div class="title grow">' + (R.tour ? TNM() : R.eu ? EUN() : CUPN()) + ' · ' + R.name + '</div></div>';
   if (R.tour) {
     if (mine && mine.length > 3) h += scoreCard(mine[0], mine[1], mine[2], mine[3], (R.grp ? (R.won ? 'SIEG' : R.draw ? 'UNENTSCHIEDEN' : 'NIEDERLAGE') + (R.grpEnd ? '<br>' + (R.grpOk ? 'VIERTELFINALE ERREICHT' : 'IN DER GRUPPE AUSGESCHIEDEN') : '') : R.won ? (R.final ? 'TITEL GEWONNEN!' : 'WEITER') : 'AUSGESCHIEDEN') + (m.pen ? ' · NACH ELFMETERSCHIESSEN' : ''));
-    if (mine && m && m.st) h += statBox(m.st, m.h, m.a, m.et ? 'STATISTIK · NACH 120 MINUTEN' : 'STATISTIK · SPIELENDE');
     h += '<button class="big" data-a="tournext">Weiter</button>' + cupPaper(R, m) + absentHtml() + '<p class="lbl" style="margin:0">ALLE SPIELE DER RUNDE</p><div class="list">';
     R.ties.forEach(function (x) { h += tieRow(x); });
     return h + '</div><p class="hint" style="margin:0">* nach Elfmeterschießen · n.V. = nach Verlängerung</p><button class="big" data-a="tournext">Weiter</button>';
   }
   if (mine && mine.length > 3) h += scoreCard(mine[0], mine[1], mine[2], mine[3], (R.grp || R.leg === 1 ? (R.won ? 'SIEG' : R.draw ? 'UNENTSCHIEDEN' : 'NIEDERLAGE') + (R.leg === 1 ? '<br>HINSPIEL' : '') + (R.grpEnd ? '<br>' + (R.grpOk ? 'VIERTELFINALE ERREICHT' : 'IN DER GRUPPE AUSGESCHIEDEN') : '') : R.won ? (R.final ? (R.eu ? 'TITEL GEWONNEN!' : 'POKALSIEG!') : 'WEITER') : 'AUSGESCHIEDEN') + (R.agg ? '<br>GESAMT ' + R.agg[0] + ':' + R.agg[1] : '') + (m.pen ? '<br>NACH ELFMETERSCHIESSEN' : ''));
-  if (mine && m && m.st) h += statBox(m.st, m.h, m.a, m.et ? 'STATISTIK · NACH 120 MINUTEN' : 'STATISTIK · SPIELENDE');
   h += (R.won && !R.final && !R.eu ? '<button class="big" data-a="go" data-v="draw">Zur Auslosung</button>' : '<button class="big" data-a="go" data-v="menu">Zurück ins Büro</button>');
   h += cupPaper(R, m);
   var px = []; if (R.att) { px.push([num(R.att) + ' Zuschauer', 1]); px.push(['Einnahmen +' + money(R.inc), 1]); } if (R.prize) px.push(['Prämie +' + money(R.prize), 1]);
@@ -7250,7 +7259,9 @@ function cupPaper(R, m) {
   if (R.boardCup) it.push(['Vorstand', R.boardCup]);
   var sup = []; (R.eu ? [] : R.ties || []).forEach(function (x) { if (x.length < 5 || x[0] === u.id || x[1] === u.id) return; var a = FM.team(state, x[0]), b = FM.team(state, x[1]); if (!a || !b || a.lg === b.lg) return; var low = a.lg > b.lg ? a : b; if (x[4] === low.id) sup.push(low.n + ' wirft ' + (low === a ? b : a).n + ' raus'); });
   if (sup.length) it.push(['Überraschung', sup.slice(0, 2).join('. ') + '.']);
-  return '<article class="paper' + (R.final && R.won ? ' gold' : '') + '">' + paperHead(R.final ? 'Sonderausgabe zum Finale' : cupN + ' · ' + R.name) + '<h3>' + esc(hl) + '</h3><p class="ld">' + esc(lead) + '</p>' + (it.length ? '<div class="cols">' + it.map(function (x) { return '<p><b>' + esc(x[0]) + '.</b> ' + esc(x[1]) + '</p>'; }).join('') + '</div>' : '') + '</article>';
+  var cpg = ui.pp === 3 && m.st ? 3 : 0, cnav = m.st ? paperNav(cpg, [['Titelseite', 0], ['Statistik', 3]]) : '';
+  if (cpg === 3) return '<article class="paper' + (R.final && R.won ? ' gold' : '') + '">' + paperHead(R.final ? 'Sonderausgabe zum Finale' : cupN + ' · ' + R.name) + cnav + paperStat(m) + '</article>';
+  return '<article class="paper' + (R.final && R.won ? ' gold' : '') + '">' + paperHead(R.final ? 'Sonderausgabe zum Finale' : cupN + ' · ' + R.name) + cnav + '<h3>' + esc(hl) + '</h3><p class="ld">' + esc(lead) + '</p>' + (it.length ? '<div class="cols">' + it.map(function (x) { return '<p><b>' + esc(x[0]) + '.</b> ' + esc(x[1]) + '</p>'; }).join('') + '</div>' : '') + '</article>';
 }
 function vDraw() {
   var c = state.cup, ct = FM.cupTie(state), h = sub('Auslosung');
@@ -7570,7 +7581,8 @@ function paperFront(R, mine, u) {
 
 function paper(R, mine, u) {
   var home = mine[0] === u.id, gf = home ? mine[2] : mine[3], ga = home ? mine[3] : mine[2], o = FM.team(state, home ? mine[1] : mine[0]).n, t = u.n, sc = gf + ':' + ga, d = gf - ga, G = (ui.match && ui.match.goals) || [], k = (R.round + gf * 3 + ga) % 3, pg = ui.pp || 0;
-  var h = '<article class="paper">' + paperHead() + '<nav>' + [['Titelseite', 0], ['Elf des Tages', 1], ['Liga & Markt', 2]].map(function (x) { return '<button data-a="pp" data-val="' + x[1] + '" aria-pressed="' + (pg === x[1]) + '"' + (pg === x[1] ? ' class="on"' : '') + '>' + x[0] + '</button>'; }).join('') + '</nav>';
+  var h = '<article class="paper">' + paperHead() + paperNav(pg, [['Titelseite', 0], ['Elf des Tages', 1], ['Liga & Markt', 2]].concat(R.match && R.match.st ? [['Statistik', 3]] : []));
+  if (pg === 3) return h + paperStat(R.match) + '</article>';
   if (pg === 1) {
     var X = R.xi || [], rows = [[], [], [], []]; X.forEach(function (x) { rows[x.p].push(x); });
     h += '<h3 class="s">Die Elf des ' + (R.round + 1) + '. Spieltags</h3><div class="xi">';
@@ -7605,7 +7617,7 @@ function paper(R, mine, u) {
   if (R.hallNote) items.push(['Winterpause', 'Einladung zum Hallenturnier liegt im Büro, dazu das Angebot für ein Trainingslager.']);
   items = items.concat(PF.items);
   h += '<p style="margin:0 0 2px;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;opacity:.65;font-weight:700">' + esc(PF.kicker) + '</p><h3>' + esc(hl) + '</h3><p class="ld">' + esc(lead) + '</p>';
-  if (items.length) { h += '<div class="cols">'; items.forEach(function (x) { h += '<p><b>' + esc(x[0]) + '.</b> ' + esc(x[1]) + '</p>'; }); h += '</div>'; }
+  if (items.length) { h += '<div class="cols">'; items.forEach(function (x) { var tx = String(x[1]); if (tx.indexOf(x[0] + ': ') === 0) tx = tx.slice(x[0].length + 2); h += '<p><b>' + esc(x[0]) + '.</b> ' + esc(tx) + '</p>'; }); h += '</div>'; }
   return h + '</article>';
 }
 function seasonPaper(s, u, sl) {
@@ -7630,7 +7642,6 @@ function vResults() {
   state.sched[u.lg][R.round].forEach(function (x) { if (x[0] === u.id || x[1] === u.id) mine = x; });
   var h = '<div class="hdr"><div class="title grow">' + (R.round + 1) + '. Spieltag</div></div>';
   if (mine) h += scoreCard(mine[0], mine[1], mine[2], mine[3]);
-  if (mine && m && m.st) h += statBox(m.st, m.h, m.a, m.et ? 'STATISTIK · NACH 120 MINUTEN' : 'STATISTIK · SPIELENDE');
   h += R.sacked ? '<button class="big warn" data-a="go" data-v="sacked">Weiter</button>' : state.over ? '<button class="big" data-a="season">Saisonabschluss</button>' : '<button class="big" data-a="go" data-v="menu">Zurück ins Büro</button>';
   if (mine) h += paper(R, mine, u);
   var prev = state.ph.length > 1 ? state.ph[state.ph.length - 2] : pl, mv = prev - pl;

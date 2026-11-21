@@ -4436,7 +4436,7 @@ function icon(name, size) {
   return '<img alt="" aria-hidden="true" src="' + IC[name] + '" width="' + size + '" height="' + size + '">';
 }
 var CREST = '<svg aria-hidden="true" viewBox="0 0 16 16" width="42" height="42" style="flex-shrink:0"><path d="M2 1h12v8l-6 6-6-6z" fill="var(--yellow)"/><path d="M4 3h8v5l-4 4-4-4z" fill="var(--bg)"/><path d="M7 4h2v5h-2z" fill="#fff"/></svg>';
-var BUILD = '20.11. 23:18';
+var BUILD = '21.11. 12:31';
 function coachN() { return state && state.coach ? String(state.coach) : ''; }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function euro() { return !!state && (state.y0 || 1995) >= 2002; }
@@ -6180,7 +6180,7 @@ function matchPanel() {
     if (fe) {
       if (brk) {
         var half = M.ptitle === 'Halbzeit';
-        fe.innerHTML = '<p class="ft">' + (half ? 'HALBZEIT' : esc(M.ptitle || 'Unterbrechung').toUpperCase()) + '</p><div class="fr"><span>' + crest(M.h, 30) + '<small>' + esc(FM.team(state, M.h).n) + '</small></span><b>' + M.hg + ':' + M.ag + '</b><span>' + crest(M.a, 30) + '<small>' + esc(FM.team(state, M.a).n) + '</small></span></div><button class="big" data-a="mresume">' + (half ? '2. Halbzeit anpfeifen' : L.need ? 'In Unterzahl weiterspielen' : 'Weiterspielen') + '</button>' + (half && coachN() ? '<p class="fa">Trainer ' + esc(coachN()) + ' bittet die Mannschaft in die Kabine.</p>' : '') + (half && !L.talk && !L.need ? '<p class="fa">Unten: Ansprache, Wechsel und Taktik</p>' : '');
+        fe.innerHTML = '<p class="ft">' + (half ? 'HALBZEIT' : esc(M.ptitle || 'Unterbrechung').toUpperCase()) + '</p><div class="fr"><span>' + crest(M.h, 30) + '<small>' + esc(FM.team(state, M.h).n) + '</small></span><b>' + M.hg + ':' + M.ag + '</b><span>' + crest(M.a, 30) + '<small>' + esc(FM.team(state, M.a).n) + '</small></span></div><button class="big" data-a="mresume">' + (half ? '2. Halbzeit anpfeifen' : L.need && !(ui.subPlan || []).some(function (q) { return q.o === L.need.i || q.o === null; }) ? 'In Unterzahl weiterspielen' : 'Weiterspielen') + '</button>' + (half && coachN() ? '<p class="fa">Trainer ' + esc(coachN()) + ' bittet die Mannschaft in die Kabine.</p>' : '') + (half && !L.talk && !L.need ? '<p class="fa">Unten: Ansprache, Wechsel und Taktik</p>' : '');
         fe.className = 'fin brk'; fe.hidden = false;
       } else fe.hidden = true;
     }
